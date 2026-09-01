@@ -605,11 +605,10 @@ Puis :
 
 Afficher notamment :
 
-- appels à effectuer
-- relances
-- RDV
-- tâches en retard
-- prospects sans prochaine action
+- TASKS TODO du jour (due at = aujourd'hui)
+- TASKS en retard (due at dépassé)
+- RDV du jour
+- opportunités sans TASK TODO (sans prochaine action)
 
 CTA principal :
 
@@ -651,10 +650,10 @@ Résultats rapides :
 
 Après validation du résultat :
 
-1. enregistrer l'activité
-2. enregistrer le résultat
-3. créer ou mettre à jour la prochaine action
-4. mettre à jour les informations CRM nécessaires
+1. créer une ACTIVITY avec le résultat
+2. créer une TASK TODO pour la prochaine action (si nécessaire)
+3. mettre à jour le stage de l'opportunité si pertinent
+4. créer STAGE_HISTORY si le stage a changé
 5. afficher automatiquement le prospect suivant
 
 Afficher la progression :
@@ -703,7 +702,7 @@ Afficher au minimum :
 - contact
 - business line
 - valeur potentielle
-- prochaine action
+- prochaine action (dérivée de la prochaine TASK TODO)
 - jours dans l'étape
 
 Filtres :
@@ -716,12 +715,13 @@ Filtres :
 
 Drag & drop autorisé.
 
-Chaque changement d'étape doit être historisé avec :
+Chaque changement d'étape doit créer automatiquement une ligne dans STAGE_HISTORY avec :
 
-- ancienne étape
-- nouvelle étape
-- date
-- utilisateur
+- Opportunity (link)
+- From Stage
+- To Stage
+- Changed At (date + time)
+- Changed By
 
 Passer une opportunité en `Gagné` ne doit pas automatiquement supposer le revenu.
 
@@ -768,20 +768,25 @@ La fiche doit centraliser l'information utile à l'action commerciale.
 
 Afficher chronologiquement :
 
-- appels
-- emails
-- LinkedIn
-- RDV
-- notes
-- propositions
-- changements de stage
+- ACTIVITIES (appels, emails, LinkedIn, RDV, notes, propositions)
+- changements de stage (via STAGE_HISTORY)
+- VALUE_EVENTS
 
-## Prochaine action
+## Prochaines actions
+
+Afficher les TASKS :
+
+- TASKS TODO (à faire)
+- TASKS DONE (terminées)
+- TASKS CANCELLED
+
+Chaque TASK affiche :
 
 - type
-- date
-- heure
-- commentaire
+- due at (date + heure)
+- priorité
+- owner
+- notes
 
 ## Opportunité
 
@@ -860,6 +865,7 @@ Créer initialement :
 - TASKS
 - VALUE_EVENTS
 - GOALS
+- STAGE_HISTORY
 
 Éviter de multiplier les tables sans nécessité.
 
@@ -869,28 +875,44 @@ Créer initialement :
 
 Champs :
 
-- business_line_id
-- name
-- code
-- revenue_trigger
-- default_unit_value
-- revenue_type
-- category
-- active
-- created_at
-- updated_at
-
-Valeurs initiales :
-
-- Paul
-- Sacha
-- Calymia
-- KLS3 Notaires
+- Name
+- Code
+- Category
+- Revenue Trigger
+- Revenue Type
+- Default Unit Value
+- Active
 
 category :
 
 - PARTNER
 - OWNED
+
+Valeurs initiales :
+
+**Paul**
+- Category : PARTNER
+- Revenue Trigger : PAID_MEETING
+- Revenue Type : ONE_SHOT
+- Default Unit Value : 100 €
+
+**Sacha**
+- Category : PARTNER
+- Revenue Trigger : SIGNED_DEAL
+- Revenue Type : ONE_SHOT
+- Default Unit Value : configurable (500 € n'est qu'une hypothèse)
+
+**Calymia**
+- Category : OWNED
+- Revenue Trigger : SUBSCRIPTION_STARTED
+- Revenue Type : MRR
+- Default Unit Value : dépend du plan (29 €, 59 €, 139 €)
+
+**KLS3 Notaires**
+- Category : OWNED
+- Revenue Trigger : SIGNED_PROJECT
+- Revenue Type : PROJECT
+- Default Unit Value : variable selon le projet (12 000 € n'est qu'une moyenne indicative)
 
 ---
 
@@ -898,20 +920,21 @@ category :
 
 Champs :
 
-- company_id
-- name
-- website
-- industry
-- city
-- country
-- phone
-- company_size
-- linkedin_url
-- notes
-- created_at
-- updated_at
+- Name
+- Website
+- Industry
+- City
+- Country
+- Phone
+- Company Size
+- LinkedIn
+- Notes
+- Created At
+- Updated At
 
 Une entreprise peut avoir plusieurs contacts.
+
+Une entreprise peut avoir plusieurs opportunités.
 
 ---
 
@@ -919,21 +942,28 @@ Une entreprise peut avoir plusieurs contacts.
 
 Champs :
 
-- contact_id
-- company_id
-- first_name
-- last_name
-- job_title
-- email
-- phone
-- linkedin_url
-- notes
-- created_at
-- updated_at
+- First Name
+- Last Name
+- Company → Link COMPANIES
+- Job Title
+- Email
+- Phone
+- LinkedIn
+- Notes
+- Created At
+- Updated At
 
 Relation :
 
 `Company 1:N Contacts`
+
+Un contact peut participer à plusieurs opportunités.
+
+**Important :**
+
+Ne pas rattacher directement CONTACTS à une Business Line.
+
+La Business Line appartient à l'opportunité.
 
 ---
 
@@ -941,25 +971,79 @@ Relation :
 
 Champs :
 
-- opportunity_id
-- company_id
-- contact_id
-- business_line_id
-- owner
-- stage
-- source
-- priority
-- potential_value
-- probability
-- expected_close_date
-- problem
-- need
-- next_step
-- lost_reason
-- created_at
-- updated_at
-- won_at
-- lost_at
+- Name
+- Company → Link COMPANIES
+- Primary Contact → Link CONTACTS
+- Business Line → Link BUSINESS_LINES
+- Owner
+- Stage
+- Source
+- Priority
+- Potential Value
+- Probability
+- Expected Close Date
+- Problem
+- Need
+- Next Step Notes
+- Lost Reason
+- Created At
+- Updated At
+- Won At
+- Lost At
+
+**Stages :**
+
+- À prospecter
+- Contacté
+- Échange
+- Qualifié
+- RDV
+- Opportunité
+- Proposition
+- Gagné
+- Perdu
+
+**Priority :**
+
+- LOW
+- MEDIUM
+- HIGH
+- URGENT
+
+**Sources :**
+
+- Cold Call
+- Cold Email
+- LinkedIn
+- Referral
+- Website
+- Partner
+- Event
+- Inbound
+- Other
+
+**Owner :**
+
+Pour la V1, Owner reste volontairement simple.
+
+Valeurs initiales :
+
+- Eric
+- Lilian
+
+Utiliser un champ contrôlé et non du texte libre.
+
+Ne pas créer de table USERS en V1.
+
+**Important — Next Action :**
+
+Ne pas dupliquer la prochaine action dans OPPORTUNITIES.
+
+La prochaine action d'une opportunité doit être dérivée de la prochaine TASK ouverte (statut TODO).
+
+Le champ "Next Step Notes" peut rester dans OPPORTUNITIES uniquement comme information commerciale qualitative, mais il ne constitue jamais la source de vérité de la prochaine action.
+
+Une opportunité active sans TASK ouverte doit pouvoir être identifiée comme "Sans prochaine action".
 
 Pour certaines business lines, des champs métier complémentaires pourront être ajoutés si réellement nécessaires.
 
@@ -967,21 +1051,21 @@ Pour certaines business lines, des champs métier complémentaires pourront êtr
 
 # 26. ACTIVITIES
 
+Une ligne représente une action commerciale réellement effectuée.
+
 Champs :
 
-- activity_id
-- opportunity_id
-- contact_id
-- business_line_id
-- type
-- date
-- result
-- notes
-- owner
-- duration_minutes
-- created_at
+- Opportunity → Link OPPORTUNITIES
+- Contact → Link CONTACTS
+- Type
+- Date + time
+- Result
+- Notes
+- Owner
+- Duration Minutes
+- Created At
 
-Types initiaux :
+**Types initiaux :**
 
 - CALL
 - EMAIL
@@ -992,33 +1076,73 @@ Types initiaux :
 - NOTE
 - OTHER
 
+**Résultats d'appel initiaux :**
+
+- NO_ANSWER
+- CONVERSATION
+- MEETING_BOOKED
+- NOT_INTERESTED
+- CALLBACK
+
+**Règle :**
+
+ACTIVITY = action réalisée (passé)
+
 ---
 
 # 27. TASKS
 
+Une ligne représente une action future.
+
 Champs :
 
-- task_id
-- opportunity_id
-- contact_id
-- business_line_id
-- task_type
-- due_date
-- due_time
-- priority
-- status
-- notes
-- owner
-- created_at
-- completed_at
+- Opportunity → Link OPPORTUNITIES
+- Contact → Link CONTACTS
+- Type
+- Due At (date + time)
+- Priority
+- Status
+- Notes
+- Owner
+- Created At
+- Completed At
 
-Une tâche représente une action future.
+**Types initiaux :**
 
-Ne pas confondre TASK avec ACTIVITY.
+- CALL
+- EMAIL
+- LINKEDIN
+- MEETING
+- DEMO
+- FOLLOW_UP
+- OTHER
 
-TASK = action à faire.
+**Status :**
 
-ACTIVITY = action réalisée.
+- TODO
+- DONE
+- CANCELLED
+
+**Priority :**
+
+- LOW
+- MEDIUM
+- HIGH
+- URGENT
+
+**Règle fondamentale :**
+
+TASK = action à faire (futur)
+
+ACTIVITY = action réalisée (passé)
+
+VALUE_EVENT = valeur économique générée
+
+**Source de vérité de la Next Action :**
+
+La prochaine TASK avec statut TODO est la source de vérité de la Next Action d'une opportunité.
+
+Une opportunité active sans TASK TODO doit pouvoir être identifiée comme "Sans prochaine action".
 
 ---
 
@@ -1026,20 +1150,41 @@ ACTIVITY = action réalisée.
 
 Champs :
 
-- value_event_id
-- business_line_id
-- opportunity_id
-- contact_id
-- event_type
-- event_date
-- amount
-- revenue_type
-- status
-- notes
-- created_at
-- updated_at
+- Opportunity → Link OPPORTUNITIES
+- Contact → Link CONTACTS
+- Business Line → Link BUSINESS_LINES
+- Event Type
+- Event Date
+- Amount
+- Revenue Type
+- Status
+- Notes
+- Created At
+- Updated At (si nécessaire)
+
+**Event Type :**
+
+- PAID_MEETING
+- SIGNED_DEAL
+- SUBSCRIPTION_STARTED
+- SIGNED_PROJECT
+
+**Revenue Type :**
+
+- ONE_SHOT
+- MRR
+- PROJECT
+
+**Status :**
+
+- PENDING
+- CONFIRMED
+- PAID
+- CANCELLED
 
 Cette table est la source de vérité des événements économiques.
+
+Ne jamais calculer tout le revenu uniquement à partir du statut "Gagné" d'une opportunité.
 
 ---
 
@@ -1047,35 +1192,34 @@ Cette table est la source de vérité des événements économiques.
 
 Champs :
 
-- goal_id
-- business_line_id
-- metric
-- period
-- target
-- ambitious_target
-- start_date
-- end_date
+- Business Line → Link BUSINESS_LINES
+- Metric
+- Period
+- Target
+- Ambitious Target
+- Start Date
+- End Date
 
 Les objectifs doivent toujours être configurables sans modifier le code.
 
 Exemples actuels de travail :
 
-Paul :
+**Paul :**
 
 - cible : 8 RDV rémunérés/mois
 - ambitieux : 12
 
-Sacha :
+**Sacha :**
 
 - cible : 2 signatures/mois
 - ambitieux : 3
 
-Calymia :
+**Calymia :**
 
 - cible : 5 nouveaux clients/mois
 - ambitieux : 8
 
-KLS3 Notaires :
+**KLS3 Notaires :**
 
 - cible : 1 signature/mois
 - ambitieux : 1,5
@@ -1084,21 +1228,73 @@ Ces valeurs sont des hypothèses de pilotage et doivent rester configurables.
 
 ---
 
-# 30. CRM QUALITY RULES
+# 30. STAGE_HISTORY
+
+Objectif :
+
+Historiser chaque changement d'étape d'une opportunité.
+
+Champs :
+
+- Opportunity → Link OPPORTUNITIES
+- From Stage → Single select
+- To Stage → Single select
+- Changed At → Date + time
+- Changed By → Single select
+
+**Stages :**
+
+- À prospecter
+- Contacté
+- Échange
+- Qualifié
+- RDV
+- Opportunité
+- Proposition
+- Gagné
+- Perdu
+
+**Changed By :**
+
+- Eric
+- Lilian
+
+Cette table permettra notamment de calculer ultérieurement :
+
+- temps passé dans chaque étape
+- temps Contacté → RDV
+- temps RDV → Proposition
+- temps Proposition → Gagné
+- cycle de vente
+- opportunités bloquées
+
+**Important :**
+
+Chaque changement d'étape d'une opportunité doit créer automatiquement une ligne dans STAGE_HISTORY.
+
+---
+
+# 32. CRM QUALITY RULES
 
 Une opportunité active doit idéalement toujours avoir :
 
 - business line
 - owner
 - stage
-- prochaine action
+- au moins une TASK TODO (prochaine action)
 
 Afficher des alertes pour :
 
-- relances en retard
-- prospects sans prochaine action
-- opportunités bloquées trop longtemps
-- propositions sans relance prévue
+- TASKS en retard (Due At dépassé)
+- opportunités sans TASK TODO (sans prochaine action)
+- opportunités bloquées trop longtemps dans une étape
+- propositions sans TASK de relance prévue
+
+**Source de vérité de la prochaine action :**
+
+La prochaine TASK avec statut TODO.
+
+Ne jamais se baser uniquement sur le champ "Next Step Notes" d'OPPORTUNITIES pour identifier la prochaine action.
 
 Ne pas bloquer inutilement l'utilisateur avec des validations excessives.
 
@@ -1106,7 +1302,7 @@ Préférer les alertes utiles aux formulaires bureaucratiques.
 
 ---
 
-# 31. SOURCES DE LEADS
+# 33. SOURCES DE LEADS
 
 Valeurs initiales :
 
@@ -1124,7 +1320,7 @@ La liste doit pouvoir évoluer.
 
 ---
 
-# 32. PRIORITÉ
+# 33. PRIORITÉ
 
 Valeurs initiales :
 
@@ -1139,7 +1335,7 @@ Ne pas construire de scoring IA en V1.
 
 ---
 
-# 33. DESIGN SYSTEM KLS3
+# 34. DESIGN SYSTEM KLS3
 
 Le design system KLS3 est obligatoire.
 
@@ -1168,7 +1364,7 @@ Pas de light mode.
 
 ---
 
-# 34. COULEURS
+# 35. COULEURS
 
 Fond principal :
 
@@ -1200,7 +1396,7 @@ Ne pas attribuer une couleur forte différente à chaque business line.
 
 ---
 
-# 35. TYPOGRAPHIE
+# 36. TYPOGRAPHIE
 
 Titres H1/H2 :
 
@@ -1223,7 +1419,7 @@ Fonts :
 
 ---
 
-# 36. LOGO KLS3
+# 37. LOGO KLS3
 
 Règle absolue :
 
@@ -1239,7 +1435,7 @@ Le chiffre 3 doit toujours utiliser la couleur accent KLS3.
 
 ---
 
-# 37. BOUTONS
+# 38. BOUTONS
 
 ## Primary
 
@@ -1273,7 +1469,7 @@ Les autres bordures sont normalement 0.5px.
 
 ---
 
-# 38. CARDS
+# 39. CARDS
 
 background :
 
@@ -1298,7 +1494,7 @@ Les cards doivent être différenciées principalement par :
 
 ---
 
-# 39. KPI GROUPS
+# 40. KPI GROUPS
 
 Pour les ensembles de cards adjacentes :
 
@@ -1309,7 +1505,7 @@ Pour les ensembles de cards adjacentes :
 
 ---
 
-# 40. SECTION LABEL / EYEBROW
+# 41. SECTION LABEL / EYEBROW
 
 Structure :
 
@@ -1334,7 +1530,7 @@ Texte :
 
 ---
 
-# 41. TYPOGRAPHIE DÉCORATIVE
+# 42. TYPOGRAPHIE DÉCORATIVE
 
 Font :
 
@@ -1358,7 +1554,7 @@ Ne jamais nuire à la lisibilité.
 
 ---
 
-# 42. ANIMATIONS
+# 43. ANIMATIONS
 
 Framer Motion peut être utilisé avec parcimonie.
 
@@ -1404,7 +1600,7 @@ INTERDIT :
 
 ---
 
-# 43. RESPONSIVE
+# 44. RESPONSIVE
 
 Approche :
 
@@ -1430,7 +1626,7 @@ Les informations prioritaires doivent rester prioritaires sur mobile.
 
 ---
 
-# 44. NAVIGATION
+# 45. NAVIGATION
 
 Navigation principale envisagée :
 
@@ -1449,7 +1645,7 @@ Il n'est pas nécessairement une entrée permanente dans la navigation.
 
 ---
 
-# 45. RÈGLE DE DENSITÉ
+# 46. RÈGLE DE DENSITÉ
 
 Chaque écran doit présenter :
 
@@ -1463,7 +1659,7 @@ Utiliser une hiérarchie visuelle forte.
 
 ---
 
-# 46. STACK TECHNIQUE
+# 47. STACK TECHNIQUE
 
 Stack officielle :
 
@@ -1484,7 +1680,7 @@ Ne pas ajouter de technologie sans besoin réel.
 
 ---
 
-# 47. NEXT.JS
+# 48. NEXT.JS
 
 Utiliser les conventions modernes de Next.js.
 
@@ -1512,7 +1708,7 @@ Ne pas mettre `use client` au niveau d'une page entière si quelques composants 
 
 ---
 
-# 48. AIRTABLE
+# 49. AIRTABLE
 
 Airtable est la base de données principale de la V1.
 
@@ -1534,7 +1730,7 @@ dans le bundle client.
 
 ---
 
-# 49. VARIABLES D'ENVIRONNEMENT
+# 50. VARIABLES D'ENVIRONNEMENT
 
 Les secrets locaux doivent être stockés dans :
 
@@ -1557,7 +1753,7 @@ Ne jamais hardcoder un token dans le code.
 
 ---
 
-# 50. N8N
+# 51. N8N
 
 n8n n'est pas nécessaire à la Phase 0.
 
@@ -1575,7 +1771,7 @@ Ne pas intégrer n8n tant qu'un besoin concret n'est pas validé.
 
 ---
 
-# 51. GITHUB
+# 52. GITHUB
 
 Repository :
 
@@ -1595,7 +1791,7 @@ Ne jamais committer :
 
 ---
 
-# 52. VERCEL
+# 53. VERCEL
 
 Vercel héberge l'application Next.js.
 
@@ -1621,7 +1817,7 @@ Les variables d'environnement doivent être configurées correctement pour chaqu
 
 ---
 
-# 53. DOMAINE
+# 54. DOMAINE
 
 URL de production cible :
 
@@ -1633,7 +1829,7 @@ Utiliser une configuration ou variable d'environnement lorsque nécessaire.
 
 ---
 
-# 54. AUTHENTIFICATION
+# 55. AUTHENTIFICATION
 
 L'application est privée.
 
@@ -1658,7 +1854,7 @@ Ne pas développer soi-même un système cryptographique ou de gestion de mots d
 
 ---
 
-# 55. SÉCURITÉ
+# 56. SÉCURITÉ
 
 Principes :
 
@@ -1674,7 +1870,7 @@ Toujours traiter les données CRM comme confidentielles.
 
 ---
 
-# 56. CE QUI N'EST PAS DANS LA V1
+# 57. CE QUI N'EST PAS DANS LA V1
 
 Ne pas développer :
 
@@ -1699,7 +1895,7 @@ Ces fonctionnalités ne doivent pas être anticipées architecturalement au poin
 
 ---
 
-# 57. PRINCIPES D'ARCHITECTURE
+# 58. PRINCIPES D'ARCHITECTURE
 
 Ne pas sur-architecturer.
 
@@ -1720,7 +1916,7 @@ Toujours privilégier la solution la plus simple qui reste propre et maintenable
 
 ---
 
-# 58. STRUCTURE DU CODE
+# 59. STRUCTURE DU CODE
 
 Structure indicative seulement :
 
@@ -1760,7 +1956,7 @@ Créer uniquement ce qui est nécessaire à la phase en cours.
 
 ---
 
-# 59. NOMMAGE
+# 60. NOMMAGE
 
 Code :
 
@@ -1784,7 +1980,7 @@ Variables, types, fonctions et composants en anglais.
 
 ---
 
-# 60. GESTION DES ÉTATS
+# 61. GESTION DES ÉTATS
 
 Chaque fonctionnalité utilisant des données doit prévoir lorsque pertinent :
 
@@ -1799,7 +1995,7 @@ Les erreurs techniques ne doivent pas être affichées brutalement à l'utilisat
 
 ---
 
-# 61. PERFORMANCE
+# 62. PERFORMANCE
 
 Airtable n'est pas une base SQL classique.
 
@@ -1822,7 +2018,7 @@ Ne pas charger toute la base uniquement pour afficher une card KPI.
 
 ---
 
-# 62. ACCESSIBILITÉ
+# 63. ACCESSIBILITÉ
 
 Minimum attendu :
 
@@ -1837,7 +2033,7 @@ Le design premium ne doit jamais nuire à l'accessibilité.
 
 ---
 
-# 63. PHILOSOPHIE UX
+# 64. PHILOSOPHIE UX
 
 Ne pas construire un CRM administratif.
 
@@ -1851,7 +2047,7 @@ Toujours privilégier :
 
 ---
 
-# 64. PRIORITÉ UX ABSOLUE
+# 65. PRIORITÉ UX ABSOLUE
 
 L'utilisateur doit pouvoir ouvrir KLS3 Sales OS le matin et comprendre en moins de 10 secondes :
 
@@ -1863,7 +2059,7 @@ L'utilisateur doit pouvoir ouvrir KLS3 Sales OS le matin et comprendre en moins 
 
 ---
 
-# 65. PHASE 0 — SETUP
+# 66. PHASE 0 — SETUP
 
 Objectif :
 
@@ -1889,7 +2085,7 @@ Ne pas construire le CRM pendant la Phase 0.
 
 ---
 
-# 66. PHASE 1 — DATA
+# 67. PHASE 1 — DATA
 
 Objectif :
 
@@ -1906,6 +2102,7 @@ Contenu :
 - Tasks
 - Value Events
 - Goals
+- Stage History
 - types TypeScript
 - fonctions d'accès server-side
 - gestion des erreurs
@@ -1914,7 +2111,7 @@ Utiliser des données de test.
 
 ---
 
-# 67. PHASE 2 — CORE CRM
+# 68. PHASE 2 — CORE CRM
 
 Contenu :
 
@@ -1928,7 +2125,7 @@ Contenu :
 
 ---
 
-# 68. PHASE 3 — PIPELINE
+# 69. PHASE 3 — PIPELINE
 
 Contenu :
 
@@ -1942,7 +2139,7 @@ Contenu :
 
 ---
 
-# 69. PHASE 4 — TODAY
+# 70. PHASE 4 — TODAY
 
 Contenu :
 
@@ -1956,7 +2153,7 @@ Contenu :
 
 ---
 
-# 70. PHASE 5 — FOCUS
+# 71. PHASE 5 — FOCUS
 
 Contenu :
 
@@ -1971,7 +2168,7 @@ Contenu :
 
 ---
 
-# 71. PHASE 6 — DASHBOARD
+# 72. PHASE 6 — DASHBOARD
 
 Contenu :
 
@@ -1986,7 +2183,7 @@ Contenu :
 
 ---
 
-# 72. PHASE 7 — ANALYTICS
+# 73. PHASE 7 — ANALYTICS
 
 Contenu :
 
@@ -2001,7 +2198,7 @@ Contenu :
 
 ---
 
-# 73. PHASE 8 — AUTH + PRODUCTION
+# 74. PHASE 8 — AUTH + PRODUCTION
 
 Contenu :
 
@@ -2018,7 +2215,7 @@ Aucune vraie donnée commerciale ne doit être introduite dans une application p
 
 ---
 
-# 74. WORKFLOW CLAUDE CODE
+# 75. WORKFLOW CLAUDE CODE
 
 Avant chaque phase :
 
@@ -2038,7 +2235,7 @@ Ne jamais décider seul de développer la phase suivante.
 
 ---
 
-# 75. WORKFLOW GIT
+# 76. WORKFLOW GIT
 
 Faire des changements cohérents et limités.
 
@@ -2058,7 +2255,7 @@ Ne jamais supprimer l'historique Git.
 
 ---
 
-# 76. RÈGLE DE NON-RÉGRESSION
+# 77. RÈGLE DE NON-RÉGRESSION
 
 Avant de modifier un composant existant :
 
@@ -2071,7 +2268,7 @@ Avant de modifier un composant existant :
 
 ---
 
-# 77. RÈGLE DE DESIGN
+# 78. RÈGLE DE DESIGN
 
 Avant de créer un composant, vérifier :
 
@@ -2088,7 +2285,7 @@ ne pas la développer.
 
 ---
 
-# 78. RÈGLE MÉTIER
+# 79. RÈGLE MÉTIER
 
 Ne jamais inventer une règle commerciale.
 
@@ -2110,7 +2307,7 @@ Ne jamais transformer une hypothèse en constante métier cachée.
 
 ---
 
-# 79. RÈGLE DATA
+# 80. RÈGLE DATA
 
 Airtable est la source de vérité opérationnelle de la V1.
 
@@ -2120,32 +2317,82 @@ Les IDs Airtable techniques et les IDs métier doivent être distingués si néc
 
 Toujours préserver l'intégrité des relations :
 
-Company  
-→ Contact  
-→ Opportunity  
-→ Activities / Tasks / Value Events
+**Modèle logique :**
+
+```
+COMPANY
+  → CONTACT
+  → OPPORTUNITY
+      → ACTIVITY
+      → TASK
+      → VALUE_EVENT
+      → STAGE_HISTORY
+
+BUSINESS_LINE
+  → OPPORTUNITY
+  → VALUE_EVENT
+  → GOAL
+```
+
+**Règles :**
+
+- Une entreprise peut avoir plusieurs contacts
+- Une entreprise peut avoir plusieurs opportunités
+- Un contact peut participer à plusieurs opportunités
+- Une opportunité appartient à une Business Line
+- Une opportunité peut avoir plusieurs ACTIVITIES
+- Une opportunité peut avoir plusieurs TASKS
+- Une opportunité peut avoir plusieurs VALUE_EVENTS
+- Une opportunité peut avoir plusieurs STAGE_HISTORY
+
+**Principe de simplicité :**
+
+Ne créer aucune table supplémentaire sans besoin métier réel.
+
+Ne pas créer en V1 :
+
+- USERS
+- PIPELINES
+- STAGES (utiliser Single Select)
+- ACTIVITY_TYPES (utiliser Single Select)
+- TASK_TYPES (utiliser Single Select)
+- REVENUE_TYPES (utiliser Single Select)
+
+Les valeurs contrôlées peuvent rester des Single Select Airtable.
 
 ---
 
-# 80. RÈGLE DES PROCHAINES ACTIONS
+# 81. RÈGLE DES PROCHAINES ACTIONS
 
 Le concept de `Next Action` est central.
 
 Une opportunité active sans prochaine action est considérée comme un problème de qualité CRM.
 
-L'application doit faciliter la création d'une prochaine action immédiatement après une activité.
+**Source de vérité :**
+
+La prochaine action d'une opportunité est dérivée de la prochaine TASK avec statut TODO.
+
+Le champ "Next Step Notes" dans OPPORTUNITIES peut servir d'information qualitative, mais ne constitue jamais la source de vérité.
+
+**Workflows :**
+
+L'application doit faciliter la création d'une TASK immédiatement après une ACTIVITY.
+
+Exemple :
+
+Appel → Résultat = CONVERSATION → Créer TASK = FOLLOW_UP dans 3 jours
 
 Le système doit pouvoir identifier :
 
-`Prospects sans prochaine action`
+`Opportunités sans TASK TODO` (= sans prochaine action)
 
 et :
 
-`Actions en retard`
+`TASKS en retard` (= Due At dépassé)
 
 ---
 
-# 81. RÈGLE FOCUS
+# 82. RÈGLE FOCUS
 
 Focus Mode n'est pas un simple écran de consultation.
 
@@ -2163,7 +2410,7 @@ Le système doit avancer naturellement vers le prospect suivant.
 
 ---
 
-# 82. RÈGLE ANALYTICS
+# 83. RÈGLE ANALYTICS
 
 Ne jamais confondre activité et performance.
 
@@ -2179,7 +2426,7 @@ L'objectif final des analytics est d'améliorer l'allocation du temps commercial
 
 ---
 
-# 83. RÈGLE CALYMIA
+# 84. RÈGLE CALYMIA
 
 Calymia génère du revenu récurrent.
 
@@ -2193,7 +2440,7 @@ Ne pas traiter le MRR comme un revenu one-shot.
 
 ---
 
-# 84. RÈGLE PIPELINE KLS3
+# 85. RÈGLE PIPELINE KLS3
 
 Pour KLS3 Notaires, distinguer :
 
@@ -2215,7 +2462,7 @@ La probabilité doit rester explicite et modifiable.
 
 ---
 
-# 85. MCP
+# 86. MCP
 
 Les MCP ne sont pas requis pour construire la V1.
 
@@ -2227,7 +2474,7 @@ Le fonctionnement de KLS3 Sales OS ne doit jamais dépendre d'un MCP Claude.
 
 ---
 
-# 86. DOCUMENTATION
+# 87. DOCUMENTATION
 
 `CLAUDE.md` est la référence principale pour :
 
@@ -2248,7 +2495,7 @@ mettre à jour `CLAUDE.md`.
 
 ---
 
-# 87. PREMIÈRE INSTRUCTION APRÈS INITIALISATION
+# 88. PREMIÈRE INSTRUCTION APRÈS INITIALISATION
 
 Lors de la première session Claude Code :
 
@@ -2263,7 +2510,7 @@ Lors de la première session Claude Code :
 
 ---
 
-# 88. RÈGLE FINALE
+# 89. RÈGLE FINALE
 
 Le succès de KLS3 Sales OS ne sera pas mesuré au nombre de fonctionnalités.
 
