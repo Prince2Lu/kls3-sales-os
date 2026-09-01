@@ -855,7 +855,7 @@ Priorité :
 
 # 21. AIRTABLE — TABLES PRINCIPALES
 
-Créer initialement :
+Le modèle Airtable V1 contient exactement 9 tables :
 
 - BUSINESS_LINES
 - COMPANIES
@@ -866,6 +866,18 @@ Créer initialement :
 - VALUE_EVENTS
 - GOALS
 - STAGE_HISTORY
+
+**Important — Champs réciproques Airtable :**
+
+Airtable crée automatiquement des champs réciproques (linked-record fields) pour toutes les relations.
+
+Exemples :
+
+- COMPANIES a un champ automatique "CONTACTS" qui liste tous les contacts liés
+- COMPANIES a un champ automatique "OPPORTUNITIES" qui liste toutes les opportunités liées
+- OPPORTUNITIES a un champ automatique "ACTIVITIES" qui liste toutes les activités liées
+
+Ces champs réciproques sont générés automatiquement par Airtable et ne doivent pas être traités comme des champs métier additionnels.
 
 Éviter de multiplier les tables sans nécessité.
 
@@ -888,31 +900,41 @@ category :
 - PARTNER
 - OWNED
 
-Valeurs initiales :
+**Valeurs V1 (déjà créées dans Airtable) :**
 
 **Paul**
-- Category : PARTNER
-- Revenue Trigger : PAID_MEETING
-- Revenue Type : ONE_SHOT
-- Default Unit Value : 100 €
+- Code : `PAUL`
+- Category : `PARTNER`
+- Revenue Trigger : `PAID_MEETING`
+- Revenue Type : `ONE_SHOT`
+- Default Unit Value : `100`
 
 **Sacha**
-- Category : PARTNER
-- Revenue Trigger : SIGNED_DEAL
-- Revenue Type : ONE_SHOT
-- Default Unit Value : configurable (500 € n'est qu'une hypothèse)
+- Code : `SACHA`
+- Category : `PARTNER`
+- Revenue Trigger : `SIGNED_DEAL`
+- Revenue Type : `ONE_SHOT`
+- Default Unit Value : vide (intentionnellement)
 
 **Calymia**
-- Category : OWNED
-- Revenue Trigger : SUBSCRIPTION_STARTED
-- Revenue Type : MRR
-- Default Unit Value : dépend du plan (29 €, 59 €, 139 €)
+- Code : `CALYMIA`
+- Category : `OWNED`
+- Revenue Trigger : `SUBSCRIPTION_STARTED`
+- Revenue Type : `MRR`
+- Default Unit Value : vide (intentionnellement)
 
 **KLS3 Notaires**
-- Category : OWNED
-- Revenue Trigger : SIGNED_PROJECT
-- Revenue Type : PROJECT
-- Default Unit Value : variable selon le projet (12 000 € n'est qu'une moyenne indicative)
+- Code : `KLS3_NOTAIRES`
+- Category : `OWNED`
+- Revenue Trigger : `SIGNED_PROJECT`
+- Revenue Type : `PROJECT`
+- Default Unit Value : vide (intentionnellement)
+
+**Important :**
+
+BUSINESS_LINES n'a pas de champs Created At / Updated At.
+
+Ces données de référence sont gérées manuellement dans Airtable.
 
 ---
 
@@ -929,8 +951,19 @@ Champs :
 - Company Size
 - LinkedIn
 - Notes
-- Created At
-- Updated At
+- Created At (dateTime)
+- Updated At (dateTime)
+
+**Règles de gestion des timestamps :**
+
+- À la création : `Created At = now`, `Updated At = now`
+- À la modification : `Updated At = now`
+
+**Important :**
+
+`Created At` et `Updated At` ne sont PAS des champs système Airtable.
+
+Ce sont des champs dateTime standards gérés par l'application.
 
 Une entreprise peut avoir plusieurs contacts.
 
@@ -950,8 +983,19 @@ Champs :
 - Phone
 - LinkedIn
 - Notes
-- Created At
-- Updated At
+- Created At (dateTime)
+- Updated At (dateTime)
+
+**Règles de gestion des timestamps :**
+
+- À la création : `Created At = now`, `Updated At = now`
+- À la modification : `Updated At = now`
+
+**Important :**
+
+`Created At` et `Updated At` ne sont PAS des champs système Airtable.
+
+Ce sont des champs dateTime standards gérés par l'application.
 
 Relation :
 
@@ -986,10 +1030,23 @@ Champs :
 - Need
 - Next Step Notes
 - Lost Reason
-- Created At
-- Updated At
-- Won At
-- Lost At
+- Created At (dateTime)
+- Updated At (dateTime)
+- Won At (dateTime)
+- Lost At (dateTime)
+
+**Règles de gestion des timestamps :**
+
+- À la création : `Created At = now`, `Updated At = now`
+- À la modification : `Updated At = now`
+- Passage à `Gagné` : `Won At = now`
+- Passage à `Perdu` : `Lost At = now`
+
+**Important :**
+
+`Created At` et `Updated At` ne sont PAS des champs système Airtable.
+
+Ce sont des champs dateTime standards gérés par l'application.
 
 **Stages :**
 
@@ -1063,7 +1120,17 @@ Champs :
 - Notes
 - Owner
 - Duration Minutes
-- Created At
+- Created At (dateTime)
+
+**Règles de gestion des timestamps :**
+
+- À la création : `Created At = now`
+
+**Important :**
+
+`Created At` n'est PAS un champ système Airtable.
+
+C'est un champ dateTime standard géré par l'application.
 
 **Types initiaux :**
 
@@ -1104,8 +1171,19 @@ Champs :
 - Status
 - Notes
 - Owner
-- Created At
-- Completed At
+- Created At (dateTime)
+- Completed At (dateTime)
+
+**Règles de gestion des timestamps :**
+
+- À la création : `Created At = now`
+- Passage à `DONE` : `Completed At = now`
+
+**Important :**
+
+`Created At` et `Completed At` ne sont PAS des champs système Airtable.
+
+Ce sont des champs dateTime standards gérés par l'application.
 
 **Types initiaux :**
 
@@ -1159,8 +1237,19 @@ Champs :
 - Revenue Type
 - Status
 - Notes
-- Created At
-- Updated At (si nécessaire)
+- Created At (dateTime)
+
+**Règles de gestion des timestamps :**
+
+- À la création : `Created At = now`
+
+**Important :**
+
+`Created At` n'est PAS un champ système Airtable.
+
+C'est un champ dateTime standard géré par l'application.
+
+VALUE_EVENTS n'a pas de champ `Updated At` en V1. Son statut peut évoluer après création (PENDING → CONFIRMED → PAID, ou PENDING/CONFIRMED → CANCELLED), mais la V1 ne nécessite pas de tracer le timestamp de chaque modification.
 
 **Event Type :**
 
@@ -1199,6 +1288,12 @@ Champs :
 - Ambitious Target
 - Start Date
 - End Date
+
+**Important :**
+
+GOALS n'a pas de champs Created At / Updated At.
+
+Les objectifs sont des données de configuration gérées manuellement dans Airtable.
 
 Les objectifs doivent toujours être configurables sans modifier le code.
 
@@ -1272,9 +1367,65 @@ Cette table permettra notamment de calculer ultérieurement :
 
 Chaque changement d'étape d'une opportunité doit créer automatiquement une ligne dans STAGE_HISTORY.
 
+STAGE_HISTORY n'a pas de champs Created At / Updated At.
+
+Le champ `Changed At` contient déjà la date/heure du changement.
+
 ---
 
-# 32. CRM QUALITY RULES
+# 31. RÈGLE GLOBALE — TIMESTAMPS
+
+**Important :**
+
+Les champs `Created At`, `Updated At`, `Won At`, `Lost At`, `Completed At`, et `Changed At` ne sont PAS des champs système Airtable automatiques.
+
+Ce sont des champs dateTime standards qui doivent être gérés manuellement par l'application.
+
+**Résumé des règles de gestion :**
+
+| Table | Created At | Updated At | Autres timestamps |
+|-------|------------|------------|-------------------|
+| COMPANIES | ✅ à la création | ✅ à la modification | - |
+| CONTACTS | ✅ à la création | ✅ à la modification | - |
+| OPPORTUNITIES | ✅ à la création | ✅ à la modification | Won At, Lost At |
+| ACTIVITIES | ✅ à la création | ❌ | - |
+| TASKS | ✅ à la création | ❌ | Completed At |
+| VALUE_EVENTS | ✅ à la création | ❌ | - |
+| BUSINESS_LINES | ❌ | ❌ | - |
+| GOALS | ❌ | ❌ | - |
+| STAGE_HISTORY | ❌ | ❌ | Changed At |
+
+**Règles détaillées :**
+
+**COMPANIES / CONTACTS / OPPORTUNITIES :**
+- À la création : `Created At = now`, `Updated At = now`
+- À la modification : `Updated At = now`
+
+**OPPORTUNITIES (timestamps additionnels) :**
+- Passage à `Gagné` : `Won At = now`
+- Passage à `Perdu` : `Lost At = now`
+
+**ACTIVITIES :**
+- À la création : `Created At = now`
+- Pas de `Updated At` (événements historiques immuables)
+
+**VALUE_EVENTS :**
+- À la création : `Created At = now`
+- Pas de `Updated At` en V1 (le statut peut évoluer, mais V1 ne trace pas le timestamp de chaque modification)
+
+**TASKS :**
+- À la création : `Created At = now`
+- Passage à `DONE` : `Completed At = now`
+
+**STAGE_HISTORY :**
+- Utilise uniquement `Changed At` (date/heure du changement d'étape)
+
+**BUSINESS_LINES / GOALS :**
+- Aucun timestamp (données de référence/configuration)
+
+---
+
+# 33. CRM QUALITY RULES
 
 Une opportunité active doit idéalement toujours avoir :
 
@@ -1302,7 +1453,7 @@ Préférer les alertes utiles aux formulaires bureaucratiques.
 
 ---
 
-# 33. SOURCES DE LEADS
+# 34. SOURCES DE LEADS
 
 Valeurs initiales :
 
@@ -1320,7 +1471,7 @@ La liste doit pouvoir évoluer.
 
 ---
 
-# 33. PRIORITÉ
+# 35. PRIORITÉ
 
 Valeurs initiales :
 
@@ -1335,7 +1486,7 @@ Ne pas construire de scoring IA en V1.
 
 ---
 
-# 34. DESIGN SYSTEM KLS3
+# 35. DESIGN SYSTEM KLS3
 
 Le design system KLS3 est obligatoire.
 
@@ -1364,7 +1515,7 @@ Pas de light mode.
 
 ---
 
-# 35. COULEURS
+# 36. COULEURS
 
 Fond principal :
 
@@ -1396,7 +1547,7 @@ Ne pas attribuer une couleur forte différente à chaque business line.
 
 ---
 
-# 36. TYPOGRAPHIE
+# 37. TYPOGRAPHIE
 
 Titres H1/H2 :
 
@@ -1419,7 +1570,7 @@ Fonts :
 
 ---
 
-# 37. LOGO KLS3
+# 38. LOGO KLS3
 
 Règle absolue :
 
@@ -1435,7 +1586,7 @@ Le chiffre 3 doit toujours utiliser la couleur accent KLS3.
 
 ---
 
-# 38. BOUTONS
+# 39. BOUTONS
 
 ## Primary
 
@@ -1469,7 +1620,7 @@ Les autres bordures sont normalement 0.5px.
 
 ---
 
-# 39. CARDS
+# 40. CARDS
 
 background :
 
@@ -1494,7 +1645,7 @@ Les cards doivent être différenciées principalement par :
 
 ---
 
-# 40. KPI GROUPS
+# 41. KPI GROUPS
 
 Pour les ensembles de cards adjacentes :
 
@@ -1505,7 +1656,7 @@ Pour les ensembles de cards adjacentes :
 
 ---
 
-# 41. SECTION LABEL / EYEBROW
+# 42. SECTION LABEL / EYEBROW
 
 Structure :
 
@@ -1530,7 +1681,7 @@ Texte :
 
 ---
 
-# 42. TYPOGRAPHIE DÉCORATIVE
+# 43. TYPOGRAPHIE DÉCORATIVE
 
 Font :
 
@@ -1554,7 +1705,7 @@ Ne jamais nuire à la lisibilité.
 
 ---
 
-# 43. ANIMATIONS
+# 44. ANIMATIONS
 
 Framer Motion peut être utilisé avec parcimonie.
 
@@ -1600,7 +1751,7 @@ INTERDIT :
 
 ---
 
-# 44. RESPONSIVE
+# 45. RESPONSIVE
 
 Approche :
 
@@ -1626,7 +1777,7 @@ Les informations prioritaires doivent rester prioritaires sur mobile.
 
 ---
 
-# 45. NAVIGATION
+# 46. NAVIGATION
 
 Navigation principale envisagée :
 
@@ -1645,7 +1796,7 @@ Il n'est pas nécessairement une entrée permanente dans la navigation.
 
 ---
 
-# 46. RÈGLE DE DENSITÉ
+# 47. RÈGLE DE DENSITÉ
 
 Chaque écran doit présenter :
 
@@ -1659,7 +1810,7 @@ Utiliser une hiérarchie visuelle forte.
 
 ---
 
-# 47. STACK TECHNIQUE
+# 48. STACK TECHNIQUE
 
 Stack officielle :
 
@@ -1680,7 +1831,7 @@ Ne pas ajouter de technologie sans besoin réel.
 
 ---
 
-# 48. NEXT.JS
+# 49. NEXT.JS
 
 Utiliser les conventions modernes de Next.js.
 
@@ -1708,7 +1859,7 @@ Ne pas mettre `use client` au niveau d'une page entière si quelques composants 
 
 ---
 
-# 49. AIRTABLE
+# 50. AIRTABLE
 
 Airtable est la base de données principale de la V1.
 
@@ -1730,7 +1881,7 @@ dans le bundle client.
 
 ---
 
-# 50. VARIABLES D'ENVIRONNEMENT
+# 51. VARIABLES D'ENVIRONNEMENT
 
 Les secrets locaux doivent être stockés dans :
 
@@ -1753,7 +1904,7 @@ Ne jamais hardcoder un token dans le code.
 
 ---
 
-# 51. N8N
+# 52. N8N
 
 n8n n'est pas nécessaire à la Phase 0.
 
@@ -1771,7 +1922,7 @@ Ne pas intégrer n8n tant qu'un besoin concret n'est pas validé.
 
 ---
 
-# 52. GITHUB
+# 53. GITHUB
 
 Repository :
 
@@ -1791,7 +1942,7 @@ Ne jamais committer :
 
 ---
 
-# 53. VERCEL
+# 54. VERCEL
 
 Vercel héberge l'application Next.js.
 
@@ -1817,7 +1968,7 @@ Les variables d'environnement doivent être configurées correctement pour chaqu
 
 ---
 
-# 54. DOMAINE
+# 55. DOMAINE
 
 URL de production cible :
 
@@ -1829,7 +1980,7 @@ Utiliser une configuration ou variable d'environnement lorsque nécessaire.
 
 ---
 
-# 55. AUTHENTIFICATION
+# 56. AUTHENTIFICATION
 
 L'application est privée.
 
@@ -1854,7 +2005,7 @@ Ne pas développer soi-même un système cryptographique ou de gestion de mots d
 
 ---
 
-# 56. SÉCURITÉ
+# 57. SÉCURITÉ
 
 Principes :
 
@@ -1870,7 +2021,7 @@ Toujours traiter les données CRM comme confidentielles.
 
 ---
 
-# 57. CE QUI N'EST PAS DANS LA V1
+# 58. CE QUI N'EST PAS DANS LA V1
 
 Ne pas développer :
 
@@ -1895,7 +2046,7 @@ Ces fonctionnalités ne doivent pas être anticipées architecturalement au poin
 
 ---
 
-# 58. PRINCIPES D'ARCHITECTURE
+# 59. PRINCIPES D'ARCHITECTURE
 
 Ne pas sur-architecturer.
 
@@ -1916,7 +2067,7 @@ Toujours privilégier la solution la plus simple qui reste propre et maintenable
 
 ---
 
-# 59. STRUCTURE DU CODE
+# 60. STRUCTURE DU CODE
 
 Structure indicative seulement :
 
@@ -1956,7 +2107,7 @@ Créer uniquement ce qui est nécessaire à la phase en cours.
 
 ---
 
-# 60. NOMMAGE
+# 61. NOMMAGE
 
 Code :
 
@@ -1980,7 +2131,7 @@ Variables, types, fonctions et composants en anglais.
 
 ---
 
-# 61. GESTION DES ÉTATS
+# 62. GESTION DES ÉTATS
 
 Chaque fonctionnalité utilisant des données doit prévoir lorsque pertinent :
 
@@ -1995,7 +2146,7 @@ Les erreurs techniques ne doivent pas être affichées brutalement à l'utilisat
 
 ---
 
-# 62. PERFORMANCE
+# 63. PERFORMANCE
 
 Airtable n'est pas une base SQL classique.
 
@@ -2018,7 +2169,7 @@ Ne pas charger toute la base uniquement pour afficher une card KPI.
 
 ---
 
-# 63. ACCESSIBILITÉ
+# 64. ACCESSIBILITÉ
 
 Minimum attendu :
 
@@ -2033,7 +2184,7 @@ Le design premium ne doit jamais nuire à l'accessibilité.
 
 ---
 
-# 64. PHILOSOPHIE UX
+# 65. PHILOSOPHIE UX
 
 Ne pas construire un CRM administratif.
 
@@ -2047,7 +2198,7 @@ Toujours privilégier :
 
 ---
 
-# 65. PRIORITÉ UX ABSOLUE
+# 66. PRIORITÉ UX ABSOLUE
 
 L'utilisateur doit pouvoir ouvrir KLS3 Sales OS le matin et comprendre en moins de 10 secondes :
 
@@ -2059,7 +2210,7 @@ L'utilisateur doit pouvoir ouvrir KLS3 Sales OS le matin et comprendre en moins 
 
 ---
 
-# 66. PHASE 0 — SETUP
+# 67. PHASE 0 — SETUP
 
 Objectif :
 
@@ -2085,7 +2236,7 @@ Ne pas construire le CRM pendant la Phase 0.
 
 ---
 
-# 67. PHASE 1 — DATA
+# 68. PHASE 1 — DATA
 
 Objectif :
 
@@ -2111,7 +2262,7 @@ Utiliser des données de test.
 
 ---
 
-# 68. PHASE 2 — CORE CRM
+# 69. PHASE 2 — CORE CRM
 
 Contenu :
 
@@ -2125,7 +2276,7 @@ Contenu :
 
 ---
 
-# 69. PHASE 3 — PIPELINE
+# 70. PHASE 3 — PIPELINE
 
 Contenu :
 
@@ -2139,7 +2290,7 @@ Contenu :
 
 ---
 
-# 70. PHASE 4 — TODAY
+# 71. PHASE 4 — TODAY
 
 Contenu :
 
@@ -2153,7 +2304,7 @@ Contenu :
 
 ---
 
-# 71. PHASE 5 — FOCUS
+# 72. PHASE 5 — FOCUS
 
 Contenu :
 
@@ -2168,7 +2319,7 @@ Contenu :
 
 ---
 
-# 72. PHASE 6 — DASHBOARD
+# 73. PHASE 6 — DASHBOARD
 
 Contenu :
 
@@ -2183,7 +2334,7 @@ Contenu :
 
 ---
 
-# 73. PHASE 7 — ANALYTICS
+# 74. PHASE 7 — ANALYTICS
 
 Contenu :
 
@@ -2198,7 +2349,7 @@ Contenu :
 
 ---
 
-# 74. PHASE 8 — AUTH + PRODUCTION
+# 75. PHASE 8 — AUTH + PRODUCTION
 
 Contenu :
 
@@ -2215,7 +2366,7 @@ Aucune vraie donnée commerciale ne doit être introduite dans une application p
 
 ---
 
-# 75. WORKFLOW CLAUDE CODE
+# 76. WORKFLOW CLAUDE CODE
 
 Avant chaque phase :
 
@@ -2235,7 +2386,7 @@ Ne jamais décider seul de développer la phase suivante.
 
 ---
 
-# 76. WORKFLOW GIT
+# 77. WORKFLOW GIT
 
 Faire des changements cohérents et limités.
 
@@ -2255,7 +2406,7 @@ Ne jamais supprimer l'historique Git.
 
 ---
 
-# 77. RÈGLE DE NON-RÉGRESSION
+# 78. RÈGLE DE NON-RÉGRESSION
 
 Avant de modifier un composant existant :
 
@@ -2268,7 +2419,7 @@ Avant de modifier un composant existant :
 
 ---
 
-# 78. RÈGLE DE DESIGN
+# 79. RÈGLE DE DESIGN
 
 Avant de créer un composant, vérifier :
 
@@ -2285,7 +2436,7 @@ ne pas la développer.
 
 ---
 
-# 79. RÈGLE MÉTIER
+# 80. RÈGLE MÉTIER
 
 Ne jamais inventer une règle commerciale.
 
@@ -2307,7 +2458,7 @@ Ne jamais transformer une hypothèse en constante métier cachée.
 
 ---
 
-# 80. RÈGLE DATA
+# 81. RÈGLE DATA
 
 Airtable est la source de vérité opérationnelle de la V1.
 
@@ -2362,7 +2513,7 @@ Les valeurs contrôlées peuvent rester des Single Select Airtable.
 
 ---
 
-# 81. RÈGLE DES PROCHAINES ACTIONS
+# 82. RÈGLE DES PROCHAINES ACTIONS
 
 Le concept de `Next Action` est central.
 
@@ -2392,7 +2543,7 @@ et :
 
 ---
 
-# 82. RÈGLE FOCUS
+# 83. RÈGLE FOCUS
 
 Focus Mode n'est pas un simple écran de consultation.
 
@@ -2410,7 +2561,7 @@ Le système doit avancer naturellement vers le prospect suivant.
 
 ---
 
-# 83. RÈGLE ANALYTICS
+# 84. RÈGLE ANALYTICS
 
 Ne jamais confondre activité et performance.
 
@@ -2426,7 +2577,7 @@ L'objectif final des analytics est d'améliorer l'allocation du temps commercial
 
 ---
 
-# 84. RÈGLE CALYMIA
+# 85. RÈGLE CALYMIA
 
 Calymia génère du revenu récurrent.
 
@@ -2440,7 +2591,7 @@ Ne pas traiter le MRR comme un revenu one-shot.
 
 ---
 
-# 85. RÈGLE PIPELINE KLS3
+# 86. RÈGLE PIPELINE KLS3
 
 Pour KLS3 Notaires, distinguer :
 
@@ -2462,7 +2613,7 @@ La probabilité doit rester explicite et modifiable.
 
 ---
 
-# 86. MCP
+# 87. MCP
 
 Les MCP ne sont pas requis pour construire la V1.
 
@@ -2474,7 +2625,7 @@ Le fonctionnement de KLS3 Sales OS ne doit jamais dépendre d'un MCP Claude.
 
 ---
 
-# 87. DOCUMENTATION
+# 88. DOCUMENTATION
 
 `CLAUDE.md` est la référence principale pour :
 
@@ -2495,7 +2646,7 @@ mettre à jour `CLAUDE.md`.
 
 ---
 
-# 88. PREMIÈRE INSTRUCTION APRÈS INITIALISATION
+# 89. PREMIÈRE INSTRUCTION APRÈS INITIALISATION
 
 Lors de la première session Claude Code :
 
@@ -2510,7 +2661,7 @@ Lors de la première session Claude Code :
 
 ---
 
-# 89. RÈGLE FINALE
+# 90. RÈGLE FINALE
 
 Le succès de KLS3 Sales OS ne sera pas mesuré au nombre de fonctionnalités.
 
