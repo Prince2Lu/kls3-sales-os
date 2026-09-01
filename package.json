@@ -11,6 +11,7 @@
     "type-check": "tsc --noEmit",
     "verify:airtable": "tsx scripts/verify-airtable.ts",
     "seed:test": "tsx scripts/seed-test-data.ts",
+    "seed:phase4": "tsx scripts/seed-phase4-test.ts",
     "diagnose": "tsx scripts/diagnose-relationships.ts"
   },
   "repository": {
