@@ -1,0 +1,52 @@
+// Pipeline/Kanban page (Phase 3)
+
+import {
+  getOpportunities,
+  getBusinessLines,
+  getTasks,
+  getStageHistory,
+} from '@/lib/airtable'
+import { PipelineBoard } from './pipeline-board'
+import { SectionLabel } from '@/components/ui/section-label'
+
+export default async function PipelinePage() {
+  const [opportunities, businessLines, allTasks, stageHistory] =
+    await Promise.all([
+      getOpportunities({ maxRecords: 500 }),
+      getBusinessLines(),
+      getTasks({ status: 'TODO', maxRecords: 500 }),
+      getStageHistory({ maxRecords: 1000 }),
+    ])
+
+  // Group opportunities by stage
+  const stages = [
+    'À prospecter',
+    'Contacté',
+    'Échange',
+    'Qualifié',
+    'RDV',
+    'Opportunité',
+    'Proposition',
+    'Gagné',
+    'Perdu',
+  ] as const
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-4xl font-bold font-syne">Pipeline</h1>
+        <p className="text-text-muted mt-2">
+          {opportunities.length} opportunité{opportunities.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+
+      <PipelineBoard
+        opportunities={opportunities}
+        businessLines={businessLines}
+        tasks={allTasks}
+        stageHistory={stageHistory}
+        stages={stages}
+      />
+    </div>
+  )
+}

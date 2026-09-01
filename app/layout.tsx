@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Syne, Inter } from 'next/font/google'
 import './globals.css'
+import { Nav } from '@/components/layout/nav'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -26,7 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${syne.variable} ${inter.variable}`}>
-      <body className="font-inter">{children}</body>
+      <body className="font-inter min-h-screen">
+        <Nav />
+        <main className="container mx-auto px-6 py-8">{children}</main>
+      </body>
     </html>
   )
 }
