@@ -1,17 +1,27 @@
-// Ma journée page (Phase 4)
-// Operational daily workspace for commercial users
+// Ma journée page (Phase 6C-B)
+// Operational daily workspace with Business Line filtering
 
 import { getTasks, getOpportunities, getBusinessLines } from '@/lib/airtable'
 import { getCurrentUser, getCurrentUserDisplayName } from '@/lib/utils/current-user'
 import { isOverdue, isToday, formatFrenchDate } from '@/lib/utils/date'
+import { parseBusinessLineParam, filterOpportunitiesByBusinessLine, filterTasksByBusinessLine } from '@/lib/utils/business-line-filter'
+import { filterFocusEligible } from '@/lib/utils/focus-eligibility'
 import { TodayHero } from './today-hero'
 import { OverdueSection } from './overdue-section'
 import { TodayTasksSection } from './today-tasks-section'
 import { TodayMeetingsSection } from './today-meetings-section'
 import { NoNextActionSection } from './no-next-action-section'
 
-export default async function TodayPage() {
+export default async function TodayPage(props: {
+  searchParams: Promise<{ businessLine?: string }>
+}) {
   const currentUser = getCurrentUser()
+
+  // Await searchParams (Next.js 16 async model)
+  const searchParams = await props.searchParams
+
+  // Parse Business Line filter from URL
+  const selectedBusinessLineCode = parseBusinessLineParam(searchParams.businessLine)
 
   // Fetch all data in parallel
   const [allTasks, allOpportunities, businessLines] = await Promise.all([
@@ -20,8 +30,22 @@ export default async function TodayPage() {
     getBusinessLines(),
   ])
 
+  // Filter by Business Line
+  const filteredOpportunities = filterOpportunitiesByBusinessLine(
+    allOpportunities,
+    businessLines,
+    selectedBusinessLineCode
+  )
+
+  const filteredTasks = filterTasksByBusinessLine(
+    allTasks,
+    allOpportunities,
+    businessLines,
+    selectedBusinessLineCode
+  )
+
   // Filter tasks by status and date
-  const todoTasks = allTasks.filter((t) => t.status === 'TODO')
+  const todoTasks = filteredTasks.filter((t) => t.status === 'TODO')
 
   const overdueTasks = todoTasks.filter(
     (t) => t.dueAt && isOverdue(t.dueAt)
@@ -34,8 +58,7 @@ export default async function TodayPage() {
   const todayOtherTasks = todayTasks.filter((t) => t.type !== 'MEETING')
 
   // Find opportunities without next action
-  // Exclude Gagné and Perdu
-  const activeOpportunities = allOpportunities.filter(
+  const activeOpportunities = filteredOpportunities.filter(
     (opp) =>
       opp.owner === currentUser &&
       opp.stage !== 'Gagné' &&
@@ -62,9 +85,9 @@ export default async function TodayPage() {
 
   const today = new Date()
 
-  // Focus-eligible tasks: overdue + today's non-meeting tasks
-  const focusableTasks = [...overdueTasks, ...todayOtherTasks]
-  const hasFocusableTasks = focusableTasks.length > 0
+  // Focus-eligible tasks: use SHARED eligibility logic (single source of truth)
+  // This ensures Today CTA count === Focus queue length
+  const focusableTasks = filterFocusEligible(filteredTasks, today)
 
   return (
     <div className="space-y-6">
@@ -75,7 +98,9 @@ export default async function TodayPage() {
         todayTasksCount={todayOtherTasks.length}
         meetingsCount={todayMeetings.length}
         noNextActionCount={opportunitiesWithoutNextAction.length}
-        hasFocusableTasks={hasFocusableTasks}
+        focusableCount={focusableTasks.length}
+        businessLines={businessLines}
+        selectedBusinessLineCode={selectedBusinessLineCode}
       />
 
       <div className="space-y-6">

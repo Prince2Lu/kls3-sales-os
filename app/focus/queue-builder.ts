@@ -1,4 +1,4 @@
-// Focus Mode queue construction logic (Phase 5)
+// Focus Mode queue construction logic (Phase 5 + Phase 6C-B)
 // Builds the prioritized queue of tasks to process
 
 import type {
@@ -10,7 +10,12 @@ import type {
   Activity,
   Priority,
 } from '@/types/domain'
-import { isOverdue, isToday } from '@/lib/utils/date'
+import type { BusinessLineCode } from '@/lib/utils/business-line-filter'
+import {
+  filterOpportunitiesByBusinessLine,
+  filterTasksByBusinessLine,
+} from '@/lib/utils/business-line-filter'
+import { isFocusEligible } from '@/lib/utils/focus-eligibility'
 
 export interface FocusQueueItem {
   task: Task
@@ -28,6 +33,7 @@ interface BuildQueueOptions {
   companies: Company[]
   businessLines: BusinessLine[]
   activities: Activity[]
+  businessLineCode?: BusinessLineCode | null
 }
 
 /**
@@ -38,12 +44,35 @@ interface BuildQueueOptions {
  * - Only overdue + today (excluding future meetings)
  * - Sort by: priority (URGENT > HIGH > MEDIUM > LOW) then dueAt (earliest first)
  * - Enrich with opportunity/contact/company/businessLine/lastActivity
+ * - Optional Business Line filter applied before eligibility check
  */
 export function buildFocusQueue(options: BuildQueueOptions): FocusQueueItem[] {
-  const { tasks, opportunities, contacts, companies, businessLines, activities } = options
+  const {
+    tasks,
+    opportunities,
+    contacts,
+    companies,
+    businessLines,
+    activities,
+    businessLineCode,
+  } = options
 
-  // Create lookup maps
-  const opportunityMap = new Map(opportunities.map((o) => [o.id, o]))
+  // Filter by Business Line BEFORE eligibility check
+  const filteredOpportunities = filterOpportunitiesByBusinessLine(
+    opportunities,
+    businessLines,
+    businessLineCode || null
+  )
+
+  const filteredTasks = filterTasksByBusinessLine(
+    tasks,
+    opportunities,
+    businessLines,
+    businessLineCode || null
+  )
+
+  // Create lookup maps (use filtered opportunities for queue building)
+  const opportunityMap = new Map(filteredOpportunities.map((o) => [o.id, o]))
   const contactMap = new Map(contacts.map((c) => [c.id, c]))
   const companyMap = new Map(companies.map((c) => [c.id, c]))
   const businessLineMap = new Map(businessLines.map((bl) => [bl.id, bl]))
@@ -57,32 +86,10 @@ export function buildFocusQueue(options: BuildQueueOptions): FocusQueueItem[] {
     }
   })
 
-  // Filter eligible tasks
-  const eligibleTasks = tasks.filter((task) => {
-    if (task.status !== 'TODO') return false
-    if (!task.dueAt) return false
-
-    // Overdue tasks are always eligible
-    if (isOverdue(task.dueAt)) return true
-
-    // Today's tasks are eligible, except future meetings
-    if (isToday(task.dueAt)) {
-      // For meetings, only include if near due time (simple rule: exclude if >2 hours away)
-      if (task.type === 'MEETING') {
-        const dueDate = new Date(task.dueAt)
-        const now = new Date()
-        const hoursUntilDue = (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60)
-
-        // Include if past due or within 2 hours
-        return hoursUntilDue <= 2
-      }
-
-      // Non-meeting tasks due today are eligible
-      return true
-    }
-
-    return false
-  })
+  // Filter eligible tasks using shared eligibility logic
+  // Use single 'now' timestamp for consistency
+  const now = new Date()
+  const eligibleTasks = filteredTasks.filter((task) => isFocusEligible(task, now))
 
   // Enrich and build queue items
   const queueItems: FocusQueueItem[] = eligibleTasks.map((task) => {

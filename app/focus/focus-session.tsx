@@ -1,16 +1,18 @@
 'use client'
 
-// Focus Session client component (Phase 5)
+// Focus Session client component (Phase 5 + Phase 6C-B)
 // Manages the Focus workflow state and UI
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import type { BusinessLineCode } from '@/lib/utils/business-line-filter'
 import type { FocusQueueItem } from './queue-builder'
 import { FocusProspectView } from './focus-prospect-view'
 import { SessionComplete } from './session-complete'
 
 interface FocusSessionProps {
   initialQueue: FocusQueueItem[]
+  businessLineCode?: BusinessLineCode | null
 }
 
 export type SessionStats = {
@@ -21,7 +23,7 @@ export type SessionStats = {
   startTime: Date
 }
 
-export function FocusSession({ initialQueue }: FocusSessionProps) {
+export function FocusSession({ initialQueue, businessLineCode }: FocusSessionProps) {
   const router = useRouter()
   const [queue, setQueue] = useState<FocusQueueItem[]>(initialQueue)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -83,17 +85,25 @@ export function FocusSession({ initialQueue }: FocusSessionProps) {
     // For V1, we just end the session - no looping back
   }
 
+  // Get Business Line context for display
+  const businessLineName = businessLineCode
+    ? currentItem?.businessLine?.name || businessLineCode
+    : 'Toutes les Business Lines'
+
   // If session complete, show completion screen
   if (isSessionComplete) {
-    return <SessionComplete stats={stats} />
+    return <SessionComplete stats={stats} businessLineCode={businessLineCode || null} />
   }
 
   return (
     <div className="space-y-6">
       {/* Progress header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold font-syne">FOCUS</h1>
+          <span className="text-text-muted">·</span>
+          <span className="text-text-muted text-sm">{businessLineName}</span>
+          <span className="text-text-muted">·</span>
           <span className="text-text-muted text-sm">
             Action {currentIndex + 1} sur {queue.length}
           </span>

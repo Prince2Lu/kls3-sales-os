@@ -1,19 +1,25 @@
 'use client'
 
-// Session completion screen (Phase 5)
+// Session completion screen (Phase 5 + Phase 6C-B)
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import type { BusinessLineCode } from '@/lib/utils/business-line-filter'
+import { buildUrlWithBusinessLine } from '@/lib/utils/business-line-filter'
 import type { SessionStats } from './focus-session'
 
 interface SessionCompleteProps {
   stats: SessionStats
+  businessLineCode: BusinessLineCode | null
 }
 
-export function SessionComplete({ stats }: SessionCompleteProps) {
+export function SessionComplete({ stats, businessLineCode }: SessionCompleteProps) {
   // Calculate session duration
   const duration = Math.floor((new Date().getTime() - stats.startTime.getTime()) / 1000 / 60)
+
+  // Build return URL with Business Line context preserved
+  const returnUrl = buildUrlWithBusinessLine('/today', businessLineCode)
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -65,7 +71,7 @@ export function SessionComplete({ stats }: SessionCompleteProps) {
       </Card>
 
       <div className="text-center">
-        <Link href="/today">
+        <Link href={returnUrl}>
           <Button size="lg">RETOUR À MA JOURNÉE</Button>
         </Link>
       </div>
