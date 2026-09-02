@@ -35,6 +35,8 @@ export function CommercialActivity({
     today: "Aujourd'hui",
     week: 'Cette semaine',
     month: 'Ce mois',
+    last30days: '30 derniers jours',
+    last90days: '90 derniers jours',
     custom: 'Période personnalisée',
   }
   // Filter data by selected Business Line if applicable

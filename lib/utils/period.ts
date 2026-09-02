@@ -1,7 +1,7 @@
-// Period utilities for Dashboard filtering
+// Period utilities for Dashboard and Analytics filtering
 // Handles period-based date filtering with explicit Europe/Paris timezone handling
 
-export type PeriodType = 'today' | 'week' | 'month' | 'custom'
+export type PeriodType = 'today' | 'week' | 'month' | 'last30days' | 'last90days' | 'custom'
 
 export interface DateRange {
   start: Date
@@ -72,6 +72,24 @@ export function getPeriodDateRange(periodType: PeriodType): DateRange {
         start: getStartOfMonth(now),
         end: getEndOfDay(now),
       }
+
+    case 'last30days': {
+      const start = new Date(now)
+      start.setDate(start.getDate() - 30)
+      return {
+        start: getStartOfDay(start),
+        end: getEndOfDay(now),
+      }
+    }
+
+    case 'last90days': {
+      const start = new Date(now)
+      start.setDate(start.getDate() - 90)
+      return {
+        start: getStartOfDay(start),
+        end: getEndOfDay(now),
+      }
+    }
 
     case 'custom':
       // Default to month for custom (will be overridden by actual custom range)

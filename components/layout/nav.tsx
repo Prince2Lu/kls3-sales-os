@@ -12,6 +12,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/today', label: 'Ma journée' },
   { href: '/pipeline', label: 'Pipeline' },
+  { href: '/analytics', label: 'Analytics' },
   { href: '/prospects', label: 'Prospects' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
