@@ -12,6 +12,8 @@
     "verify:airtable": "tsx scripts/verify-airtable.ts",
     "seed:test": "tsx scripts/seed-test-data.ts",
     "seed:phase4": "tsx scripts/seed-phase4-test.ts",
+    "seed:demo": "tsx scripts/seed-demo-data.ts",
+    "cleanup:demo": "tsx scripts/cleanup-demo-data.ts",
     "diagnose": "tsx scripts/diagnose-relationships.ts"
   },
   "repository": {
@@ -30,6 +32,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "clsx": "^2.1.1",
+    "lucide-react": "^1.39.0",
     "next": "^16.3.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

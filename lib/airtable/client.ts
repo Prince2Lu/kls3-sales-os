@@ -1011,3 +1011,47 @@ export async function createStageHistory(
   )
   return mapStageHistory(record)
 }
+
+// ============================================================================
+// DELETE FUNCTIONS
+// ============================================================================
+
+// Helper to delete a record
+async function deleteRecord(tableName: string, recordId: string): Promise<void> {
+  const url = `${getTableUrl(tableName)}/${recordId}`
+
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  })
+
+  await handleAirtableResponse<{ deleted: boolean; id: string }>(response)
+}
+
+export async function deleteCompany(id: string): Promise<void> {
+  await deleteRecord(TABLE_NAMES.COMPANIES, id)
+}
+
+export async function deleteContact(id: string): Promise<void> {
+  await deleteRecord(TABLE_NAMES.CONTACTS, id)
+}
+
+export async function deleteOpportunity(id: string): Promise<void> {
+  await deleteRecord(TABLE_NAMES.OPPORTUNITIES, id)
+}
+
+export async function deleteActivity(id: string): Promise<void> {
+  await deleteRecord(TABLE_NAMES.ACTIVITIES, id)
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  await deleteRecord(TABLE_NAMES.TASKS, id)
+}
+
+export async function deleteValueEvent(id: string): Promise<void> {
+  await deleteRecord(TABLE_NAMES.VALUE_EVENTS, id)
+}
+
+export async function deleteStageHistory(id: string): Promise<void> {
+  await deleteRecord(TABLE_NAMES.STAGE_HISTORY, id)
+}
