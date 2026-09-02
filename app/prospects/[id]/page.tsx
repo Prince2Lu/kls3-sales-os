@@ -16,6 +16,11 @@ import { SectionLabel } from '@/components/ui/section-label'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { TaskActions } from './task-actions'
+import {
+  getFrenchTaskType,
+  getFrenchActivityType,
+  getFrenchPriority,
+} from '@/lib/utils/french-labels'
 
 interface ProspectPageProps {
   params: Promise<{ id: string }>
@@ -206,13 +211,21 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                   <CardTitle className="text-lg">Prochaine action</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <div className="font-medium">{nextTask.type}</div>
+                  <div className="font-medium">
+                    {getFrenchTaskType(nextTask.type)}
+                  </div>
                   {nextTask.dueAt && (
                     <div className="text-sm text-text-muted">
+                      Échéance :{' '}
                       {new Date(nextTask.dueAt).toLocaleDateString('fr-FR', {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric',
+                      })}
+                      {' à '}
+                      {new Date(nextTask.dueAt).toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
                     </div>
                   )}
@@ -284,7 +297,9 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                           {item.type === 'activity' && (
                             <>
                               <div className="flex items-center gap-2">
-                                <Badge variant="muted">{item.type}</Badge>
+                                <Badge variant="muted">
+                                  {getFrenchActivityType(item.type as any)}
+                                </Badge>
                                 <span className="font-medium text-sm">
                                   {item.owner}
                                 </span>
@@ -311,17 +326,26 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                                   {item.status}
                                 </Badge>
                                 <span className="font-medium text-sm">
-                                  {item.type}
+                                  {getFrenchTaskType(item.type as any)}
                                 </span>
                               </div>
-                              {item.notes && (
-                                <div className="text-sm">{item.notes}</div>
-                              )}
                               {item.dueAt && item.status === 'TODO' && (
                                 <div className="text-xs text-text-muted">
                                   Échéance :{' '}
-                                  {new Date(item.dueAt).toLocaleDateString('fr-FR')}
+                                  {new Date(item.dueAt).toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                  })}
+                                  {' à '}
+                                  {new Date(item.dueAt).toLocaleTimeString('fr-FR', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
                                 </div>
+                              )}
+                              {item.notes && (
+                                <div className="text-sm">{item.notes}</div>
                               )}
                               <TaskActions taskId={item.id} status={item.status} />
                             </>

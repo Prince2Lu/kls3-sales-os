@@ -62,6 +62,10 @@ export default async function TodayPage() {
 
   const today = new Date()
 
+  // Focus-eligible tasks: overdue + today's non-meeting tasks
+  const focusableTasks = [...overdueTasks, ...todayOtherTasks]
+  const hasFocusableTasks = focusableTasks.length > 0
+
   return (
     <div className="space-y-6">
       <TodayHero
@@ -71,6 +75,7 @@ export default async function TodayPage() {
         todayTasksCount={todayOtherTasks.length}
         meetingsCount={todayMeetings.length}
         noNextActionCount={opportunitiesWithoutNextAction.length}
+        hasFocusableTasks={hasFocusableTasks}
       />
 
       <div className="space-y-6">
