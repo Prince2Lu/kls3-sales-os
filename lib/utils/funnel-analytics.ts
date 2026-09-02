@@ -28,22 +28,6 @@ export interface StageVolume {
   opportunityIds: string[]
 }
 
-export interface StageFlowRatio {
-  fromStage: Stage
-  toStage: Stage
-  fromVolume: number
-  toVolume: number
-  ratio: number | null // null when fromVolume is 0
-}
-
-export interface FrictionPoint {
-  fromStage: Stage
-  toStage: Stage
-  fromVolume: number
-  toVolume: number
-  ratio: number
-}
-
 export interface BusinessLineAnalytics {
   businessLineId: string
   businessLineName: string
@@ -136,78 +120,6 @@ export function calculateStageVolumes(
       opportunityIds: Array.from(oppSet),
     }
   })
-}
-
-/**
- * Calculate flow ratio between two stages
- * Returns null if fromVolume is 0 (to avoid division by zero)
- *
- * IMPORTANT: This is a FLOW RATIO, not a cohort conversion rate
- */
-export function calculateStageFlowRatio(
-  fromVolume: number,
-  toVolume: number
-): number | null {
-  if (fromVolume === 0) {
-    return null
-  }
-  return Math.round((toVolume / fromVolume) * 100)
-}
-
-/**
- * Calculate all stage-to-stage flow ratios
- */
-export function calculateStageFlowRatios(
-  volumes: StageVolume[]
-): StageFlowRatio[] {
-  const ratios: StageFlowRatio[] = []
-
-  for (let i = 0; i < volumes.length - 1; i++) {
-    const fromStage = volumes[i]
-    const toStage = volumes[i + 1]
-
-    ratios.push({
-      fromStage: fromStage.stage,
-      toStage: toStage.stage,
-      fromVolume: fromStage.count,
-      toVolume: toStage.count,
-      ratio: calculateStageFlowRatio(fromStage.count, toStage.count),
-    })
-  }
-
-  return ratios
-}
-
-/**
- * Detect friction points (lowest ratios with minimum volume threshold)
- *
- * Rules:
- * - Only consider transitions where fromVolume >= minThreshold (default: 5)
- * - Return top 3 lowest ratios
- * - If fewer than 3 transitions meet threshold, return what's available
- */
-export function detectFrictionPoints(
-  ratios: StageFlowRatio[],
-  minThreshold: number = 5
-): FrictionPoint[] {
-  // Filter to transitions with sufficient volume and valid ratio
-  const eligible = ratios.filter(
-    (r) => r.fromVolume >= minThreshold && r.ratio !== null
-  )
-
-  // Sort by ratio ascending (lowest first)
-  const sorted = eligible
-    .map((r) => ({
-      fromStage: r.fromStage,
-      toStage: r.toStage,
-      fromVolume: r.fromVolume,
-      toVolume: r.toVolume,
-      ratio: r.ratio as number, // Safe cast since we filtered null
-    }))
-    .sort((a, b) => a.ratio - b.ratio)
-
-  // Return top 3
-  return sorted.slice(0, 3)
 }
 
 /**
