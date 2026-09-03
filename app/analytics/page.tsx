@@ -22,8 +22,9 @@ import { FunnelFlow } from './funnel-flow'
 import { BusinessLineComparison } from './business-line-comparison'
 import { CohortView } from './cohort-view'
 import { ViewToggle } from './view-toggle'
+import { VelocityView } from './velocity-view'
 
-type AnalyticsView = 'activity' | 'cohort'
+type AnalyticsView = 'activity' | 'cohort' | 'velocity'
 
 export default async function AnalyticsPage(props: {
   searchParams: Promise<{
@@ -38,7 +39,11 @@ export default async function AnalyticsPage(props: {
 
   // Parse view (default: activity to preserve Phase 7A behavior)
   const view: AnalyticsView =
-    searchParams.view === 'cohort' ? 'cohort' : 'activity'
+    searchParams.view === 'cohort'
+      ? 'cohort'
+      : searchParams.view === 'velocity'
+      ? 'velocity'
+      : 'activity'
 
   // Parse filters from URL
   const selectedBusinessLineCode = parseBusinessLineParam(searchParams.businessLine)
@@ -107,14 +112,16 @@ export default async function AnalyticsPage(props: {
         <p className="text-xs text-text-muted/60">
           {view === 'activity'
             ? 'Basé uniquement sur les changements de stage enregistrés pendant la période.'
-            : 'Analyse de conversion sur cohorte avec fenêtre d\'observation de 30 jours.'}
+            : view === 'cohort'
+            ? 'Analyse de conversion sur cohorte avec fenêtre d\'observation de 30 jours.'
+            : 'Mesure du temps typique entre les étapes clés du funnel commercial.'}
         </p>
       </div>
 
       {/* View Toggle */}
       <ViewToggle currentView={view} />
 
-      {/* Conditional Rendering: Phase 7A (Activity) vs Phase 7B (Cohort) */}
+      {/* Conditional Rendering: Phase 7A (Activity) vs Phase 7B (Cohort) vs Phase 7C (Velocity) */}
       {view === 'activity' ? (
         <>
           {/* Phase 7A: Activity View */}
@@ -175,7 +182,7 @@ export default async function AnalyticsPage(props: {
             <BusinessLineComparison comparison={businessLineComparison} />
           )}
         </>
-      ) : (
+      ) : view === 'cohort' ? (
         <>
           {/* Phase 7B: Cohort View */}
           <CohortView
@@ -184,6 +191,17 @@ export default async function AnalyticsPage(props: {
             businessLines={businessLines}
             selectedBusinessLineCode={selectedBusinessLineCode}
             selectedCohortPeriod={selectedCohortPeriod}
+          />
+        </>
+      ) : (
+        <>
+          {/* Phase 7C: Velocity View */}
+          <VelocityView
+            stageHistory={allStageHistory}
+            opportunities={allOpportunities}
+            businessLines={businessLines}
+            selectedBusinessLineCode={selectedBusinessLineCode}
+            selectedPeriod={selectedPeriod}
           />
         </>
       )}
