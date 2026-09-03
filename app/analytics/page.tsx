@@ -1,10 +1,12 @@
-// Analytics page (Phase 7A + 7B)
-// Funnel activity (7A) and cohort conversion (7B) using STAGE_HISTORY as source of truth
+// Analytics page (Phase 7A + 7B + 7C + 7D)
+// Funnel activity (7A), cohort conversion (7B), velocity (7C), efficiency (7D)
 
 import {
   getStageHistory,
   getOpportunities,
   getBusinessLines,
+  getActivities,
+  getValueEvents,
 } from '@/lib/airtable'
 import { parseBusinessLineParam } from '@/lib/utils/business-line-filter'
 import { getPeriodDateRange, type PeriodType } from '@/lib/utils/period'
@@ -23,8 +25,9 @@ import { BusinessLineComparison } from './business-line-comparison'
 import { CohortView } from './cohort-view'
 import { ViewToggle } from './view-toggle'
 import { VelocityView } from './velocity-view'
+import { EfficiencyView } from './efficiency-view'
 
-type AnalyticsView = 'activity' | 'cohort' | 'velocity'
+type AnalyticsView = 'activity' | 'cohort' | 'velocity' | 'efficiency'
 
 export default async function AnalyticsPage(props: {
   searchParams: Promise<{
@@ -43,6 +46,8 @@ export default async function AnalyticsPage(props: {
       ? 'cohort'
       : searchParams.view === 'velocity'
       ? 'velocity'
+      : searchParams.view === 'efficiency'
+      ? 'efficiency'
       : 'activity'
 
   // Parse filters from URL
@@ -62,12 +67,15 @@ export default async function AnalyticsPage(props: {
     ? cohortPeriodParam
     : 'lastMonth'
 
-  // Fetch all data
-  const [allStageHistory, allOpportunities, businessLines] = await Promise.all([
-    getStageHistory({ maxRecords: 5000 }),
-    getOpportunities({ maxRecords: 1000 }),
-    getBusinessLines(),
-  ])
+  // Fetch all data (add activities and valueEvents for Phase 7D)
+  const [allStageHistory, allOpportunities, businessLines, allActivities, allValueEvents] =
+    await Promise.all([
+      getStageHistory({ maxRecords: 5000 }),
+      getOpportunities({ maxRecords: 1000 }),
+      getBusinessLines(),
+      getActivities({ maxRecords: 5000 }),
+      getValueEvents({ maxRecords: 1000 }),
+    ])
 
   // Get period date range
   const periodRange = getPeriodDateRange(selectedPeriod)
@@ -114,7 +122,9 @@ export default async function AnalyticsPage(props: {
             ? 'Basé uniquement sur les changements de stage enregistrés pendant la période.'
             : view === 'cohort'
             ? 'Analyse de conversion sur cohorte avec fenêtre d\'observation de 30 jours.'
-            : 'Mesure du temps typique entre les étapes clés du funnel commercial.'}
+            : view === 'velocity'
+            ? 'Mesure du temps typique entre les étapes clés du funnel commercial.'
+            : 'Effort commercial vs outcomes économiques par Business Line.'}
         </p>
       </div>
 
@@ -193,11 +203,23 @@ export default async function AnalyticsPage(props: {
             selectedCohortPeriod={selectedCohortPeriod}
           />
         </>
-      ) : (
+      ) : view === 'velocity' ? (
         <>
           {/* Phase 7C: Velocity View */}
           <VelocityView
             stageHistory={allStageHistory}
+            opportunities={allOpportunities}
+            businessLines={businessLines}
+            selectedBusinessLineCode={selectedBusinessLineCode}
+            selectedPeriod={selectedPeriod}
+          />
+        </>
+      ) : (
+        <>
+          {/* Phase 7D: Efficiency View */}
+          <EfficiencyView
+            activities={allActivities}
+            valueEvents={allValueEvents}
             opportunities={allOpportunities}
             businessLines={businessLines}
             selectedBusinessLineCode={selectedBusinessLineCode}

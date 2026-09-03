@@ -1,5 +1,5 @@
-// View toggle component (Phase 7A/7B/7C)
-// Switches between Activity (7A), Cohort (7B), and Velocity (7C) views
+// View toggle component (Phase 7A/7B/7C/7D)
+// Switches between Activity (7A), Cohort (7B), Velocity (7C), and Efficiency (7D) views
 
 'use client'
 
@@ -7,14 +7,14 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
 interface ViewToggleProps {
-  currentView: 'activity' | 'cohort' | 'velocity'
+  currentView: 'activity' | 'cohort' | 'velocity' | 'efficiency'
 }
 
 export function ViewToggle({ currentView }: ViewToggleProps) {
   const searchParams = useSearchParams()
 
   // Build URL with view param, preserve other params
-  const buildUrl = (view: 'activity' | 'cohort' | 'velocity') => {
+  const buildUrl = (view: 'activity' | 'cohort' | 'velocity' | 'efficiency') => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('view', view)
     return `/analytics?${params.toString()}`
@@ -60,6 +60,19 @@ export function ViewToggle({ currentView }: ViewToggleProps) {
         `}
       >
         Vélocité
+      </Link>
+      <Link
+        href={buildUrl('efficiency')}
+        className={`
+          px-6 py-2 rounded-full text-sm font-medium transition-all
+          ${
+            currentView === 'efficiency'
+              ? 'bg-accent text-white'
+              : 'text-text-muted hover:text-text-primary'
+          }
+        `}
+      >
+        Efficacité
       </Link>
     </div>
   )
