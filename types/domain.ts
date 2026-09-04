@@ -43,6 +43,8 @@ export type Source =
 
 export type Owner = 'Eric' | 'Lilian'
 
+export type UserRole = 'ADMIN' | 'SALES_DIRECTOR' | 'SALES'
+
 export type ActivityType =
   | 'CALL'
   | 'EMAIL'
@@ -231,4 +233,19 @@ export interface StageHistory {
   toStage: Stage
   changedAt: string
   changedBy: Owner
+}
+
+// ============================================================================
+// USERS (Phase 8: Airtable-based Authentication)
+// ============================================================================
+
+export interface User {
+  id: string
+  name: string
+  email: string
+  passwordHash: string
+  role: UserRole
+  active: boolean
+  createdAt: string
+  updatedAt: string
 }

@@ -12,6 +12,7 @@ interface AttentionProps {
   tasks: Task[]
   selectedBusinessLineId: string | null
   businessLines?: BusinessLine[]
+  currentOwner: 'Eric' | 'Lilian'
 }
 
 export function Attention({
@@ -19,19 +20,23 @@ export function Attention({
   tasks,
   selectedBusinessLineId,
   businessLines = [],
+  currentOwner,
 }: AttentionProps) {
-  // Filter by Business Line
+  // Filter by currentOwner (personal action queue) and Business Line
+  const personalOpportunities = opportunities.filter((opp) => opp.owner === currentOwner)
+  const personalTasks = tasks.filter((task) => task.owner === currentOwner)
+
   const filteredOpportunities = selectedBusinessLineId
-    ? opportunities.filter((opp) => opp.businessLineId === selectedBusinessLineId)
-    : opportunities
+    ? personalOpportunities.filter((opp) => opp.businessLineId === selectedBusinessLineId)
+    : personalOpportunities
 
   const filteredTasks = selectedBusinessLineId
-    ? tasks.filter((task) => {
+    ? personalTasks.filter((task) => {
         if (!task.opportunityId) return false
-        const opp = opportunities.find((o) => o.id === task.opportunityId)
+        const opp = personalOpportunities.find((o) => o.id === task.opportunityId)
         return opp?.businessLineId === selectedBusinessLineId
       })
-    : tasks
+    : personalTasks
 
   // Active opportunities only (exclude Gagné/Perdu)
   const activeOpportunities = filteredOpportunities.filter(

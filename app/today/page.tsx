@@ -2,7 +2,7 @@
 // Operational daily workspace with Business Line filtering
 
 import { getTasks, getOpportunities, getBusinessLines } from '@/lib/airtable'
-import { getCurrentUser, getCurrentUserDisplayName } from '@/lib/utils/current-user'
+import { getCurrentOwner, getCurrentOwnerDisplayName } from '@/lib/utils/current-owner'
 import { isOverdue, isToday, formatFrenchDate } from '@/lib/utils/date'
 import { parseBusinessLineParam, filterOpportunitiesByBusinessLine, filterTasksByBusinessLine } from '@/lib/utils/business-line-filter'
 import { filterFocusEligible } from '@/lib/utils/focus-eligibility'
@@ -15,7 +15,7 @@ import { NoNextActionSection } from './no-next-action-section'
 export default async function TodayPage(props: {
   searchParams: Promise<{ businessLine?: string }>
 }) {
-  const currentUser = getCurrentUser()
+  const currentOwner = await getCurrentOwner()
 
   // Await searchParams (Next.js 16 async model)
   const searchParams = await props.searchParams
@@ -25,7 +25,7 @@ export default async function TodayPage(props: {
 
   // Fetch all data in parallel
   const [allTasks, allOpportunities, businessLines] = await Promise.all([
-    getTasks({ owner: currentUser, maxRecords: 500 }),
+    getTasks({ owner: currentOwner, maxRecords: 500 }),
     getOpportunities({ maxRecords: 500 }),
     getBusinessLines(),
   ])
@@ -60,7 +60,7 @@ export default async function TodayPage(props: {
   // Find opportunities without next action
   const activeOpportunities = filteredOpportunities.filter(
     (opp) =>
-      opp.owner === currentUser &&
+      opp.owner === currentOwner &&
       opp.stage !== 'Gagné' &&
       opp.stage !== 'Perdu'
   )
@@ -92,7 +92,7 @@ export default async function TodayPage(props: {
   return (
     <div className="space-y-6">
       <TodayHero
-        userName={getCurrentUserDisplayName()}
+        userName={await getCurrentOwnerDisplayName()}
         todayDate={formatFrenchDate(today)}
         overdueCount={overdueTasks.length}
         todayTasksCount={todayOtherTasks.length}

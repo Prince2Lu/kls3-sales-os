@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { Syne, Inter } from 'next/font/google'
 import './globals.css'
-import { Nav } from '@/components/layout/nav'
+import { ConditionalNav } from '@/components/layout/conditional-nav'
+import { auth } from '@/auth'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -20,15 +21,17 @@ export const metadata: Metadata = {
   description: 'Internal Sales Operating System for KLS3',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const session = await auth()
+
   return (
     <html lang="fr" className={`${syne.variable} ${inter.variable}`}>
       <body className="font-inter min-h-screen">
-        <Nav />
+        <ConditionalNav userEmail={session?.user?.email} />
         <main className="container mx-auto px-6 py-8">{children}</main>
       </body>
     </html>

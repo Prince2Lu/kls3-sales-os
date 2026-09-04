@@ -12,6 +12,7 @@ import type {
   AirtableValueEventFields,
   AirtableGoalFields,
   AirtableStageHistoryFields,
+  AirtableUserFields,
 } from './types'
 
 import type {
@@ -24,6 +25,7 @@ import type {
   ValueEvent,
   Goal,
   StageHistory,
+  User,
   BusinessLineCode,
   Category,
   EventType,
@@ -37,6 +39,7 @@ import type {
   TaskType,
   TaskStatus,
   ValueEventStatus,
+  UserRole,
 } from '@/types/domain'
 
 // ============================================================================
@@ -237,5 +240,23 @@ export function mapStageHistory(
     toStage: fields['To Stage'] as Stage,
     changedAt: fields['Changed At'],
     changedBy: fields['Changed By'] as Owner,
+  }
+}
+
+// ============================================================================
+// USERS
+// ============================================================================
+
+export function mapUser(record: AirtableRecord<AirtableUserFields>): User {
+  const fields = record.fields
+  return {
+    id: record.id,
+    name: fields.Name,
+    email: fields.Email,
+    passwordHash: fields['Password Hash'],
+    role: fields.Role as UserRole,
+    active: fields.Active,
+    createdAt: fields['Created At'],
+    updatedAt: fields['Updated At'],
   }
 }

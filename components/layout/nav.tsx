@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Logo } from '@/components/ui/logo'
 import { Button } from '@/components/ui/button'
+import { UserMenu } from '@/components/layout/user-menu'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -18,7 +19,11 @@ const navItems = [
   { href: '/contacts', label: 'Contacts' },
 ]
 
-export function Nav() {
+interface NavProps {
+  userEmail?: string | null
+}
+
+export function Nav({ userEmail }: NavProps = {}) {
   const pathname = usePathname()
 
   return (
@@ -47,10 +52,11 @@ export function Nav() {
           </div>
         </div>
 
-        <div>
+        <div className="flex items-center gap-4">
           <Link href="/prospects/new">
             <Button size="sm">+ Prospect</Button>
           </Link>
+          <UserMenu userEmail={userEmail} />
         </div>
       </div>
     </nav>

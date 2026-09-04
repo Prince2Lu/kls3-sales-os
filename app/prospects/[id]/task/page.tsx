@@ -1,6 +1,7 @@
 // Create new task (Phase 2.5)
 
 import { getOpportunityById, getContactById } from '@/lib/airtable'
+import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { TaskForm } from './task-form'
 import { notFound } from 'next/navigation'
 
@@ -10,6 +11,7 @@ interface NewTaskPageProps {
 
 export default async function NewTaskPage({ params }: NewTaskPageProps) {
   const { id } = await params
+  const currentOwner = await getCurrentOwner()
 
   try {
     const opportunity = await getOpportunityById(id)
@@ -24,7 +26,7 @@ export default async function NewTaskPage({ params }: NewTaskPageProps) {
           <p className="text-text-muted mt-2">{opportunity.name}</p>
         </div>
 
-        <TaskForm opportunityId={id} contactId={contact?.id} />
+        <TaskForm opportunityId={id} contactId={contact?.id} currentOwner={currentOwner} />
       </div>
     )
   } catch (error) {

@@ -24,6 +24,7 @@ interface DashboardClientProps {
   tasks: Task[]
   companies: Company[]
   contacts: Contact[]
+  currentOwner: 'Eric' | 'Lilian'
 }
 
 export function DashboardClient({
@@ -34,6 +35,7 @@ export function DashboardClient({
   tasks,
   companies,
   contacts,
+  currentOwner,
 }: DashboardClientProps) {
   // State
   const [selectedBusinessLineId, setSelectedBusinessLineId] = useState<string | null>(null)
@@ -173,6 +175,7 @@ export function DashboardClient({
           tasks={tasks}
           selectedBusinessLineId={selectedBusinessLineId}
           businessLines={businessLines}
+          currentOwner={currentOwner}
         />
 
         {/* Opportunités à suivre - Dense rows */}

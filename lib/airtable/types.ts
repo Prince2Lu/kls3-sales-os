@@ -130,3 +130,13 @@ export interface AirtableStageHistoryFields {
   'Changed At': string
   'Changed By': string
 }
+
+export interface AirtableUserFields {
+  Name: string
+  Email: string
+  'Password Hash': string
+  Role: string
+  Active: boolean
+  'Created At': string
+  'Updated At': string
+}

@@ -1,6 +1,7 @@
 // Record new activity (Phase 2.5)
 
 import { getOpportunityById, getContactById } from '@/lib/airtable'
+import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { ActivityForm } from './activity-form'
 import { notFound } from 'next/navigation'
 
@@ -12,6 +13,7 @@ export default async function NewActivityPage({
   params,
 }: NewActivityPageProps) {
   const { id } = await params
+  const currentOwner = await getCurrentOwner()
 
   try {
     const opportunity = await getOpportunityById(id)
@@ -26,7 +28,7 @@ export default async function NewActivityPage({
           <p className="text-text-muted mt-2">{opportunity.name}</p>
         </div>
 
-        <ActivityForm opportunityId={id} contactId={contact?.id} />
+        <ActivityForm opportunityId={id} contactId={contact?.id} currentOwner={currentOwner} />
       </div>
     )
   } catch (error) {

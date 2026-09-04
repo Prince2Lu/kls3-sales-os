@@ -1,6 +1,7 @@
 // Create new prospect/opportunity (Phase 2.5)
 
 import { getBusinessLines, getCompanies, getContacts } from '@/lib/airtable'
+import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { ProspectForm } from '../prospect-form'
 
 interface NewProspectPageProps {
@@ -11,6 +12,8 @@ export default async function NewProspectPage({
   searchParams,
 }: NewProspectPageProps) {
   const params = await searchParams
+  const currentOwner = await getCurrentOwner()
+
   const [businessLines, companies, contacts] = await Promise.all([
     getBusinessLines(),
     getCompanies({ maxRecords: 200 }),
@@ -32,6 +35,7 @@ export default async function NewProspectPage({
         contacts={contacts}
         defaultCompanyId={params.companyId}
         defaultContactId={params.contactId}
+        currentOwner={currentOwner}
       />
     </div>
   )

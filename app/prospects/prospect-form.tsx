@@ -49,6 +49,7 @@ interface ProspectFormProps {
   defaultContactId?: string
   opportunity?: Opportunity
   mode?: 'create' | 'edit'
+  currentOwner?: 'Eric' | 'Lilian'
 }
 
 export function ProspectForm({
@@ -59,6 +60,7 @@ export function ProspectForm({
   defaultContactId,
   opportunity,
   mode = 'create',
+  currentOwner,
 }: ProspectFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -168,7 +170,7 @@ export function ProspectForm({
               <label className="text-sm font-medium mb-1 block">
                 Owner <span className="text-red-500">*</span>
               </label>
-              <Select name="owner" required defaultValue={opportunity?.owner}>
+              <Select name="owner" required defaultValue={opportunity?.owner ?? currentOwner}>
                 <option value="">Sélectionner...</option>
                 {OWNERS.map((owner) => (
                   <option key={owner} value={owner}>

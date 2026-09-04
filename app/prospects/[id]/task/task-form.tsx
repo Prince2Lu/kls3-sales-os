@@ -28,9 +28,10 @@ const OWNERS = ['Eric', 'Lilian'] as const
 interface TaskFormProps {
   opportunityId: string
   contactId?: string
+  currentOwner: 'Eric' | 'Lilian'
 }
 
-export function TaskForm({ opportunityId, contactId }: TaskFormProps) {
+export function TaskForm({ opportunityId, contactId, currentOwner }: TaskFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -119,7 +120,7 @@ export function TaskForm({ opportunityId, contactId }: TaskFormProps) {
             <label className="text-sm font-medium mb-1 block">
               Owner <span className="text-red-500">*</span>
             </label>
-            <Select name="owner" required defaultValue="Eric">
+            <Select name="owner" required defaultValue={currentOwner}>
               {OWNERS.map((owner) => (
                 <option key={owner} value={owner}>
                   {owner}

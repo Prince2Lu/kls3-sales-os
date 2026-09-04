@@ -15,6 +15,7 @@ import type {
   AirtableValueEventFields,
   AirtableGoalFields,
   AirtableStageHistoryFields,
+  AirtableUserFields,
 } from './types'
 import {
   mapBusinessLine,
@@ -26,6 +27,7 @@ import {
   mapValueEvent,
   mapGoal,
   mapStageHistory,
+  mapUser,
 } from './mappers'
 
 import type {
@@ -38,6 +40,7 @@ import type {
   ValueEvent,
   Goal,
   StageHistory,
+  User,
 } from '@/types/domain'
 
 // ============================================================================
@@ -1054,4 +1057,31 @@ export async function deleteValueEvent(id: string): Promise<void> {
 
 export async function deleteStageHistory(id: string): Promise<void> {
   await deleteRecord(TABLE_NAMES.STAGE_HISTORY, id)
+}
+
+// ============================================================================
+// USERS (Phase 8: Airtable-based Authentication)
+// ============================================================================
+
+/**
+ * Get user by email (for authentication)
+ * Email is normalized (trimmed, lowercase) before query
+ * Returns null if user not found
+ * Server-side only - NEVER expose password hash to client
+ */
+export async function getUserByEmail(email: string): Promise<User | null> {
+  // Normalize email exactly as auth flow does
+  const normalizedEmail = email.trim().toLowerCase()
+
+  const records = await fetchRecords<AirtableUserFields>(TABLE_NAMES.USERS, {
+    // Use exact email match in formula
+    filterByFormula: `LOWER(TRIM({Email})) = "${normalizedEmail}"`,
+    maxRecords: 1,
+  })
+
+  if (records.length === 0) {
+    return null
+  }
+
+  return mapUser(records[0])
 }
