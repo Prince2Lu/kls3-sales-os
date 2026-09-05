@@ -8,6 +8,7 @@ import {
   getActivities,
   getTasks,
   getStageHistory,
+  getValueEvents,
 } from '@/lib/airtable'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { TaskActions } from './task-actions'
+import { EconomicValueSection } from './economic-value-section'
 import {
   getFrenchTaskType,
   getFrenchActivityType,
@@ -32,19 +34,27 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
   try {
     const opportunity = await getOpportunityById(id)
 
-    const [businessLine, company, contact, activities, tasks, stageHistory] =
-      await Promise.all([
-        getBusinessLineById(opportunity.businessLineId),
-        opportunity.companyId
-          ? getCompanyById(opportunity.companyId).catch(() => null)
-          : Promise.resolve(null),
-        opportunity.primaryContactId
-          ? getContactById(opportunity.primaryContactId).catch(() => null)
-          : Promise.resolve(null),
-        getActivities({ opportunityId: id }),
-        getTasks({ opportunityId: id }),
-        getStageHistory({ opportunityId: id }),
-      ])
+    const [
+      businessLine,
+      company,
+      contact,
+      activities,
+      tasks,
+      stageHistory,
+      valueEvents,
+    ] = await Promise.all([
+      getBusinessLineById(opportunity.businessLineId),
+      opportunity.companyId
+        ? getCompanyById(opportunity.companyId).catch(() => null)
+        : Promise.resolve(null),
+      opportunity.primaryContactId
+        ? getContactById(opportunity.primaryContactId).catch(() => null)
+        : Promise.resolve(null),
+      getActivities({ opportunityId: id }),
+      getTasks({ opportunityId: id }),
+      getStageHistory({ opportunityId: id }),
+      getValueEvents({ opportunityId: id }),
+    ])
 
     // Find next TODO task
     const nextTask = tasks
@@ -262,6 +272,13 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                 </CardContent>
               </Card>
             )}
+
+            {/* Economic Value - Phase 9 */}
+            <EconomicValueSection
+              opportunityId={id}
+              businessLine={businessLine}
+              valueEvents={valueEvents}
+            />
           </div>
 
           {/* Right column - Timeline */}

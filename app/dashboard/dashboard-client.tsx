@@ -171,6 +171,7 @@ export function DashboardClient({
         <Attention
           opportunities={opportunities}
           tasks={tasks}
+          valueEvents={valueEvents}
           selectedBusinessLineId={selectedBusinessLineId}
           businessLines={businessLines}
         />

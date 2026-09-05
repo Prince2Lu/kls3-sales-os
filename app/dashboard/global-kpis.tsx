@@ -80,7 +80,7 @@ export function GlobalKPIs({
       {showPartnerRevenue && (
         <div className="bg-card-bg p-6 rounded-2xl">
           <div className="text-text-muted text-xs uppercase tracking-wide mb-2">
-            Partner Revenue
+            Revenue Partner
           </div>
           <div className="text-2xl font-semibold font-syne">
             {formatCurrency(partnerRevenue)}
@@ -106,7 +106,7 @@ export function GlobalKPIs({
       {showOwnedRevenue && (
         <div className="bg-card-bg p-6 rounded-2xl">
           <div className="text-text-muted text-xs uppercase tracking-wide mb-2">
-            Owned Revenue
+            Revenue KLS3
           </div>
           <div className="text-2xl font-semibold font-syne">
             {formatCurrency(ownedRevenue)}

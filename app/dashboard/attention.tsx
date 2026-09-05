@@ -3,13 +3,14 @@
 // Compact vertical decision panel
 
 import Link from 'next/link'
-import type { Opportunity, Task, BusinessLine } from '@/types/domain'
+import type { Opportunity, Task, BusinessLine, ValueEvent } from '@/types/domain'
 import { getNextAction } from '@/lib/utils/next-action'
 import { buildUrlWithBusinessLine } from '@/lib/utils/business-line-filter'
 
 interface AttentionProps {
   opportunities: Opportunity[]
   tasks: Task[]
+  valueEvents: ValueEvent[]
   selectedBusinessLineId: string | null
   businessLines?: BusinessLine[]
 }
@@ -17,6 +18,7 @@ interface AttentionProps {
 export function Attention({
   opportunities,
   tasks,
+  valueEvents,
   selectedBusinessLineId,
   businessLines = [],
 }: AttentionProps) {
@@ -57,6 +59,27 @@ export function Attention({
     (opp) => opp.stage === 'Proposition'
   ).length
 
+  // D. Gagnés sans valeur enregistrée (Phase 9 - Integrity KPI)
+  const wonWithoutValue = filteredOpportunities.filter((opp) => {
+    // Must be Gagné
+    if (opp.stage !== 'Gagné') return false
+
+    // Get the Business Line to know what event type to expect
+    const bl = businessLines.find((b) => b.id === opp.businessLineId)
+    if (!bl) return false
+
+    // Check if there's a qualifying VALUE_EVENT
+    const hasQualifyingEvent = valueEvents.some(
+      (ve) =>
+        ve.opportunityId === opp.id &&
+        ve.eventType === bl.revenueTrigger &&
+        (ve.status === 'CONFIRMED' || ve.status === 'PAID')
+    )
+
+    // Return true if NO qualifying event exists
+    return !hasQualifyingEvent
+  }).length
+
   // Get Business Line CODE for URL building
   const selectedBL = businessLines.find((bl) => bl.id === selectedBusinessLineId)
   const businessLineCode = selectedBL?.code || null
@@ -85,6 +108,13 @@ export function Attention({
       subtitle: 'À relancer',
       href: '/prospects',
       color: 'blue' as const,
+    },
+    {
+      count: wonWithoutValue,
+      label: 'Gagnés sans valeur enregistrée',
+      subtitle: 'Intégrité économique',
+      href: '/prospects',
+      color: 'amber' as const,
     },
   ]
 
