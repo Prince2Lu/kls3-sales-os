@@ -6,10 +6,13 @@ import {
   getTasks,
   getStageHistory,
 } from '@/lib/airtable'
+import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { PipelineBoard } from './pipeline-board'
 import { SectionLabel } from '@/components/ui/section-label'
 
 export default async function PipelinePage() {
+  const currentOwner = await getCurrentOwner()
+
   const [opportunities, businessLines, allTasks, stageHistory] =
     await Promise.all([
       getOpportunities({ maxRecords: 500 }),
@@ -46,6 +49,7 @@ export default async function PipelinePage() {
         tasks={allTasks}
         stageHistory={stageHistory}
         stages={stages}
+        currentOwner={currentOwner}
       />
     </div>
   )

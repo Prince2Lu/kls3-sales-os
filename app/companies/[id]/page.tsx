@@ -1,6 +1,11 @@
 // Company detail page (Phase 2)
 
-import { getCompanyById, getContacts, getOpportunities } from '@/lib/airtable'
+import {
+  getCompanyById,
+  getContacts,
+  getOpportunities,
+  getBusinessLines,
+} from '@/lib/airtable'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,10 +22,15 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
 
   try {
     const company = await getCompanyById(id)
-    const [contacts, opportunities] = await Promise.all([
+    const [contacts, opportunities, businessLines] = await Promise.all([
       getContacts({ companyId: id }),
       getOpportunities({ companyId: id }),
+      getBusinessLines(),
     ])
+
+    const primaryBusinessLine = company.primaryBusinessLineId
+      ? businessLines.find((bl) => bl.id === company.primaryBusinessLineId)
+      : null
 
     return (
       <div className="space-y-8">
@@ -52,6 +62,17 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
               <CardTitle className="text-lg">Informations</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <div className="text-text-muted text-xs mb-1">Business Line</div>
+                {primaryBusinessLine ? (
+                  <Badge variant="accent">{primaryBusinessLine.name}</Badge>
+                ) : (
+                  <div className="text-sm text-text-muted">
+                    Aucune Business Line
+                  </div>
+                )}
+              </div>
+
               {company.website && (
                 <div>
                   <div className="text-text-muted text-xs mb-1">Site web</div>
@@ -66,13 +87,22 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                 </div>
               )}
 
-              {(company.city || company.country) && (
+              {(company.addressLine1 ||
+                company.addressLine2 ||
+                company.postalCode ||
+                company.city ||
+                company.country) && (
                 <div>
-                  <div className="text-text-muted text-xs mb-1">Localisation</div>
-                  <div className="text-sm">
-                    {company.city}
-                    {company.city && company.country && ', '}
-                    {company.country}
+                  <div className="text-text-muted text-xs mb-1">Adresse</div>
+                  <div className="text-sm space-y-0.5">
+                    {company.addressLine1 && <div>{company.addressLine1}</div>}
+                    {company.addressLine2 && <div>{company.addressLine2}</div>}
+                    {(company.postalCode || company.city) && (
+                      <div>
+                        {company.postalCode} {company.city}
+                      </div>
+                    )}
+                    {company.country && <div>{company.country}</div>}
                   </div>
                 </div>
               )}

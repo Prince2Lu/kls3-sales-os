@@ -60,11 +60,20 @@ export class AirtableError extends Error {
 
 async function handleAirtableResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const errorBody = await response.text()
+    let errorBody
+    let errorDetails: any = {}
+    try {
+      errorBody = await response.text()
+      const parsed = JSON.parse(errorBody)
+      errorDetails = parsed.error || parsed
+    } catch (e) {
+      errorBody = await response.text()
+    }
+
     throw new AirtableError(
       `Airtable API error: ${response.statusText}`,
       response.status,
-      errorBody
+      errorDetails
     )
   }
   return response.json()
@@ -578,8 +587,12 @@ async function updateRecord<TFields>(
 
 export interface CreateCompanyInput {
   name: string
+  primaryBusinessLineId?: string
   website?: string
   industry?: string
+  addressLine1?: string
+  addressLine2?: string
+  postalCode?: string
   city?: string
   country?: string
   phone?: string
@@ -593,10 +606,18 @@ export async function createCompany(
 ): Promise<Company> {
   const now = new Date().toISOString()
 
+  const blValue = input.primaryBusinessLineId
+    ? [input.primaryBusinessLineId]
+    : undefined
+
   const fields: Partial<AirtableCompanyFields> = {
     Name: input.name,
+    'Primary Business Line': blValue,
     Website: input.website,
     Industry: input.industry,
+    'Address Line 1': input.addressLine1,
+    'Address Line 2': input.addressLine2,
+    'Postal Code': input.postalCode,
     City: input.city,
     Country: input.country,
     Phone: input.phone,
@@ -625,8 +646,18 @@ export async function updateCompany(
   }
 
   if (input.name !== undefined) fields.Name = input.name
+  if (input.primaryBusinessLineId !== undefined) {
+    const blValue = input.primaryBusinessLineId
+      ? [input.primaryBusinessLineId]
+      : undefined
+
+    fields['Primary Business Line'] = blValue
+  }
   if (input.website !== undefined) fields.Website = input.website
   if (input.industry !== undefined) fields.Industry = input.industry
+  if (input.addressLine1 !== undefined) fields['Address Line 1'] = input.addressLine1
+  if (input.addressLine2 !== undefined) fields['Address Line 2'] = input.addressLine2
+  if (input.postalCode !== undefined) fields['Postal Code'] = input.postalCode
   if (input.city !== undefined) fields.City = input.city
   if (input.country !== undefined) fields.Country = input.country
   if (input.phone !== undefined) fields.Phone = input.phone

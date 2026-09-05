@@ -24,6 +24,7 @@ import type {
 } from '@/types/domain'
 import { updateOpportunityStage } from './actions'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -35,6 +36,7 @@ interface PipelineBoardProps {
   tasks: Task[]
   stageHistory: StageHistory[]
   stages: readonly Stage[]
+  currentOwner: 'Eric' | 'Lilian'
 }
 
 export function PipelineBoard({
@@ -43,10 +45,13 @@ export function PipelineBoard({
   tasks,
   stageHistory,
   stages,
+  currentOwner,
 }: PipelineBoardProps) {
   const router = useRouter()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [sortByBusinessLine, setSortByBusinessLine] = useState(false)
+  const [selectedBusinessLineId, setSelectedBusinessLineId] = useState<string | null>(null)
 
   // Create lookup maps
   const blMap = useMemo(
@@ -77,19 +82,37 @@ export function PipelineBoard({
     return map
   }, [stageHistory])
 
-  // Group opportunities by stage
+  // Filter opportunities by Business Line
+  const filteredOpportunities = useMemo(() => {
+    if (!selectedBusinessLineId) return opportunities
+    return opportunities.filter((opp) => opp.businessLineId === selectedBusinessLineId)
+  }, [opportunities, selectedBusinessLineId])
+
+  // Group opportunities by stage and optionally sort by Business Line
   const opportunitiesByStage = useMemo(() => {
     const grouped: Record<string, Opportunity[]> = {}
     stages.forEach((stage) => {
       grouped[stage] = []
     })
-    opportunities.forEach((opp) => {
+    filteredOpportunities.forEach((opp) => {
       if (grouped[opp.stage]) {
         grouped[opp.stage].push(opp)
       }
     })
+
+    // Sort within each stage by Business Line if enabled
+    if (sortByBusinessLine) {
+      Object.keys(grouped).forEach((stage) => {
+        grouped[stage].sort((a, b) => {
+          const blA = blMap[a.businessLineId]?.name || ''
+          const blB = blMap[b.businessLineId]?.name || ''
+          return blA.localeCompare(blB)
+        })
+      })
+    }
+
     return grouped
-  }, [opportunities, stages])
+  }, [filteredOpportunities, stages, sortByBusinessLine, blMap])
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -109,21 +132,37 @@ export function PipelineBoard({
     if (!over) return
 
     const opportunityId = active.id as string
-    const newStage = over.id as Stage
+    const overId = String(over.id)
 
-    // Find the opportunity
+    // Resolve target stage from over.id
+    let targetStage: Stage | null = null
+
+    // Check if over.id is directly a stage name
+    if (stages.includes(overId as Stage)) {
+      targetStage = overId as Stage
+    } else {
+      // over.id might be an opportunity card - find its stage
+      const targetOpportunity = opportunities.find((opp) => opp.id === overId)
+      if (targetOpportunity) {
+        targetStage = targetOpportunity.stage
+      }
+    }
+
+    if (!targetStage) return
+
+    // Find the dragged opportunity
     const opportunity = opportunities.find((o) => o.id === opportunityId)
     if (!opportunity) return
 
     // If stage hasn't changed, do nothing
-    if (opportunity.stage === newStage) return
+    if (opportunity.stage === targetStage) return
 
     // Update stage
     setIsUpdating(true)
     const result = await updateOpportunityStage(
       opportunityId,
-      newStage,
-      'Eric' // TODO: Get from auth context
+      targetStage,
+      currentOwner
     )
     setIsUpdating(false)
 
@@ -139,7 +178,37 @@ export function PipelineBoard({
     : null
 
   return (
-    <div className="relative">
+    <div className="relative space-y-4">
+      {/* Filters and Controls */}
+      <div className="flex items-center gap-4 flex-wrap">
+        {/* Business Line Filter */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-text-muted">Business Line:</label>
+          <select
+            value={selectedBusinessLineId || ''}
+            onChange={(e) => setSelectedBusinessLineId(e.target.value || null)}
+            className="px-3 py-1 bg-card-bg border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            <option value="">Toutes</option>
+            {businessLines.map((bl) => (
+              <option key={bl.id} value={bl.id}>
+                {bl.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Sort Control */}
+        <Button
+          type="button"
+          size="sm"
+          variant={sortByBusinessLine ? 'primary' : 'ghost'}
+          onClick={() => setSortByBusinessLine(!sortByBusinessLine)}
+        >
+          {sortByBusinessLine ? '✓ Trié par Business Line' : 'Trier par Business Line'}
+        </Button>
+      </div>
+
       {isUpdating && (
         <div className="fixed inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="text-text-primary">Mise à jour...</div>

@@ -11,7 +11,7 @@ import { FilterToolbar } from '@/components/ui/filter-toolbar'
 import { useViewPersistence } from '@/lib/hooks/use-view-persistence'
 import { normalizeSearchValue } from '@/lib/utils/search'
 import { compareStringsAsc, compareStringsDesc, compareNumbersAsc, compareNumbersDesc } from '@/lib/utils/sorting'
-import { deriveCompanyBusinessLines, getBusinessLineNames } from '@/lib/utils/business-lines'
+import { getCompanyBusinessLines, getBusinessLineNames } from '@/lib/utils/business-lines'
 import { extractUniqueValues, extractUniqueArrayValues, isValueStillValid } from '@/lib/utils/faceted-filters'
 import type { Company, Contact, Opportunity, BusinessLine } from '@/types/domain'
 
@@ -58,9 +58,10 @@ export function CompaniesClient({
   }, [contacts])
 
   // Derive Business Lines and opportunity counts for each company
+  // IMPORTANT: Use Primary Business Line ONLY (not opportunities BLs)
   const companyData = useMemo(() => {
     return companies.map((company) => {
-      const businessLineIds = deriveCompanyBusinessLines(company.id, opportunities)
+      const businessLineIds = getCompanyBusinessLines(company)
       const businessLineNames = getBusinessLineNames(businessLineIds, businessLines)
       const opportunityCount = opportunities.filter((opp) => opp.companyId === company.id).length
 
@@ -71,7 +72,7 @@ export function CompaniesClient({
         opportunityCount,
       }
     })
-  }, [companies, opportunities, businessLines])
+  }, [companies, businessLines])
 
   // Helper: Apply a single filter to company data
   const applySingleFilter = (records: CompanyData[], key: string, value: string): CompanyData[] => {

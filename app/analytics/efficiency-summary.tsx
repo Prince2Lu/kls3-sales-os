@@ -41,7 +41,7 @@ export function EfficiencySummary({
     outcomeLabel = 'Projets signés'
   } else if (businessLineName?.includes('Paul')) {
     outcomeLabel = 'RDV payés'
-  } else if (businessLineName?.includes('Sacha')) {
+  } else if (businessLineName?.includes('Leverio')) {
     outcomeLabel = 'Deals signés'
   }
 

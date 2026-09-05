@@ -17,54 +17,36 @@ export const authConfig = {
       async authorize(credentials) {
         // Validate input
         if (!credentials?.email || !credentials?.password) {
-          console.log('[AUTH_PROD] Missing credentials')
           return null
         }
 
         const password = String(credentials.password)
         const email = String(credentials.email).trim().toLowerCase()
 
-        console.log('[AUTH_PROD] emailNormalized:', email)
-        console.log('[AUTH_PROD] airtableTokenConfigured:', !!process.env.AIRTABLE_TOKEN)
-        console.log('[AUTH_PROD] airtableBaseConfigured:', !!process.env.AIRTABLE_BASE_ID)
-
         // Fetch user from Airtable USERS table
         let user
         try {
           user = await getUserByEmail(email)
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-          console.log('[AUTH_PROD] airtableLookupError:', errorMessage)
           return null
         }
-
-        console.log('[AUTH_PROD] userFound:', !!user)
 
         // User not found
         if (!user) {
           return null
         }
 
-        console.log('[AUTH_PROD] userName:', user.name)
-        console.log('[AUTH_PROD] role:', user.role)
-        console.log('[AUTH_PROD] active:', user.active)
-        console.log('[AUTH_PROD] passwordHashPresent:', !!user.passwordHash)
-
         // User not active
         if (!user.active) {
-          console.log('[AUTH_PROD] User not active')
           return null
         }
 
         // Verify password with bcrypt
         const isValidPassword = await bcrypt.compare(password, user.passwordHash)
-        console.log('[AUTH_PROD] bcryptCompare:', isValidPassword)
 
         if (!isValidPassword) {
           return null
         }
-
-        console.log('[AUTH_PROD] Authentication successful')
 
         // Return user object (without password hash)
         // Include role for session

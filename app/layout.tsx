@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Syne, Inter } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ConditionalNav } from '@/components/layout/conditional-nav'
 import { auth } from '@/auth'
@@ -33,6 +34,7 @@ export default async function RootLayout({
       <body className="font-inter min-h-screen">
         <ConditionalNav userEmail={session?.user?.email} />
         <main className="container mx-auto px-6 py-8">{children}</main>
+        <Analytics />
       </body>
     </html>
   )

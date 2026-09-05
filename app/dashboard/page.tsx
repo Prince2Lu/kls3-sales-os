@@ -10,13 +10,10 @@ import {
   getCompanies,
   getContacts,
 } from '@/lib/airtable'
-import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { DashboardClient } from './dashboard-client'
 
 export default async function DashboardPage() {
-  const currentOwner = await getCurrentOwner()
-
-  // Fetch all required data in parallel
+  // Fetch all required data in parallel (TEAM VIEW - no owner filtering)
   const [businessLines, valueEvents, opportunities, activities, tasks, companies, contacts] =
     await Promise.all([
       getBusinessLines(),
@@ -38,7 +35,6 @@ export default async function DashboardPage() {
         tasks={tasks}
         companies={companies}
         contacts={contacts}
-        currentOwner={currentOwner}
       />
     </div>
   )

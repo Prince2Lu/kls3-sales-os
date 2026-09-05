@@ -45,8 +45,9 @@ export async function updateOpportunityStage(
     revalidatePath(`/prospects/${opportunityId}`)
 
     return { success: true }
-  } catch (error) {
-    console.error('Failed to update opportunity stage:', error)
+  } catch (error: any) {
+    console.error('Error updating opportunity stage:', error.message)
+
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

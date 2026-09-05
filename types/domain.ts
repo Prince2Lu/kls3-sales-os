@@ -97,8 +97,12 @@ export interface BusinessLine {
 export interface Company {
   id: string
   name: string
+  primaryBusinessLineId: string | null // Link to BUSINESS_LINES
   website: string | null
   industry: string | null
+  addressLine1: string | null
+  addressLine2: string | null
+  postalCode: string | null
   city: string | null
   country: string | null
   phone: string | null

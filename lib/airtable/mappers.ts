@@ -73,8 +73,12 @@ export function mapCompany(
   return {
     id: record.id,
     name: fields.Name,
+    primaryBusinessLineId: fields['Primary Business Line']?.[0] ?? null,
     website: fields.Website ?? null,
     industry: fields.Industry ?? null,
+    addressLine1: fields['Address Line 1'] ?? null,
+    addressLine2: fields['Address Line 2'] ?? null,
+    postalCode: fields['Postal Code'] ?? null,
     city: fields.City ?? null,
     country: fields.Country ?? null,
     phone: fields.Phone ?? null,

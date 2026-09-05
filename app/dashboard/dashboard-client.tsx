@@ -3,7 +3,7 @@
 // Dashboard Client Component (Phase 6A)
 // Commercial piloting cockpit for KLS3 Sales OS
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { BusinessLine, ValueEvent, Opportunity, Activity, Task, Company, Contact } from '@/types/domain'
 import type { PeriodType } from '@/lib/utils/period'
 import { getPeriodDateRange } from '@/lib/utils/period'
@@ -24,7 +24,6 @@ interface DashboardClientProps {
   tasks: Task[]
   companies: Company[]
   contacts: Contact[]
-  currentOwner: 'Eric' | 'Lilian'
 }
 
 export function DashboardClient({
@@ -35,7 +34,6 @@ export function DashboardClient({
   tasks,
   companies,
   contacts,
-  currentOwner,
 }: DashboardClientProps) {
   // State
   const [selectedBusinessLineId, setSelectedBusinessLineId] = useState<string | null>(null)
@@ -175,7 +173,6 @@ export function DashboardClient({
           tasks={tasks}
           selectedBusinessLineId={selectedBusinessLineId}
           businessLines={businessLines}
-          currentOwner={currentOwner}
         />
 
         {/* Opportunités à suivre - Dense rows */}

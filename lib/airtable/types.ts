@@ -28,8 +28,12 @@ export interface AirtableBusinessLineFields {
 
 export interface AirtableCompanyFields {
   Name: string
+  'Primary Business Line'?: string[] // Linked record to BUSINESS_LINES (single)
   Website?: string
   Industry?: string
+  'Address Line 1'?: string
+  'Address Line 2'?: string
+  'Postal Code'?: string
   City?: string
   Country?: string
   Phone?: string
