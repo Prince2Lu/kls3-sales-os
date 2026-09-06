@@ -79,3 +79,17 @@ secrets.json
 # Airtable / API secrets must NEVER be committed.
 # Store local secrets in .env.local
 # and production secrets in Vercel Environment Variables.
+
+# Local notaires data / reports
+staging-notaires.csv
+staging-notaires.csv.backup
+
+AIRTABLE_CLEANUP_*
+AUDIT_NOTAIRES_*
+IMPORT_NOTAIRES_TEST_BATCH_LOG.json
+IMPORT_PREVIEW_*
+NOTAIRES_*_REPORT.md
+NOTAIRES_*_MAPPING.md
+RAPPORT_CORRECTIONS_PRODUIT.md
+
+archive/
