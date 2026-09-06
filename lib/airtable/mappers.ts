@@ -235,8 +235,18 @@ export function mapGoal(record: AirtableRecord<AirtableGoalFields>): Goal {
 
 export function mapStageHistory(
   record: AirtableRecord<AirtableStageHistoryFields>
-): StageHistory {
+): StageHistory | null {
   const fields = record.fields
+
+  // STAGE_HISTORY without Opportunity link is invalid for Analytics
+  // Return null instead of creating invalid object with opportunityId: ""
+  if (!fields.Opportunity || fields.Opportunity.length === 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[mapStageHistory] Skipping invalid record ${record.id}: missing Opportunity link`)
+    }
+    return null
+  }
+
   return {
     id: record.id,
     opportunityId: fields.Opportunity[0],

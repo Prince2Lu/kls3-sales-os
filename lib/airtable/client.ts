@@ -526,7 +526,9 @@ export async function getStageHistory(options?: {
     )
   }
 
-  return filteredRecords.map(mapStageHistory)
+  // mapStageHistory returns null for invalid records (missing Opportunity)
+  // Filter them out before returning
+  return filteredRecords.map(mapStageHistory).filter((sh): sh is StageHistory => sh !== null)
 }
 
 export async function getStageHistoryById(id: string): Promise<StageHistory> {
@@ -534,7 +536,13 @@ export async function getStageHistoryById(id: string): Promise<StageHistory> {
     TABLE_NAMES.STAGE_HISTORY,
     id
   )
-  return mapStageHistory(record)
+  const mapped = mapStageHistory(record)
+
+  if (!mapped) {
+    throw new AirtableError(`STAGE_HISTORY record ${id} is invalid (missing Opportunity link)`, 404)
+  }
+
+  return mapped
 }
 
 // ============================================================================
@@ -1043,7 +1051,15 @@ export async function createStageHistory(
     TABLE_NAMES.STAGE_HISTORY,
     fields
   )
-  return mapStageHistory(record)
+  const mapped = mapStageHistory(record)
+
+  // This should never happen since we always create with Opportunity
+  // but TypeScript requires handling the null case
+  if (!mapped) {
+    throw new AirtableError('Failed to create STAGE_HISTORY: created record is invalid', 500)
+  }
+
+  return mapped
 }
 
 // ============================================================================
@@ -1115,4 +1131,18 @@ export async function getUserByEmail(email: string): Promise<User | null> {
   }
 
   return mapUser(records[0])
+}
+
+/**
+ * Get all users
+ * Server-side only - used for admin/preview operations
+ */
+export async function getUsers(options?: {
+  maxRecords?: number
+}): Promise<User[]> {
+  const records = await fetchRecords<AirtableUserFields>(TABLE_NAMES.USERS, {
+    maxRecords: options?.maxRecords,
+  })
+
+  return records.map(mapUser)
 }

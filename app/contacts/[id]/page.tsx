@@ -57,30 +57,28 @@ export default async function ContactPage({ params }: ContactPageProps) {
               <p className="text-text-muted mt-2 text-lg">{contact.jobTitle}</p>
             )}
           </div>
+          <Link href={`/contacts/${id}/edit`}>
+            <Button variant="ghost">Modifier</Button>
+          </Link>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Contact Info */}
           <Card className="lg:col-span-1">
             <CardHeader>
-              <CardTitle className="text-lg">Informations</CardTitle>
+              <CardTitle className="text-lg">Contact</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {company && (
+              {contact.jobTitle && (
                 <div>
-                  <div className="text-text-muted text-xs mb-1">Entreprise</div>
-                  <Link
-                    href={`/companies/${company.id}`}
-                    className="text-accent hover:underline"
-                  >
-                    {company.name}
-                  </Link>
+                  <div className="text-text-muted text-xs mb-1">Fonction</div>
+                  <div className="text-sm">{contact.jobTitle}</div>
                 </div>
               )}
 
               {contact.email && (
                 <div>
-                  <div className="text-text-muted text-xs mb-1">Email</div>
+                  <div className="text-text-muted text-xs mb-1">Email direct</div>
                   <a
                     href={`mailto:${contact.email}`}
                     className="text-accent hover:underline text-sm"
@@ -92,7 +90,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
 
               {contact.phone && (
                 <div>
-                  <div className="text-text-muted text-xs mb-1">Téléphone</div>
+                  <div className="text-text-muted text-xs mb-1">Téléphone direct</div>
                   <a
                     href={`tel:${contact.phone}`}
                     className="text-accent hover:underline text-sm"
@@ -125,8 +123,90 @@ export default async function ContactPage({ params }: ContactPageProps) {
             </CardContent>
           </Card>
 
+          {/* Company Info */}
+          {company && (
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle className="text-lg">Étude</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="text-text-muted text-xs mb-1">Nom</div>
+                  <Link
+                    href={`/companies/${company.id}`}
+                    className="text-accent hover:underline text-sm"
+                  >
+                    {company.name}
+                  </Link>
+                </div>
+
+                {company.city && (
+                  <div>
+                    <div className="text-text-muted text-xs mb-1">Ville</div>
+                    <div className="text-sm">{company.city}</div>
+                  </div>
+                )}
+
+                {company.phone && (
+                  <div>
+                    <div className="text-text-muted text-xs mb-1">Standard étude</div>
+                    <a
+                      href={`tel:${company.phone}`}
+                      className="text-accent hover:underline text-sm"
+                    >
+                      {company.phone}
+                    </a>
+                  </div>
+                )}
+
+                {company.website && (
+                  <div>
+                    <div className="text-text-muted text-xs mb-1">Site web</div>
+                    <a
+                      href={company.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline text-sm truncate block"
+                    >
+                      {company.website}
+                    </a>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Call Action Section */}
+          {(contact.phone || company?.phone) && (
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle className="text-lg">Action rapide</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={`tel:${contact.phone || company?.phone}`}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-full transition-colors"
+                  >
+                    <span>📞</span>
+                    <span>
+                      {contact.phone
+                        ? 'Appeler le contact'
+                        : 'Appeler le standard'}
+                    </span>
+                  </a>
+                  {!contact.phone && company?.phone && (
+                    <span className="text-xs text-text-muted">
+                      Téléphone direct non renseigné
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Opportunities and Activities */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-3 space-y-6">
             {/* Opportunities */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">

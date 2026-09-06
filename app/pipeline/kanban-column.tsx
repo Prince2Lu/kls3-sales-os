@@ -133,11 +133,27 @@ function DraggableCard({
                 {opportunity.name}
               </h4>
             </Link>
-            {businessLine && (
-              <Badge variant="accent" className="mt-2">
-                {businessLine.name}
-              </Badge>
-            )}
+            <div className="flex flex-wrap gap-2 mt-2">
+              {businessLine && (
+                <Badge variant="accent">
+                  {businessLine.name}
+                </Badge>
+              )}
+              {opportunity.priority && (
+                <Badge
+                  variant={
+                    opportunity.priority === 'HIGH' ? 'accent' :
+                    opportunity.priority === 'MEDIUM' ? 'default' :
+                    'muted'
+                  }
+                  className="text-xs"
+                >
+                  {opportunity.priority === 'HIGH' ? 'A · HIGH' :
+                   opportunity.priority === 'MEDIUM' ? 'B · MEDIUM' :
+                   'C · LOW'}
+                </Badge>
+              )}
+            </div>
           </div>
 
           {opportunity.potentialValue && (

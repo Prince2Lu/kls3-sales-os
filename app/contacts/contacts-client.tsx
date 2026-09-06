@@ -361,7 +361,16 @@ export function ContactsClient({
 
                     <div className="space-y-1 text-xs text-text-muted">
                       {contact.email && <div>{contact.email}</div>}
-                      {contact.phone && <div>{contact.phone}</div>}
+                      {(contact.phone || company?.phone) && (
+                        <div className="flex items-center gap-1.5">
+                          <span>{contact.phone || company?.phone}</span>
+                          {contact.phone ? (
+                            <span className="text-[10px] text-text-muted/60">· Direct</span>
+                          ) : (
+                            <span className="text-[10px] text-text-muted/60">· Standard</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
