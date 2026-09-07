@@ -1,6 +1,6 @@
 'use client'
 
-// Activity recording form (Phase 2.5 + workflow enhancement)
+// Activity edit form (workflow enhancement)
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -9,38 +9,51 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { createActivityAction, completeTaskAction } from '../../actions'
+import { updateActivityAction } from '../../../actions'
+import type { Activity } from '@/types/domain'
 
-const ACTIVITY_TYPES = ['CALL', 'EMAIL', 'LINKEDIN', 'MEETING', 'DEMO', 'PROPOSAL', 'NOTE', 'OTHER'] as const
+const ACTIVITY_TYPES = [
+  'CALL',
+  'EMAIL',
+  'LINKEDIN',
+  'MEETING',
+  'DEMO',
+  'PROPOSAL',
+  'NOTE',
+  'OTHER',
+] as const
 
-const ACTIVITY_RESULTS = ['NO_ANSWER', 'CONVERSATION', 'MEETING_BOOKED', 'NOT_INTERESTED', 'CALLBACK'] as const
+const ACTIVITY_RESULTS = [
+  'NO_ANSWER',
+  'CONVERSATION',
+  'MEETING_BOOKED',
+  'NOT_INTERESTED',
+  'CALLBACK',
+] as const
 
 const OWNERS = ['Eric', 'Lilian'] as const
 
-interface ActivityFormProps {
+interface ActivityEditFormProps {
+  activityId: string
   opportunityId: string
-  contactId?: string
+  activity: Activity
   currentOwner: 'Eric' | 'Lilian'
-  defaultType?: string
-  taskId?: string
 }
 
-export function ActivityForm({
+export function ActivityEditForm({
+  activityId,
   opportunityId,
-  contactId,
+  activity,
   currentOwner,
-  defaultType,
-  taskId,
-}: ActivityFormProps) {
+}: ActivityEditFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [showTaskComplete, setShowTaskComplete] = useState(false)
 
-  // Set default date/time to now
-  const now = new Date()
-  const defaultDate = now.toISOString().split('T')[0]
-  const defaultTime = now.toTimeString().slice(0, 5)
+  // Parse existing date/time
+  const activityDate = new Date(activity.date)
+  const defaultDate = activityDate.toISOString().split('T')[0]
+  const defaultTime = activityDate.toTimeString().slice(0, 5)
 
   async function handleSubmit(formData: FormData) {
     setError(null)
@@ -54,8 +67,6 @@ export function ActivityForm({
     const datetime = localDateTime.toISOString()
 
     const data = {
-      opportunityId,
-      contactId,
       type: formData.get('type') as string,
       date: datetime,
       result: (formData.get('result') as string) || undefined,
@@ -67,66 +78,15 @@ export function ActivityForm({
     }
 
     startTransition(async () => {
-      const result = await createActivityAction(data)
+      const result = await updateActivityAction(activityId, opportunityId, data)
 
       if (result.success) {
-        // If activity was created from a task, offer to complete it
-        if (taskId) {
-          setShowTaskComplete(true)
-        } else {
-          router.push(`/prospects/${opportunityId}`)
-          router.refresh()
-        }
+        router.push(`/prospects/${opportunityId}`)
+        router.refresh()
       } else {
         setError(result.error || 'Erreur inconnue')
       }
     })
-  }
-
-  async function handleCompleteTask() {
-    if (!taskId) return
-
-    startTransition(async () => {
-      await completeTaskAction(taskId)
-      router.push(`/prospects/${opportunityId}`)
-      router.refresh()
-    })
-  }
-
-  async function handleSkipTaskCompletion() {
-    router.push(`/prospects/${opportunityId}`)
-    router.refresh()
-  }
-
-  // Show task completion prompt
-  if (showTaskComplete && taskId) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Appel enregistré</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm">
-            L'activité a été enregistrée avec succès.
-          </p>
-          <p className="text-sm text-text-muted">
-            Souhaitez-vous marquer la tâche d'appel comme terminée ?
-          </p>
-          <div className="flex gap-3">
-            <Button onClick={handleCompleteTask} disabled={isPending}>
-              {isPending ? 'Fermeture...' : 'Oui, terminer la tâche'}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={handleSkipTaskCompletion}
-              disabled={isPending}
-            >
-              Non, garder la tâche ouverte
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    )
   }
 
   return (
@@ -146,7 +106,7 @@ export function ActivityForm({
             <label className="text-sm font-medium mb-1 block">
               Type <span className="text-red-500">*</span>
             </label>
-            <Select name="type" required defaultValue={defaultType || 'CALL'}>
+            <Select name="type" required defaultValue={activity.type}>
               {ACTIVITY_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {type}
@@ -173,7 +133,7 @@ export function ActivityForm({
 
           <div>
             <label className="text-sm font-medium mb-1 block">Résultat</label>
-            <Select name="result" defaultValue="">
+            <Select name="result" defaultValue={activity.result || ''}>
               <option value="">Aucun</option>
               {ACTIVITY_RESULTS.map((result) => (
                 <option key={result} value={result}>
@@ -187,7 +147,7 @@ export function ActivityForm({
             <label className="text-sm font-medium mb-1 block">
               Owner <span className="text-red-500">*</span>
             </label>
-            <Select name="owner" required defaultValue={currentOwner}>
+            <Select name="owner" required defaultValue={activity.owner}>
               {OWNERS.map((owner) => (
                 <option key={owner} value={owner}>
                   {owner}
@@ -206,6 +166,7 @@ export function ActivityForm({
               min="0"
               step="5"
               placeholder="Ex: 30"
+              defaultValue={activity.durationMinutes || ''}
             />
           </div>
 
@@ -215,6 +176,7 @@ export function ActivityForm({
               name="notes"
               placeholder="Détails de l'activité..."
               rows={4}
+              defaultValue={activity.notes || ''}
             />
           </div>
         </CardContent>

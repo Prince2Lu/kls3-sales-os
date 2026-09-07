@@ -890,6 +890,32 @@ export async function createActivity(
   return mapActivity(record)
 }
 
+export async function updateActivity(
+  id: string,
+  input: Partial<CreateActivityInput>
+): Promise<Activity> {
+  const fields: Partial<AirtableActivityFields> = {}
+
+  if (input.opportunityId !== undefined)
+    fields.Opportunity = input.opportunityId ? [input.opportunityId] : []
+  if (input.contactId !== undefined)
+    fields.Contact = input.contactId ? [input.contactId] : []
+  if (input.type !== undefined) fields.Type = input.type
+  if (input.date !== undefined) fields.Date = input.date
+  if (input.result !== undefined) fields.Result = input.result
+  if (input.notes !== undefined) fields.Notes = input.notes
+  if (input.owner !== undefined) fields.Owner = input.owner
+  if (input.durationMinutes !== undefined)
+    fields['Duration Minutes'] = input.durationMinutes
+
+  const record = await updateRecord<AirtableActivityFields>(
+    TABLE_NAMES.ACTIVITIES,
+    id,
+    fields
+  )
+  return mapActivity(record)
+}
+
 // ============================================================================
 // TASKS - WRITE
 // ============================================================================

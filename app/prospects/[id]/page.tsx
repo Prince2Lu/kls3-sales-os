@@ -17,6 +17,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { TaskActions } from './task-actions'
+import { ActivityActions } from './activity-actions'
 import { EconomicValueSection } from './economic-value-section'
 import {
   getFrenchTaskType,
@@ -67,9 +68,9 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
 
     // Combine timeline items
     const timelineItems = [
-      ...activities.map((a) => ({ ...a, type: 'activity' as const })),
-      ...tasks.map((t) => ({ ...t, type: 'task' as const })),
-      ...stageHistory.map((s) => ({ ...s, type: 'stage' as const })),
+      ...activities.map((a) => ({ ...a, itemType: 'activity' as const })),
+      ...tasks.map((t) => ({ ...t, itemType: 'task' as const })),
+      ...stageHistory.map((s) => ({ ...s, itemType: 'stage' as const })),
     ].sort(
       (a, b) =>
         new Date(
@@ -294,7 +295,7 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                   <div className="space-y-4">
                     {timelineItems.map((item, index) => (
                       <div
-                        key={`${item.type}-${item.id}`}
+                        key={`${item.itemType}-${item.id}`}
                         className="flex gap-4 pb-4 border-b border-border last:border-0"
                       >
                         <div className="flex-shrink-0 w-16 text-text-muted text-xs">
@@ -311,7 +312,7 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                         </div>
 
                         <div className="flex-1 space-y-1">
-                          {item.type === 'activity' && (
+                          {item.itemType === 'activity' && (
                             <>
                               <div className="flex items-center gap-2">
                                 <Badge variant="muted">
@@ -329,10 +330,11 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                               {item.notes && (
                                 <div className="text-sm">{item.notes}</div>
                               )}
+                              <ActivityActions opportunityId={id} activity={item} />
                             </>
                           )}
 
-                          {item.type === 'task' && (
+                          {item.itemType === 'task' && (
                             <>
                               <div className="flex items-center gap-2">
                                 <Badge
@@ -364,11 +366,11 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                               {item.notes && (
                                 <div className="text-sm">{item.notes}</div>
                               )}
-                              <TaskActions taskId={item.id} status={item.status} />
+                              <TaskActions opportunityId={id} task={item} />
                             </>
                           )}
 
-                          {item.type === 'stage' && (
+                          {item.itemType === 'stage' && (
                             <>
                               <div className="flex items-center gap-2">
                                 <Badge variant="default">Changement d'étape</Badge>

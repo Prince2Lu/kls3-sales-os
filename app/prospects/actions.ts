@@ -6,6 +6,7 @@ import {
   createOpportunity,
   updateOpportunity,
   createActivity,
+  updateActivity,
   createTask,
   updateTask,
   createCompany,
@@ -167,6 +168,26 @@ export async function createActivityAction(input: CreateActivityInput) {
   }
 }
 
+export async function updateActivityAction(
+  id: string,
+  opportunityId: string,
+  input: Partial<CreateActivityInput>
+) {
+  try {
+    await updateActivity(id, input)
+
+    revalidatePath(`/prospects/${opportunityId}`)
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to update activity:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
 // ============================================================================
 // TASK ACTIONS
 // ============================================================================
@@ -194,6 +215,28 @@ export async function createTaskAction(input: CreateTaskInput) {
     return { success: true }
   } catch (error) {
     console.error('Failed to create task:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+export async function updateTaskAction(
+  taskId: string,
+  opportunityId: string,
+  input: Partial<CreateTaskInput>
+) {
+  try {
+    await updateTask(taskId, input)
+
+    revalidatePath(`/prospects/${opportunityId}`)
+    revalidatePath('/prospects')
+    revalidatePath('/pipeline')
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to update task:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

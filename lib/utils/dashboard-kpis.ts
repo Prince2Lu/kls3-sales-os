@@ -146,6 +146,13 @@ export function getPipelineByStage(
 
 /**
  * Count calls in period
+ *
+ * IMPORTANT BUSINESS RULE:
+ * Only COMPLETED activities (Activity.type === 'CALL') count as "Appels".
+ * Planned tasks (Task.type === 'CALL') do NOT count until executed.
+ *
+ * This ensures the KPI reflects actual work done, not planned work.
+ * See CLAUDE.md sections 26-27 for Task vs Activity semantics.
  */
 export function countCalls(
   activities: Activity[],
