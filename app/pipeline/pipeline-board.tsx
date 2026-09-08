@@ -21,6 +21,9 @@ import type {
   Task,
   Stage,
   StageHistory,
+  Company,
+  Contact,
+  Activity,
 } from '@/types/domain'
 import { updateOpportunityStage } from './actions'
 import { Badge } from '@/components/ui/badge'
@@ -35,6 +38,9 @@ interface PipelineBoardProps {
   businessLines: BusinessLine[]
   tasks: Task[]
   stageHistory: StageHistory[]
+  companies: Company[]
+  contacts: Contact[]
+  activities: Activity[]
   stages: readonly Stage[]
   currentOwner: 'Eric' | 'Lilian'
 }
@@ -44,6 +50,9 @@ export function PipelineBoard({
   businessLines,
   tasks,
   stageHistory,
+  companies,
+  contacts,
+  activities,
   stages,
   currentOwner,
 }: PipelineBoardProps) {
@@ -58,6 +67,31 @@ export function PipelineBoard({
     () => Object.fromEntries(businessLines.map((bl) => [bl.id, bl])),
     [businessLines]
   )
+
+  const companiesMap = useMemo(
+    () => Object.fromEntries(companies.map((c) => [c.id, c])),
+    [companies]
+  )
+
+  const contactsMap = useMemo(
+    () => Object.fromEntries(contacts.map((c) => [c.id, c])),
+    [contacts]
+  )
+
+  const activitiesMap = useMemo(() => {
+    const map: Record<string, Activity[]> = {}
+    activities.forEach((activity) => {
+      if (activity.opportunityId) {
+        if (!map[activity.opportunityId]) map[activity.opportunityId] = []
+        map[activity.opportunityId].push(activity)
+      }
+    })
+    // Sort activities by date desc for each opportunity
+    Object.keys(map).forEach((oppId) => {
+      map[oppId].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    })
+    return map
+  }, [activities])
 
   const tasksMap = useMemo(() => {
     const map: Record<string, Task[]> = {}
@@ -115,7 +149,11 @@ export function PipelineBoard({
   }, [filteredOpportunities, stages, sortByBusinessLine, blMap])
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Drag starts after 8px movement
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -230,6 +268,9 @@ export function PipelineBoard({
               businessLines={blMap}
               tasksMap={tasksMap}
               stageHistoryMap={stageHistoryMap}
+              companiesMap={companiesMap}
+              contactsMap={contactsMap}
+              activitiesMap={activitiesMap}
             />
           ))}
         </div>

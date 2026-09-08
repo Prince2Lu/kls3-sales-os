@@ -2,6 +2,7 @@
 
 // Kanban Column component for Pipeline (Phase 3)
 
+import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -15,10 +16,14 @@ import type {
   Task,
   Stage,
   StageHistory,
+  Company,
+  Contact,
+  Activity,
 } from '@/types/domain'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import Link from 'next/link'
+import { OpportunityQuickView } from './opportunity-quick-view'
 
 interface KanbanColumnProps {
   stage: Stage
@@ -26,6 +31,9 @@ interface KanbanColumnProps {
   businessLines: Record<string, BusinessLine>
   tasksMap: Record<string, Task[]>
   stageHistoryMap: Record<string, StageHistory>
+  companiesMap: Record<string, Company>
+  contactsMap: Record<string, Contact>
+  activitiesMap: Record<string, Activity[]>
 }
 
 export function KanbanColumn({
@@ -34,12 +42,45 @@ export function KanbanColumn({
   businessLines,
   tasksMap,
   stageHistoryMap,
+  companiesMap,
+  contactsMap,
+  activitiesMap,
 }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({
     id: stage,
   })
 
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null)
+
   const opportunityIds = opportunities.map((o) => o.id)
+
+  const selectedOpportunity = selectedOpportunityId
+    ? opportunities.find((o) => o.id === selectedOpportunityId)
+    : null
+
+  const selectedCompany = selectedOpportunity?.companyId
+    ? companiesMap[selectedOpportunity.companyId]
+    : null
+
+  const selectedContact = selectedOpportunity?.primaryContactId
+    ? contactsMap[selectedOpportunity.primaryContactId]
+    : null
+
+  const selectedBusinessLine = selectedOpportunity
+    ? businessLines[selectedOpportunity.businessLineId]
+    : null
+
+  const selectedLastActivity = selectedOpportunity
+    ? activitiesMap[selectedOpportunity.id]?.[0] || null
+    : null
+
+  const selectedNextTask = selectedOpportunity
+    ? tasksMap[selectedOpportunity.id]?.sort((a, b) => {
+        if (!a.dueAt) return 1
+        if (!b.dueAt) return -1
+        return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
+      })[0] || null
+    : null
 
   return (
     <div className="flex-shrink-0 w-[320px]">
@@ -74,11 +115,26 @@ export function KanbanColumn({
                 businessLine={businessLines[opportunity.businessLineId]}
                 nextTask={nextTask}
                 stageHistory={stageHistoryMap[opportunity.id]}
+                onCardClick={() => setSelectedOpportunityId(opportunity.id)}
               />
             )
           })}
         </SortableContext>
       </div>
+
+      {/* Quick View Drawer */}
+      {selectedOpportunity && (
+        <OpportunityQuickView
+          opportunity={selectedOpportunity}
+          company={selectedCompany || null}
+          contact={selectedContact || null}
+          businessLine={selectedBusinessLine || null}
+          lastActivity={selectedLastActivity}
+          nextTask={selectedNextTask}
+          open={!!selectedOpportunityId}
+          onClose={() => setSelectedOpportunityId(null)}
+        />
+      )}
     </div>
   )
 }
@@ -88,11 +144,13 @@ function DraggableCard({
   businessLine,
   nextTask,
   stageHistory,
+  onCardClick,
 }: {
   opportunity: Opportunity
   businessLine?: BusinessLine
   nextTask?: Task
   stageHistory?: StageHistory
+  onCardClick: () => void
 }) {
   const {
     attributes,
@@ -121,18 +179,21 @@ function DraggableCard({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card className="cursor-grab active:cursor-grabbing hover:border-accent/50 transition-all">
+      <Card
+        className="cursor-grab active:cursor-grabbing hover:border-accent/50 transition-all"
+        onClick={(e) => {
+          // Only trigger click if not dragging
+          if (!isDragging) {
+            e.stopPropagation()
+            onCardClick()
+          }
+        }}
+      >
         <div className="space-y-3">
           <div>
-            <Link
-              href={`/prospects/${opportunity.id}`}
-              className="hover:text-accent"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h4 className="font-medium text-sm line-clamp-2">
-                {opportunity.name}
-              </h4>
-            </Link>
+            <h4 className="font-medium text-sm line-clamp-2 cursor-pointer">
+              {opportunity.name}
+            </h4>
             <div className="flex flex-wrap gap-2 mt-2">
               {businessLine && (
                 <Badge variant="accent">
