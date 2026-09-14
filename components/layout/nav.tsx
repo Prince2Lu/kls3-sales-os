@@ -13,8 +13,9 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/today', label: 'Ma journée' },
   { href: '/pipeline', label: 'Pipeline' },
+  { href: '/cold-call', label: 'Cold Call' },
   { href: '/analytics', label: 'Analytics' },
-  { href: '/prospects', label: 'Prospects' },
+  { href: '/prospects', label: 'Opportunités' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
 ]
@@ -54,7 +55,7 @@ export function Nav({ userEmail }: NavProps = {}) {
 
         <div className="flex items-center gap-4">
           <Link href="/prospects/new">
-            <Button size="sm">+ Prospect</Button>
+            <Button size="sm">+ Opportunité</Button>
           </Link>
           <UserMenu userEmail={userEmail} />
         </div>

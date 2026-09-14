@@ -16,6 +16,7 @@ import type {
   AirtableGoalFields,
   AirtableStageHistoryFields,
   AirtableUserFields,
+  AirtableColdCallTargetFields,
 } from './types'
 import {
   mapBusinessLine,
@@ -28,6 +29,7 @@ import {
   mapGoal,
   mapStageHistory,
   mapUser,
+  mapColdCallTarget,
 } from './mappers'
 
 import type {
@@ -41,6 +43,7 @@ import type {
   Goal,
   StageHistory,
   User,
+  ColdCallTarget,
 } from '@/types/domain'
 
 // ============================================================================
@@ -858,6 +861,7 @@ export async function updateOpportunity(
 export interface CreateActivityInput {
   opportunityId?: string
   contactId?: string
+  coldCallTargetId?: string
   type: string
   date: string
   result?: string
@@ -874,6 +878,7 @@ export async function createActivity(
   const fields: Partial<AirtableActivityFields> = {
     Opportunity: input.opportunityId ? [input.opportunityId] : undefined,
     Contact: input.contactId ? [input.contactId] : undefined,
+    'Cold Call Target': input.coldCallTargetId ? [input.coldCallTargetId] : undefined,
     Type: input.type,
     Date: input.date,
     Result: input.result,
@@ -900,6 +905,8 @@ export async function updateActivity(
     fields.Opportunity = input.opportunityId ? [input.opportunityId] : []
   if (input.contactId !== undefined)
     fields.Contact = input.contactId ? [input.contactId] : []
+  if (input.coldCallTargetId !== undefined)
+    fields['Cold Call Target'] = input.coldCallTargetId ? [input.coldCallTargetId] : []
   if (input.type !== undefined) fields.Type = input.type
   if (input.date !== undefined) fields.Date = input.date
   if (input.result !== undefined) fields.Result = input.result
@@ -923,6 +930,7 @@ export async function updateActivity(
 export interface CreateTaskInput {
   opportunityId?: string
   contactId?: string
+  coldCallTargetId?: string
   type: string
   dueAt?: string
   priority?: string
@@ -937,6 +945,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
   const fields: Partial<AirtableTaskFields> = {
     Opportunity: input.opportunityId ? [input.opportunityId] : undefined,
     Contact: input.contactId ? [input.contactId] : undefined,
+    'Cold Call Target': input.coldCallTargetId ? [input.coldCallTargetId] : undefined,
     Type: input.type,
     'Due At': input.dueAt,
     Priority: input.priority,
@@ -963,6 +972,8 @@ export async function updateTask(
     fields.Opportunity = input.opportunityId ? [input.opportunityId] : []
   if (input.contactId !== undefined)
     fields.Contact = input.contactId ? [input.contactId] : []
+  if (input.coldCallTargetId !== undefined)
+    fields['Cold Call Target'] = input.coldCallTargetId ? [input.coldCallTargetId] : []
   if (input.type !== undefined) fields.Type = input.type
   if (input.dueAt !== undefined) fields['Due At'] = input.dueAt
   if (input.priority !== undefined) fields.Priority = input.priority
@@ -1171,4 +1182,127 @@ export async function getUsers(options?: {
   })
 
   return records.map(mapUser)
+}
+
+// ============================================================================
+// COLD_CALL_TARGETS
+// ============================================================================
+
+export async function getColdCallTargets(options?: {
+  businessLineId?: string
+  owner?: string
+  callStatus?: string
+  maxRecords?: number
+}): Promise<ColdCallTarget[]> {
+  const filters: string[] = []
+
+  // Only use formula filtering for non-linked-record fields
+  if (options?.owner) {
+    filters.push(`{Owner} = "${options.owner}"`)
+  }
+
+  if (options?.callStatus) {
+    filters.push(`{Call Status} = "${options.callStatus}"`)
+  }
+
+  const filterByFormula =
+    filters.length > 0 ? `AND(${filters.join(', ')})` : undefined
+
+  const records = await fetchRecords<AirtableColdCallTargetFields>(
+    TABLE_NAMES.COLD_CALL_TARGETS,
+    {
+      filterByFormula,
+      sort: [{ field: 'Updated At', direction: 'desc' }],
+      maxRecords: options?.maxRecords,
+    }
+  )
+
+  // Filter linked records in-memory
+  let filteredRecords = records
+
+  if (options?.businessLineId) {
+    const businessLineId = options.businessLineId
+    filteredRecords = filteredRecords.filter((record) =>
+      record.fields['Business Line']?.includes(businessLineId)
+    )
+  }
+
+  return filteredRecords.map(mapColdCallTarget)
+}
+
+export async function getColdCallTargetById(
+  id: string
+): Promise<ColdCallTarget> {
+  const record = await fetchRecordById<AirtableColdCallTargetFields>(
+    TABLE_NAMES.COLD_CALL_TARGETS,
+    id
+  )
+  return mapColdCallTarget(record)
+}
+
+// ============================================================================
+// COLD_CALL_TARGETS - WRITE
+// ============================================================================
+
+export interface CreateColdCallTargetInput {
+  companyId: string
+  contactId?: string
+  businessLineId: string
+  owner: string
+  callStatus: string
+}
+
+export async function createColdCallTarget(
+  input: CreateColdCallTargetInput
+): Promise<ColdCallTarget> {
+  const now = new Date().toISOString()
+
+  const fields: Partial<AirtableColdCallTargetFields> = {
+    Company: [input.companyId],
+    Contact: input.contactId ? [input.contactId] : undefined,
+    'Business Line': [input.businessLineId],
+    Owner: input.owner,
+    'Call Status': input.callStatus,
+    'Created At': now,
+    'Updated At': now,
+  }
+
+  const record = await createRecord<AirtableColdCallTargetFields>(
+    TABLE_NAMES.COLD_CALL_TARGETS,
+    fields
+  )
+  return mapColdCallTarget(record)
+}
+
+export async function updateColdCallTarget(
+  id: string,
+  input: Partial<CreateColdCallTargetInput> & { opportunityId?: string }
+): Promise<ColdCallTarget> {
+  const now = new Date().toISOString()
+
+  const fields: Partial<AirtableColdCallTargetFields> = {
+    'Updated At': now,
+  }
+
+  if (input.companyId !== undefined)
+    fields.Company = [input.companyId]
+  if (input.contactId !== undefined)
+    fields.Contact = input.contactId ? [input.contactId] : []
+  if (input.businessLineId !== undefined)
+    fields['Business Line'] = [input.businessLineId]
+  if (input.owner !== undefined) fields.Owner = input.owner
+  if (input.callStatus !== undefined) fields['Call Status'] = input.callStatus
+  if (input.opportunityId !== undefined)
+    fields.Opportunity = input.opportunityId ? [input.opportunityId] : []
+
+  const record = await updateRecord<AirtableColdCallTargetFields>(
+    TABLE_NAMES.COLD_CALL_TARGETS,
+    id,
+    fields
+  )
+  return mapColdCallTarget(record)
+}
+
+export async function deleteColdCallTarget(id: string): Promise<void> {
+  await deleteRecord(TABLE_NAMES.COLD_CALL_TARGETS, id)
 }

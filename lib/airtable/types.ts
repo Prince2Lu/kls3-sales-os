@@ -82,6 +82,7 @@ export interface AirtableOpportunityFields {
 export interface AirtableActivityFields {
   Opportunity?: string[]
   Contact?: string[]
+  'Cold Call Target'?: string[]
   Type: string
   Date: string
   Result?: string
@@ -94,6 +95,7 @@ export interface AirtableActivityFields {
 export interface AirtableTaskFields {
   Opportunity?: string[]
   Contact?: string[]
+  'Cold Call Target'?: string[]
   Type: string
   'Due At'?: string
   Priority?: string
@@ -141,6 +143,17 @@ export interface AirtableUserFields {
   'Password Hash': string
   Role: string
   Active: boolean
+  'Created At': string
+  'Updated At': string
+}
+
+export interface AirtableColdCallTargetFields {
+  Company: string[]
+  Contact?: string[]
+  'Business Line': string[]
+  Owner: string
+  'Call Status': string
+  Opportunity?: string[]
   'Created At': string
   'Updated At': string
 }

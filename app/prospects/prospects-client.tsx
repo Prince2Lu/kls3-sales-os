@@ -343,7 +343,7 @@ export function ProspectsClient({
         <Card className="p-12 text-center">
           <div className="space-y-4">
             <p className="text-text-muted text-lg">
-              {hasActiveFilters ? 'Aucun prospect trouvé.' : 'Aucun prospect pour le moment'}
+              {hasActiveFilters ? 'Aucune opportunité trouvée.' : 'Aucune opportunité pour le moment'}
             </p>
             {hasActiveFilters && (
               <button

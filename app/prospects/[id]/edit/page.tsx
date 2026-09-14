@@ -29,7 +29,7 @@ export default async function EditProspectPage({
     return (
       <div className="max-w-4xl mx-auto space-y-8">
         <div>
-          <h1 className="text-4xl font-bold font-syne">Modifier le prospect</h1>
+          <h1 className="text-4xl font-bold font-syne">Modifier l'opportunité</h1>
           <p className="text-text-muted mt-2">{opportunity.name}</p>
         </div>
 

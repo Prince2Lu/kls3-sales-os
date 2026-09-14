@@ -24,10 +24,10 @@ export default async function ProspectsPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold font-syne">Prospects</h1>
+          <h1 className="text-4xl font-bold font-syne">Opportunités</h1>
         </div>
         <Link href="/prospects/new">
-          <Button>+ Nouveau prospect</Button>
+          <Button>+ Nouvelle opportunité</Button>
         </Link>
       </div>
 

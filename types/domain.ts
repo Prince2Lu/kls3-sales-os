@@ -75,6 +75,14 @@ export type TaskStatus = 'TODO' | 'DONE' | 'CANCELLED'
 
 export type ValueEventStatus = 'PENDING' | 'CONFIRMED' | 'PAID' | 'CANCELLED'
 
+export type CallStatus =
+  | 'À appeler'
+  | 'À rappeler'
+  | 'Email Flow'
+  | 'Mauvais numéro'
+  | 'Pas intéressé'
+  | 'RDV booké'
+
 // ============================================================================
 // BUSINESS_LINES (Section 22)
 // ============================================================================
@@ -166,6 +174,7 @@ export interface Activity {
   id: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId: string | null
   type: ActivityType
   date: string
   result: ActivityResult | null
@@ -183,6 +192,7 @@ export interface Task {
   id: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId: string | null
   type: TaskType
   dueAt: string | null
   priority: Priority | null
@@ -250,6 +260,22 @@ export interface User {
   passwordHash: string
   role: UserRole
   active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// ============================================================================
+// COLD_CALL_TARGETS (Pre-opportunity cold call tracking)
+// ============================================================================
+
+export interface ColdCallTarget {
+  id: string
+  companyId: string
+  contactId: string | null
+  businessLineId: string
+  owner: Owner
+  callStatus: CallStatus
+  opportunityId: string | null
   createdAt: string
   updatedAt: string
 }

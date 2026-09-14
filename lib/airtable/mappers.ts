@@ -13,6 +13,7 @@ import type {
   AirtableGoalFields,
   AirtableStageHistoryFields,
   AirtableUserFields,
+  AirtableColdCallTargetFields,
 } from './types'
 
 import type {
@@ -26,6 +27,7 @@ import type {
   Goal,
   StageHistory,
   User,
+  ColdCallTarget,
   BusinessLineCode,
   Category,
   EventType,
@@ -40,6 +42,7 @@ import type {
   TaskStatus,
   ValueEventStatus,
   UserRole,
+  CallStatus,
 } from '@/types/domain'
 
 // ============================================================================
@@ -157,6 +160,7 @@ export function mapActivity(
     id: record.id,
     opportunityId: fields.Opportunity?.[0] ?? null,
     contactId: fields.Contact?.[0] ?? null,
+    coldCallTargetId: fields['Cold Call Target']?.[0] ?? null,
     type: fields.Type as ActivityType,
     date: fields.Date,
     result: (fields.Result as ActivityResult) ?? null,
@@ -177,6 +181,7 @@ export function mapTask(record: AirtableRecord<AirtableTaskFields>): Task {
     id: record.id,
     opportunityId: fields.Opportunity?.[0] ?? null,
     contactId: fields.Contact?.[0] ?? null,
+    coldCallTargetId: fields['Cold Call Target']?.[0] ?? null,
     type: fields.Type as TaskType,
     dueAt: fields['Due At'] ?? null,
     priority: (fields.Priority as Priority) ?? null,
@@ -270,6 +275,27 @@ export function mapUser(record: AirtableRecord<AirtableUserFields>): User {
     passwordHash: fields['Password Hash'],
     role: fields.Role as UserRole,
     active: fields.Active,
+    createdAt: fields['Created At'],
+    updatedAt: fields['Updated At'],
+  }
+}
+
+// ============================================================================
+// COLD_CALL_TARGETS
+// ============================================================================
+
+export function mapColdCallTarget(
+  record: AirtableRecord<AirtableColdCallTargetFields>
+): ColdCallTarget {
+  const fields = record.fields
+  return {
+    id: record.id,
+    companyId: fields.Company[0],
+    contactId: fields.Contact?.[0] ?? null,
+    businessLineId: fields['Business Line'][0],
+    owner: fields.Owner as Owner,
+    callStatus: fields['Call Status'] as CallStatus,
+    opportunityId: fields.Opportunity?.[0] ?? null,
     createdAt: fields['Created At'],
     updatedAt: fields['Updated At'],
   }
