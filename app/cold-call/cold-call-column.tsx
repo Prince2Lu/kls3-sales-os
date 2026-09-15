@@ -19,6 +19,7 @@ import Link from 'next/link'
 import { CallResultMenu } from './call-result-menu'
 import { CallbackModal } from './callback-modal'
 import { StatusChangeMenu } from './status-change-menu'
+import { ColdCallQuickView } from './cold-call-quick-view'
 import { recordCallActivity, updateColdCallStatus } from './actions'
 import { ContactInfo } from '@/components/pipeline/contact-info'
 import { CallCounter } from '@/components/pipeline/call-counter'
@@ -52,6 +53,51 @@ export function ColdCallColumn({
   currentOwner,
 }: ColdCallColumnProps) {
   const { setNodeRef } = useDroppable({ id })
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null)
+
+  // Derive selected target data
+  const selectedTarget = selectedTargetId
+    ? targets.find((t) => t.id === selectedTargetId)
+    : null
+
+  const selectedCompany = selectedTarget?.companyId
+    ? companiesMap[selectedTarget.companyId]
+    : null
+
+  const selectedContact =
+    selectedTarget?.contactId
+      ? contactsMap[selectedTarget.contactId]
+      : null
+
+  const selectedBusinessLine = selectedTarget?.businessLineId
+    ? blMap[selectedTarget.businessLineId]
+    : null
+
+  const selectedActivities = selectedTarget
+    ? activitiesByTargetId[selectedTarget.id] || []
+    : []
+
+  const selectedTasks = selectedTarget
+    ? tasksByTargetId[selectedTarget.id] || []
+    : []
+
+  // Get last activity (most recent)
+  const lastActivity =
+    selectedActivities.length > 0
+      ? selectedActivities.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        )[0]
+      : null
+
+  // Get next task (earliest due date with status TODO)
+  const nextTask =
+    selectedTasks
+      .filter((t) => t.status === 'TODO')
+      .sort((a, b) => {
+        if (!a.dueAt) return 1
+        if (!b.dueAt) return -1
+        return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
+      })[0] || null
 
   return (
     <div className="flex-shrink-0 w-80">
@@ -87,11 +133,26 @@ export function ColdCallColumn({
                 activities={activitiesByTargetId[target.id] || []}
                 tasks={tasksByTargetId[target.id] || []}
                 currentOwner={currentOwner}
+                onOpenQuickView={() => setSelectedTargetId(target.id)}
               />
             ))}
           </div>
         </SortableContext>
       </div>
+
+      {/* Quick View Drawer */}
+      {selectedTarget && (
+        <ColdCallQuickView
+          target={selectedTarget}
+          company={selectedCompany}
+          contact={selectedContact}
+          businessLine={selectedBusinessLine}
+          lastActivity={lastActivity}
+          nextTask={nextTask}
+          open={!!selectedTargetId}
+          onClose={() => setSelectedTargetId(null)}
+        />
+      )}
     </div>
   )
 }
@@ -104,9 +165,10 @@ interface TargetCardProps {
   activities: Activity[]
   tasks: Task[]
   currentOwner: Owner
+  onOpenQuickView: () => void
 }
 
-function TargetCard({ target, company, contact, businessLine, activities, tasks, currentOwner }: TargetCardProps) {
+function TargetCard({ target, company, contact, businessLine, activities, tasks, currentOwner, onOpenQuickView }: TargetCardProps) {
   const router = useRouter()
   const [showCallMenu, setShowCallMenu] = useState(false)
   const [showCallbackModal, setShowCallbackModal] = useState(false)
@@ -230,9 +292,15 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
       className="cursor-grab active:cursor-grabbing"
     >
       <Card className="space-y-3">
-        {/* Company Name */}
+        {/* Company Name - Clickable to open Quick View */}
         <div>
-          <h4 className="font-medium text-sm line-clamp-1">
+          <h4
+            className="font-medium text-sm line-clamp-1 cursor-pointer hover:text-accent transition-colors"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenQuickView()
+            }}
+          >
             {company?.name || 'Entreprise inconnue'}
           </h4>
         </div>
