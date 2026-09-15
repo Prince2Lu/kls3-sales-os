@@ -56,9 +56,15 @@ export function ColdCallQuickView({
     </>
   )
 
-  // Actions: Open full page (only if opportunity exists)
-  const actions = target.opportunityId ? (
-    <Link href={`/prospects/${target.opportunityId}`} className="block">
+  // Actions: Open full page (opportunity if exists, otherwise company)
+  const detailPageUrl = target.opportunityId
+    ? `/prospects/${target.opportunityId}`
+    : target.companyId
+      ? `/companies/${target.companyId}`
+      : null
+
+  const actions = detailPageUrl ? (
+    <Link href={detailPageUrl} className="block">
       <Button variant="primary" className="w-full" size="sm">
         Ouvrir la fiche complète
       </Button>
