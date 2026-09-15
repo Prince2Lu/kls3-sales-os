@@ -361,7 +361,7 @@ function DraggableCard({
           </div>
 
           {/* Contact Info (name, job title, phone, email, website) */}
-          <ContactInfo contact={contact} company={company} compact />
+          <ContactInfo contact={contact} company={company} />
 
           {/* Value */}
           {opportunity.potentialValue && (

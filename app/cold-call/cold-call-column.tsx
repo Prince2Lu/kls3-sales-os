@@ -306,7 +306,7 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
         </div>
 
         {/* Contact Info (name, job title, phone, email, website) */}
-        <ContactInfo contact={contact} company={company} compact />
+        <ContactInfo contact={contact} company={company} />
 
         {/* Call Count + Tasks Summary */}
         <div className="flex items-center gap-3">
