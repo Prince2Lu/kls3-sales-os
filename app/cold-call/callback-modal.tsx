@@ -27,7 +27,7 @@ export function CallbackModal({ onConfirm, onCancel }: CallbackModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
       <Card className="max-w-md w-full p-6 space-y-6">
         <div>
           <h2 className="text-2xl font-bold font-syne">Planifier un rappel</h2>
