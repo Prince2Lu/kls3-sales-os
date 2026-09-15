@@ -24,6 +24,7 @@ export interface AirtableBusinessLineFields {
   'Revenue Type': string
   'Default Unit Value'?: number
   Active: boolean
+  'Prospecting Mode'?: string // Optional for backward compatibility during transition
 }
 
 export interface AirtableCompanyFields {
@@ -156,4 +157,13 @@ export interface AirtableColdCallTargetFields {
   Opportunity?: string[]
   'Created At': string
   'Updated At': string
+}
+
+export interface AirtableCallStatusHistoryFields {
+  Name?: string // Primary field (auto-generated or optional)
+  'Cold Call Target': string[]
+  'From Status'?: string // null for initial transitions
+  'To Status': string
+  'Changed At': string
+  'Changed By': string
 }

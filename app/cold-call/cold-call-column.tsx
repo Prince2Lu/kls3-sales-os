@@ -11,14 +11,20 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { ColdCallTarget, Company, Contact, BusinessLine, ActivityResult, Owner } from '@/types/domain'
+import type { ColdCallTarget, Company, Contact, BusinessLine, ActivityResult, Owner, Activity, Task } from '@/types/domain'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { CallResultMenu } from './call-result-menu'
 import { CallbackModal } from './callback-modal'
-import { recordCallActivity } from './actions'
+import { StatusChangeMenu } from './status-change-menu'
+import { recordCallActivity, updateColdCallStatus } from './actions'
+import { ContactInfo } from '@/components/pipeline/contact-info'
+import { CallCounter } from '@/components/pipeline/call-counter'
+import { TaskSummary } from '@/components/pipeline/task-summary'
+import { CreateTaskModal } from '@/components/pipeline/create-task-modal'
+import { createManualTask } from '@/lib/actions/task-actions'
 
 interface ColdCallColumnProps {
   id: string
@@ -27,6 +33,8 @@ interface ColdCallColumnProps {
   companiesMap: Record<string, Company>
   contactsMap: Record<string, Contact>
   blMap: Record<string, BusinessLine>
+  activitiesByTargetId: Record<string, Activity[]>
+  tasksByTargetId: Record<string, Task[]>
   isStageColumn?: boolean
   currentOwner: Owner
 }
@@ -38,6 +46,8 @@ export function ColdCallColumn({
   companiesMap,
   contactsMap,
   blMap,
+  activitiesByTargetId,
+  tasksByTargetId,
   isStageColumn = false,
   currentOwner,
 }: ColdCallColumnProps) {
@@ -74,6 +84,8 @@ export function ColdCallColumn({
                 company={companiesMap[target.companyId]}
                 contact={target.contactId ? contactsMap[target.contactId] : null}
                 businessLine={blMap[target.businessLineId]}
+                activities={activitiesByTargetId[target.id] || []}
+                tasks={tasksByTargetId[target.id] || []}
                 currentOwner={currentOwner}
               />
             ))}
@@ -89,14 +101,20 @@ interface TargetCardProps {
   company?: Company
   contact?: Contact | null
   businessLine?: BusinessLine
+  activities: Activity[]
+  tasks: Task[]
   currentOwner: Owner
 }
 
-function TargetCard({ target, company, contact, businessLine, currentOwner }: TargetCardProps) {
+function TargetCard({ target, company, contact, businessLine, activities, tasks, currentOwner }: TargetCardProps) {
   const router = useRouter()
   const [showCallMenu, setShowCallMenu] = useState(false)
   const [showCallbackModal, setShowCallbackModal] = useState(false)
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false)
+  const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [taskInitialType, setTaskInitialType] = useState<import('@/types/domain').TaskType | undefined>(undefined)
   const [isRecording, setIsRecording] = useState(false)
+  const [isChangingStatus, setIsChangingStatus] = useState(false)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: target.id })
@@ -106,9 +124,6 @@ function TargetCard({ target, company, contact, businessLine, currentOwner }: Ta
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
-
-  // Phone number priority: Contact.phone > Company.phone > null
-  const phoneNumber = contact?.phone || company?.phone || null
 
   async function handleCallResult(result: ActivityResult) {
     setShowCallMenu(false)
@@ -120,12 +135,19 @@ function TargetCard({ target, company, contact, businessLine, currentOwner }: Ta
     }
 
     // Other results: record directly
+    // owner is determined server-side from session
     setIsRecording(true)
-    const response = await recordCallActivity(target.id, result, currentOwner)
+    const response = await recordCallActivity(target.id, result)
     setIsRecording(false)
 
     if (response.success) {
       router.refresh()
+
+      // EMAIL_REQUESTED: propose task creation with EMAIL preselected
+      if (result === 'EMAIL_REQUESTED') {
+        setTaskInitialType('EMAIL')
+        setShowCreateTaskModal(true)
+      }
     } else {
       alert('Erreur lors de l\'enregistrement')
     }
@@ -135,7 +157,8 @@ function TargetCard({ target, company, contact, businessLine, currentOwner }: Ta
     setShowCallbackModal(false)
     setIsRecording(true)
 
-    const response = await recordCallActivity(target.id, 'CALLBACK', currentOwner, {
+    // owner is determined server-side from session
+    const response = await recordCallActivity(target.id, 'CALLBACK', {
       callbackDate,
     })
 
@@ -143,8 +166,58 @@ function TargetCard({ target, company, contact, businessLine, currentOwner }: Ta
 
     if (response.success) {
       router.refresh()
+
+      // CALLBACK: propose task creation with CALL preselected
+      setTaskInitialType('CALL')
+      setShowCreateTaskModal(true)
     } else {
       alert('Erreur lors de l\'enregistrement')
+    }
+  }
+
+  async function handleStatusChange(newStatus: import('@/types/domain').CallStatus) {
+    setShowStatusMenu(false)
+
+    // À rappeler requires callback date
+    if (newStatus === 'À rappeler') {
+      setShowCallbackModal(true)
+      return
+    }
+
+    setIsChangingStatus(true)
+    const response = await updateColdCallStatus(target.id, newStatus)
+    setIsChangingStatus(false)
+
+    if (response.success) {
+      router.refresh()
+    } else {
+      alert('Erreur lors du changement de statut')
+    }
+  }
+
+  async function handleCreateTask(taskData: {
+    type: import('@/types/domain').TaskType
+    dueAt: string
+    priority: import('@/types/domain').Priority
+    notes?: string
+  }) {
+    setShowCreateTaskModal(false)
+    setTaskInitialType(undefined) // Reset preselection
+    setIsRecording(true)
+
+    const response = await createManualTask({
+      coldCallTargetId: target.id,
+      opportunityId: target.opportunityId || undefined,
+      contactId: target.contactId || undefined,
+      ...taskData,
+    })
+
+    setIsRecording(false)
+
+    if (response.success) {
+      router.refresh()
+    } else {
+      alert('Erreur lors de la création de la tâche')
     }
   }
 
@@ -156,7 +229,7 @@ function TargetCard({ target, company, contact, businessLine, currentOwner }: Ta
       {...listeners}
       className="cursor-grab active:cursor-grabbing"
     >
-      <Card className="space-y-2">
+      <Card className="space-y-3">
         {/* Company Name */}
         <div>
           <h4 className="font-medium text-sm line-clamp-1">
@@ -164,35 +237,14 @@ function TargetCard({ target, company, contact, businessLine, currentOwner }: Ta
           </h4>
         </div>
 
-        {/* Contact Info */}
-        {contact && (
-          <div className="text-xs text-text-muted space-y-0.5">
-            <div>
-              {contact.firstName} {contact.lastName}
-            </div>
-            {contact.jobTitle && <div className="italic">{contact.jobTitle}</div>}
-          </div>
-        )}
+        {/* Contact Info (name, job title, phone, email, website) */}
+        <ContactInfo contact={contact} company={company} compact />
 
-        {/* Phone Number - Always visible */}
-        <div className="text-xs">
-          {phoneNumber ? (
-            <a
-              href={`tel:${phoneNumber}`}
-              className="font-mono text-accent hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {phoneNumber}
-            </a>
-          ) : (
-            <span className="text-text-muted italic">Aucun numéro</span>
-          )}
+        {/* Call Count + Tasks Summary */}
+        <div className="flex items-center gap-3">
+          <CallCounter activities={activities} compact />
+          <TaskSummary tasks={tasks} compact />
         </div>
-
-        {/* City */}
-        {company?.city && (
-          <div className="text-xs text-text-muted">{company.city}</div>
-        )}
 
         {/* Business Line Badge */}
         {businessLine && (
@@ -206,18 +258,42 @@ function TargetCard({ target, company, contact, businessLine, currentOwner }: Ta
         {/* Owner + Actions */}
         <div className="text-xs text-text-muted flex items-center justify-between gap-2">
           <span>{target.owner}</span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             {/* Call button */}
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 setShowCallMenu(true)
               }}
-              className="text-accent hover:text-accent/80 text-lg"
+              className="text-accent hover:text-accent/80 text-base"
               title="Enregistrer un appel"
-              disabled={isRecording}
+              disabled={isRecording || isChangingStatus}
             >
               📞
+            </button>
+            {/* Create task button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowCreateTaskModal(true)
+              }}
+              className="text-accent hover:text-accent/80 text-base"
+              title="Créer une tâche"
+              disabled={isRecording || isChangingStatus}
+            >
+              ✚
+            </button>
+            {/* Change status button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowStatusMenu(true)
+              }}
+              className="text-accent hover:text-accent/80 text-base"
+              title="Changer le statut"
+              disabled={isRecording || isChangingStatus}
+            >
+              ⚡
             </button>
             {target.opportunityId && (
               <Link
@@ -225,7 +301,7 @@ function TargetCard({ target, company, contact, businessLine, currentOwner }: Ta
                 className="text-accent hover:underline text-xs"
                 onClick={(e) => e.stopPropagation()}
               >
-                Opp →
+                →
               </Link>
             )}
           </div>
@@ -245,6 +321,27 @@ function TargetCard({ target, company, contact, businessLine, currentOwner }: Ta
         <CallbackModal
           onConfirm={handleCallbackConfirm}
           onCancel={() => setShowCallbackModal(false)}
+        />
+      )}
+
+      {/* Create Task Modal */}
+      {showCreateTaskModal && (
+        <CreateTaskModal
+          onConfirm={handleCreateTask}
+          onCancel={() => {
+            setShowCreateTaskModal(false)
+            setTaskInitialType(undefined) // Reset preselection on cancel
+          }}
+          initialType={taskInitialType}
+        />
+      )}
+
+      {/* Status Change Menu */}
+      {showStatusMenu && (
+        <StatusChangeMenu
+          currentStatus={target.callStatus}
+          onSelect={handleStatusChange}
+          onCancel={() => setShowStatusMenu(false)}
         />
       )}
     </div>

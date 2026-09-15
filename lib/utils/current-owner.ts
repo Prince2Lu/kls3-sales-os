@@ -14,6 +14,16 @@ const VALID_OWNERS: Owner[] = ['Eric', 'Lilian']
  * @returns Owner ('Eric' | 'Lilian')
  */
 export async function getCurrentOwner(): Promise<Owner> {
+  // TEST MODE: Allow scripts to set owner via TEST_OWNER env var
+  // SECURITY: Only in non-production environments
+  if (process.env.NODE_ENV !== 'production' && process.env.TEST_OWNER) {
+    const testOwner = process.env.TEST_OWNER
+    if (!VALID_OWNERS.includes(testOwner as Owner)) {
+      throw new Error(`TEST_OWNER "${testOwner}" is not a valid Sales OS owner`)
+    }
+    return testOwner as Owner
+  }
+
   const session = await auth()
 
   if (!session?.user?.name) {

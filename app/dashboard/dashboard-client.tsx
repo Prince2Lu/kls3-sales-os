@@ -167,11 +167,12 @@ export function DashboardClient({
           selectedBusinessLineId={selectedBusinessLineId}
         />
 
-        {/* À surveiller - Compact vertical panel */}
+        {/* À surveiller - Compact vertical panel (V2: includes 7-day watchlist) */}
         <Attention
           opportunities={opportunities}
           tasks={tasks}
           valueEvents={valueEvents}
+          activities={activities}
           selectedBusinessLineId={selectedBusinessLineId}
           businessLines={businessLines}
         />

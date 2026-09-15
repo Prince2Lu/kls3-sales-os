@@ -1,16 +1,19 @@
-// À surveiller section for Dashboard (Phase 6C-A + Phase 6C-B)
+// À surveiller section for Dashboard (Phase 6C-A + Phase 6C-B + V2)
 // CURRENT STATE - NOT period-filtered
 // Compact vertical decision panel
+// V2: Added 7-day watchlist for hot opportunities without activity
 
 import Link from 'next/link'
-import type { Opportunity, Task, BusinessLine, ValueEvent } from '@/types/domain'
+import type { Opportunity, Task, BusinessLine, ValueEvent, Activity } from '@/types/domain'
 import { getNextAction } from '@/lib/utils/next-action'
 import { buildUrlWithBusinessLine } from '@/lib/utils/business-line-filter'
+import { getDaysDifferenceInParis, getNowInParis } from '@/lib/utils/timezone'
 
 interface AttentionProps {
   opportunities: Opportunity[]
   tasks: Task[]
   valueEvents: ValueEvent[]
+  activities: Activity[]
   selectedBusinessLineId: string | null
   businessLines?: BusinessLine[]
 }
@@ -19,6 +22,7 @@ export function Attention({
   opportunities,
   tasks,
   valueEvents,
+  activities,
   selectedBusinessLineId,
   businessLines = [],
 }: AttentionProps) {
@@ -34,6 +38,14 @@ export function Attention({
         return opp?.businessLineId === selectedBusinessLineId
       })
     : tasks
+
+  const filteredActivities = selectedBusinessLineId
+    ? activities.filter((activity) => {
+        if (!activity.opportunityId) return false
+        const opp = opportunities.find((o) => o.id === activity.opportunityId)
+        return opp?.businessLineId === selectedBusinessLineId
+      })
+    : activities
 
   // Active opportunities only (exclude Gagné/Perdu)
   const activeOpportunities = filteredOpportunities.filter(
@@ -80,6 +92,42 @@ export function Attention({
     return !hasQualifyingEvent
   }).length
 
+  // E. V2: Hot opportunities without activity for 7+ days (Watchlist)
+  const WATCHLIST_STAGES = ['RDV', 'Opportunité', 'Proposition']
+  const WATCHLIST_THRESHOLD_DAYS = 7
+
+  // Group activities by opportunityId and find most recent activity date
+  const activityByOpportunityId: Record<string, Date> = {}
+  filteredActivities.forEach((activity) => {
+    if (activity.opportunityId && activity.date) {
+      const activityDate = new Date(activity.date)
+      const existingDate = activityByOpportunityId[activity.opportunityId]
+      if (!existingDate || activityDate > existingDate) {
+        activityByOpportunityId[activity.opportunityId] = activityDate
+      }
+    }
+  })
+
+  const todayParis = getNowInParis()
+  const hotOpportunitiesWithoutActivity = activeOpportunities.filter((opp) => {
+    // Must be in a hot stage
+    if (!WATCHLIST_STAGES.includes(opp.stage)) return false
+
+    // Must not have any TODO tasks
+    if (getNextAction(opp.id, tasks) !== null) return false
+
+    // Calculate days since last activity using Europe/Paris calendar days
+    const lastActivityDate = activityByOpportunityId[opp.id]
+    if (!lastActivityDate) {
+      // No activity ever - should be flagged
+      return true
+    }
+
+    const daysSince = getDaysDifferenceInParis(lastActivityDate, todayParis)
+
+    return daysSince >= WATCHLIST_THRESHOLD_DAYS
+  }).length
+
   // Get Business Line CODE for URL building
   const selectedBL = businessLines.find((bl) => bl.id === selectedBusinessLineId)
   const businessLineCode = selectedBL?.code || null
@@ -94,6 +142,13 @@ export function Attention({
       subtitle: 'À traiter aujourd\'hui',
       href: todayUrl,
       color: 'red' as const,
+    },
+    {
+      count: hotOpportunitiesWithoutActivity,
+      label: 'Opportunités avancées sans activité',
+      subtitle: '7+ jours sans action',
+      href: todayUrl,
+      color: 'orange' as const,
     },
     {
       count: withoutNextAction,
@@ -149,6 +204,8 @@ export function Attention({
                       className={`text-2xl font-bold font-syne ${
                         indicator.color === 'red'
                           ? 'text-red-400'
+                          : indicator.color === 'orange'
+                          ? 'text-orange-400'
                           : indicator.color === 'amber'
                           ? 'text-amber-400'
                           : 'text-accent'

@@ -14,10 +14,13 @@ interface CallResultMenuProps {
 
 const CALL_RESULTS: { value: ActivityResult; label: string }[] = [
   { value: 'NO_ANSWER', label: 'Pas de réponse' },
+  { value: 'VOICEMAIL', label: 'Message vocal' },
   { value: 'CONVERSATION', label: 'Conversation' },
   { value: 'MEETING_BOOKED', label: 'RDV pris' },
   { value: 'NOT_INTERESTED', label: 'Pas intéressé' },
   { value: 'CALLBACK', label: 'À rappeler' },
+  { value: 'EMAIL_REQUESTED', label: 'Email demandé' },
+  { value: 'WRONG_NUMBER', label: 'Mauvais numéro' },
 ]
 
 export function CallResultMenu({ onSelect, onCancel }: CallResultMenuProps) {

@@ -17,6 +17,7 @@ import type {
   AirtableStageHistoryFields,
   AirtableUserFields,
   AirtableColdCallTargetFields,
+  AirtableCallStatusHistoryFields,
 } from './types'
 import {
   mapBusinessLine,
@@ -30,6 +31,7 @@ import {
   mapStageHistory,
   mapUser,
   mapColdCallTarget,
+  mapCallStatusHistory,
 } from './mappers'
 
 import type {
@@ -44,6 +46,9 @@ import type {
   StageHistory,
   User,
   ColdCallTarget,
+  CallStatusHistory,
+  CallStatus,
+  Owner,
 } from '@/types/domain'
 
 // ============================================================================
@@ -1305,4 +1310,75 @@ export async function updateColdCallTarget(
 
 export async function deleteColdCallTarget(id: string): Promise<void> {
   await deleteRecord(TABLE_NAMES.COLD_CALL_TARGETS, id)
+}
+
+// ============================================================================
+// CALL_STATUS_HISTORY
+// ============================================================================
+
+export interface CreateCallStatusHistoryInput {
+  coldCallTargetId: string
+  fromStatus: CallStatus | null
+  toStatus: CallStatus
+  changedAt: string
+  changedBy: Owner
+}
+
+export async function createCallStatusHistory(
+  input: CreateCallStatusHistoryInput
+): Promise<CallStatusHistory> {
+  const fields: Partial<AirtableCallStatusHistoryFields> = {
+    'Cold Call Target': [input.coldCallTargetId],
+    'From Status': input.fromStatus ?? undefined,
+    'To Status': input.toStatus,
+    'Changed At': input.changedAt,
+    'Changed By': input.changedBy,
+  }
+
+  const record = await createRecord<AirtableCallStatusHistoryFields>(
+    TABLE_NAMES.CALL_STATUS_HISTORY,
+    fields
+  )
+
+  const mapped = mapCallStatusHistory(record)
+  if (!mapped) {
+    throw new Error('Failed to map created Call Status History record')
+  }
+
+  return mapped
+}
+
+export interface GetCallStatusHistoryOptions {
+  coldCallTargetId?: string
+  maxRecords?: number
+}
+
+export async function getCallStatusHistory(
+  options: GetCallStatusHistoryOptions = {}
+): Promise<CallStatusHistory[]> {
+  const { coldCallTargetId, maxRecords } = options
+
+  const records = await fetchRecords<AirtableCallStatusHistoryFields>(
+    TABLE_NAMES.CALL_STATUS_HISTORY,
+    {
+      sort: [{ field: 'Changed At', direction: 'desc' }],
+      maxRecords: coldCallTargetId ? undefined : maxRecords, // Don't limit if filtering in-memory
+    }
+  )
+
+  // Filter linked records in-memory since Airtable formula filtering is unreliable
+  let filteredRecords = records
+
+  if (coldCallTargetId) {
+    filteredRecords = filteredRecords.filter(record =>
+      record.fields['Cold Call Target']?.includes(coldCallTargetId)
+    )
+  }
+
+  // Apply maxRecords after in-memory filtering
+  if (coldCallTargetId && maxRecords) {
+    filteredRecords = filteredRecords.slice(0, maxRecords)
+  }
+
+  return filteredRecords.map(mapCallStatusHistory).filter((h): h is CallStatusHistory => h !== null)
 }

@@ -26,15 +26,15 @@ export default async function FocusPage(props: {
   // Parse Business Line filter from URL
   const selectedBusinessLineCode = parseBusinessLineParam(searchParams.businessLine)
 
-  // Fetch all data needed to build the queue
+  // Fetch all data needed to build the queue - NO LIMITS
   const [allTasks, opportunities, contacts, companies, businessLines, activities] =
     await Promise.all([
-      getTasks({ owner: currentOwner, maxRecords: 500 }),
-      getOpportunities({ maxRecords: 500 }),
-      getContacts({ maxRecords: 500 }),
-      getCompanies({ maxRecords: 500 }),
+      getTasks({ owner: currentOwner }), // No limit - all tasks for current owner
+      getOpportunities(), // No limit - all opportunities
+      getContacts(), // No limit - all contacts
+      getCompanies(), // No limit - all companies
       getBusinessLines(),
-      getActivities({ maxRecords: 1000 }), // Recent activities for context
+      getActivities(), // No limit - all activities for context
     ])
 
   // Build the Focus queue with Business Line filter

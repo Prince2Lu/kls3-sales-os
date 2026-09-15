@@ -2,13 +2,14 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { Nav } from './nav'
+import { NavV2 } from './nav-v2'
 
 interface ConditionalNavProps {
   userEmail?: string | null
+  userName?: string | null
 }
 
-export function ConditionalNav({ userEmail }: ConditionalNavProps) {
+export function ConditionalNav({ userEmail, userName }: ConditionalNavProps) {
   const pathname = usePathname()
 
   // Hide Nav on login page
@@ -16,6 +17,6 @@ export function ConditionalNav({ userEmail }: ConditionalNavProps) {
     return null
   }
 
-  // Show Nav on all other pages
-  return <Nav userEmail={userEmail} />
+  // Show NavV2 (responsive, professional design) on all other pages
+  return <NavV2 userEmail={userEmail} userName={userName} />
 }

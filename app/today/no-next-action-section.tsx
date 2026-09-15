@@ -16,10 +16,10 @@ export async function NoNextActionSection({
   opportunities,
   businessLineMap,
 }: NoNextActionSectionProps) {
-  // Fetch related data
+  // Fetch related data - NO LIMITS
   const [companies, contacts] = await Promise.all([
-    getCompanies({ maxRecords: 500 }),
-    getContacts({ maxRecords: 500 }),
+    getCompanies(), // No limit - all companies
+    getContacts(), // No limit - all contacts
   ])
 
   // Create lookup maps

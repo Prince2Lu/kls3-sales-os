@@ -50,6 +50,7 @@ export const TABLE_NAMES = {
   STAGE_HISTORY: 'STAGE_HISTORY',
   USERS: 'USERS',
   COLD_CALL_TARGETS: 'COLD_CALL_TARGETS',
+  CALL_STATUS_HISTORY: 'CALL_STATUS_HISTORY',
 } as const
 
 // Helper to construct Airtable API URL

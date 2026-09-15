@@ -12,8 +12,9 @@ import {
   createStageHistory,
   createActivity,
 } from '@/lib/airtable'
+import { changeColdCallStatus } from '@/lib/cold-call/status-manager'
 import { revalidatePath } from 'next/cache'
-import type { CallStatus, Stage, ActivityResult } from '@/types/domain'
+import type { CallStatus, Stage, ActivityResult, Owner } from '@/types/domain'
 
 /**
  * Update cold call target status
@@ -22,18 +23,32 @@ import type { CallStatus, Stage, ActivityResult } from '@/types/domain'
 export async function updateColdCallStatus(
   targetId: string,
   newStatus: CallStatus,
-  changedBy: string,
   metadata?: {
     callbackDate?: string // For "À rappeler"
   }
 ) {
   try {
+    // Get changedBy server-side from session for STAGE_HISTORY
+    const { getCurrentOwner } = await import('@/lib/utils/current-owner')
+    const changedBy = await getCurrentOwner()
+
     const target = await getColdCallTargetById(targetId)
 
-    // Update cold call target status
-    const updated = await updateColdCallTarget(targetId, {
-      callStatus: newStatus,
+    // Use centralized status change function (with automatic history tracking)
+    // changedBy for Call Status History is determined inside changeColdCallStatus
+    const statusChangeResult = await changeColdCallStatus({
+      targetId,
+      toStatus: newStatus,
     })
+
+    if (!statusChangeResult.success) {
+      return {
+        success: false,
+        error: statusChangeResult.error || 'Failed to change status',
+      }
+    }
+
+    const updated = statusChangeResult.target
 
     // Business logic by status
     switch (newStatus) {
@@ -195,9 +210,10 @@ export async function updateColdCallStatus(
  */
 export async function updateColdCallOpportunityStage(
   targetId: string,
-  newStage: Stage,
-  changedBy: string
+  newStage: Stage
 ) {
+  const { getCurrentOwner } = await import('@/lib/utils/current-owner')
+  const changedBy = await getCurrentOwner()
   try {
     const target = await getColdCallTargetById(targetId)
 
@@ -263,12 +279,14 @@ export async function updateColdCallOpportunityStage(
 export async function recordCallActivity(
   targetId: string,
   result: ActivityResult,
-  owner: string,
   metadata?: {
     callbackDate?: string // For CALLBACK result
   }
 ) {
   try {
+    const { getCurrentOwner } = await import('@/lib/utils/current-owner')
+    const owner = await getCurrentOwner()
+
     const target = await getColdCallTargetById(targetId)
 
     // Create ACTIVITY with explicit cold call target link
@@ -288,27 +306,39 @@ export async function recordCallActivity(
     switch (result) {
       case 'MEETING_BOOKED':
         // Trigger RDV booké workflow
-        return await updateColdCallStatus(targetId, 'RDV booké', owner)
+        return await updateColdCallStatus(targetId, 'RDV booké', {
+          callbackDate: metadata?.callbackDate,
+        })
 
       case 'NOT_INTERESTED':
-        // Update to Pas intéressé
-        await updateColdCallTarget(targetId, {
-          callStatus: 'Pas intéressé',
+        // Update to Pas intéressé with history tracking
+        await changeColdCallStatus({
+          targetId,
+          toStatus: 'Pas intéressé',
         })
         break
 
       case 'CALLBACK':
         // Trigger À rappeler workflow with callback date
         if (metadata?.callbackDate) {
-          return await updateColdCallStatus(targetId, 'À rappeler', owner, {
+          return await updateColdCallStatus(targetId, 'À rappeler', {
             callbackDate: metadata.callbackDate,
           })
         } else {
-          // If no date provided, just update status (TASK will be created manually)
-          await updateColdCallTarget(targetId, {
-            callStatus: 'À rappeler',
+          // If no date provided, just update status with history tracking
+          await changeColdCallStatus({
+            targetId,
+            toStatus: 'À rappeler',
           })
         }
+        break
+
+      case 'WRONG_NUMBER':
+        // Update to Mauvais numéro with history tracking
+        await changeColdCallStatus({
+          targetId,
+          toStatus: 'Mauvais numéro',
+        })
         break
 
       // NO_ANSWER and CONVERSATION: no status change

@@ -14,6 +14,7 @@ import type {
   AirtableStageHistoryFields,
   AirtableUserFields,
   AirtableColdCallTargetFields,
+  AirtableCallStatusHistoryFields,
 } from './types'
 
 import type {
@@ -28,10 +29,12 @@ import type {
   StageHistory,
   User,
   ColdCallTarget,
+  CallStatusHistory,
   BusinessLineCode,
   Category,
   EventType,
   RevenueType,
+  ProspectingMode,
   Stage,
   Priority,
   Source,
@@ -53,6 +56,10 @@ export function mapBusinessLine(
   record: AirtableRecord<AirtableBusinessLineFields>
 ): BusinessLine {
   const fields = record.fields
+
+  // Fallback: If Prospecting Mode is not set, default to DIRECT_OPPORTUNITY (safe default)
+  const prospectingMode = (fields['Prospecting Mode'] as ProspectingMode | undefined) ?? 'DIRECT_OPPORTUNITY'
+
   return {
     id: record.id,
     name: fields.Name,
@@ -62,6 +69,7 @@ export function mapBusinessLine(
     revenueType: fields['Revenue Type'] as RevenueType,
     defaultUnitValue: fields['Default Unit Value'] ?? null,
     active: fields.Active,
+    prospectingMode,
   }
 }
 
@@ -298,5 +306,32 @@ export function mapColdCallTarget(
     opportunityId: fields.Opportunity?.[0] ?? null,
     createdAt: fields['Created At'],
     updatedAt: fields['Updated At'],
+  }
+}
+
+// ============================================================================
+// CALL_STATUS_HISTORY
+// ============================================================================
+
+export function mapCallStatusHistory(
+  record: AirtableRecord<AirtableCallStatusHistoryFields>
+): CallStatusHistory | null {
+  const fields = record.fields
+
+  // Call Status History without Cold Call Target link is invalid
+  if (!fields['Cold Call Target'] || fields['Cold Call Target'].length === 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[mapCallStatusHistory] Skipping invalid record ${record.id}: missing Cold Call Target link`)
+    }
+    return null
+  }
+
+  return {
+    id: record.id,
+    coldCallTargetId: fields['Cold Call Target'][0],
+    fromStatus: (fields['From Status'] as CallStatus) ?? null,
+    toStatus: fields['To Status'] as CallStatus,
+    changedAt: fields['Changed At'],
+    changedBy: fields['Changed By'] as Owner,
   }
 }

@@ -16,15 +16,17 @@ import { SectionLabel } from '@/components/ui/section-label'
 export default async function PipelinePage() {
   const currentOwner = await getCurrentOwner()
 
+  // Load all data (pagination handled automatically by fetchRecords)
+  // No maxRecords limits on activities/tasks to ensure complete counts
   const [opportunities, businessLines, allTasks, stageHistory, companies, contacts, activities] =
     await Promise.all([
       getOpportunities({ maxRecords: 500 }),
       getBusinessLines(),
-      getTasks({ status: 'TODO', maxRecords: 500 }),
-      getStageHistory({ maxRecords: 1000 }),
+      getTasks({ status: 'TODO' }), // No limit - all TODO tasks
+      getStageHistory({ maxRecords: 1000 }), // History can be limited
       getCompanies({ maxRecords: 500 }),
       getContacts({ maxRecords: 500 }),
-      getActivities({ maxRecords: 1000 }),
+      getActivities(), // No limit - complete call history
     ])
 
   // Group opportunities by stage

@@ -9,6 +9,8 @@ export type BusinessLineCode = 'PAUL' | 'SACHA' | 'CALYMIA' | 'KLS3_NOTAIRES'
 
 export type Category = 'PARTNER' | 'OWNED'
 
+export type ProspectingMode = 'COLD_CALL' | 'DIRECT_OPPORTUNITY'
+
 export type RevenueType = 'ONE_SHOT' | 'MRR' | 'PROJECT'
 
 export type EventType =
@@ -61,6 +63,9 @@ export type ActivityResult =
   | 'MEETING_BOOKED'
   | 'NOT_INTERESTED'
   | 'CALLBACK'
+  | 'WRONG_NUMBER'
+  | 'VOICEMAIL'
+  | 'EMAIL_REQUESTED'
 
 export type TaskType =
   | 'CALL'
@@ -68,6 +73,8 @@ export type TaskType =
   | 'LINKEDIN'
   | 'MEETING'
   | 'DEMO'
+  | 'PROPOSAL'
+  | 'DOCUMENT'
   | 'FOLLOW_UP'
   | 'OTHER'
 
@@ -96,6 +103,7 @@ export interface BusinessLine {
   revenueType: RevenueType
   defaultUnitValue: number | null
   active: boolean
+  prospectingMode: ProspectingMode
 }
 
 // ============================================================================
@@ -278,4 +286,17 @@ export interface ColdCallTarget {
   opportunityId: string | null
   createdAt: string
   updatedAt: string
+}
+
+// ============================================================================
+// CALL_STATUS_HISTORY (Call Status transition history for Cold Call Targets)
+// ============================================================================
+
+export interface CallStatusHistory {
+  id: string
+  coldCallTargetId: string
+  fromStatus: CallStatus | null // null for initial status
+  toStatus: CallStatus
+  changedAt: string
+  changedBy: Owner
 }

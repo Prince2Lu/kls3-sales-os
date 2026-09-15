@@ -234,3 +234,63 @@ export function toParisDate(date: Date): Date {
     paris.ms
   )
 }
+
+/**
+ * Calculate days elapsed between two dates in Europe/Paris calendar days.
+ * Returns the number of full calendar days that have passed.
+ *
+ * DST-safe: Uses calendar date components (YYYY-MM-DD) instead of elapsed hours.
+ * This ensures that "1 day" = one calendar day change, regardless of DST transitions.
+ *
+ * @param fromDate - The earlier date
+ * @param toDate - The later date (default: now in Paris)
+ * @returns Number of full calendar days elapsed
+ *
+ * Examples:
+ * - Activity on 8 Sept 2026 → checked on 15 Sept 2026 → returns 7 days
+ * - 28 March → 29 March (spring DST) → returns 1 day (not 23h/24)
+ * - 24 October → 25 October (fall DST) → returns 1 day (not 25h/24)
+ */
+export function getDaysDifferenceInParis(fromDate: Date, toDate: Date = getNowInParis()): number {
+  // Get calendar components in Europe/Paris timezone
+  const fromComponents = getParisComponents(fromDate)
+  const toComponents = getParisComponents(toDate)
+
+  // Convert to neutral UTC dates at midnight (calendar dates only)
+  const fromUtcMidnight = Date.UTC(fromComponents.year, fromComponents.month - 1, fromComponents.day)
+  const toUtcMidnight = Date.UTC(toComponents.year, toComponents.month - 1, toComponents.day)
+
+  // Calculate difference in calendar days (86400000 ms = 24h)
+  return Math.floor((toUtcMidnight - fromUtcMidnight) / 86400000)
+}
+
+/**
+ * Create ISO string from local Paris date and optional time.
+ * Used for Task creation where user input is in local time.
+ *
+ * @param dateString - YYYY-MM-DD format
+ * @param timeString - HH:mm format (optional, defaults to end of day 23:59)
+ * @returns ISO 8601 string representing the instant
+ *
+ * Examples:
+ * - createISOFromParisDateTime('2026-03-15', '10:00') → represents 10:00 Paris time
+ * - createISOFromParisDateTime('2026-03-15') → represents 23:59 Paris time (end of day)
+ */
+export function createISOFromParisDateTime(
+  dateString: string,
+  timeString?: string
+): string {
+  const [year, month, day] = dateString.split('-').map(Number)
+
+  let hours = 23
+  let minutes = 59
+
+  if (timeString) {
+    const [h, m] = timeString.split(':').map(Number)
+    hours = h
+    minutes = m
+  }
+
+  const date = createDateInParis(year, month, day, hours, minutes, 0, 0)
+  return date.toISOString()
+}

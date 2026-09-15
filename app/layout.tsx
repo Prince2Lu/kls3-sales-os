@@ -32,7 +32,10 @@ export default async function RootLayout({
   return (
     <html lang="fr" className={`${syne.variable} ${inter.variable}`}>
       <body className="font-inter min-h-screen">
-        <ConditionalNav userEmail={session?.user?.email} />
+        <ConditionalNav
+          userEmail={session?.user?.email}
+          userName={session?.user?.name}
+        />
         <main className="container mx-auto px-6 py-8">{children}</main>
         <Analytics />
       </body>

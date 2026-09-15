@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/today', label: 'Ma journée' },
+  { href: '/work', label: 'Mode de travail' },
   { href: '/pipeline', label: 'Pipeline' },
   { href: '/cold-call', label: 'Cold Call' },
   { href: '/analytics', label: 'Analytics' },

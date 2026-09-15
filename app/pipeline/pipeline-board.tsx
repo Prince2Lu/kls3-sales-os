@@ -197,10 +197,10 @@ export function PipelineBoard({
 
     // Update stage
     setIsUpdating(true)
+    // changedBy is now determined server-side
     const result = await updateOpportunityStage(
       opportunityId,
-      targetStage,
-      currentOwner
+      targetStage
     )
     setIsUpdating(false)
 
@@ -271,6 +271,7 @@ export function PipelineBoard({
               companiesMap={companiesMap}
               contactsMap={contactsMap}
               activitiesMap={activitiesMap}
+              allStages={stages}
             />
           ))}
         </div>

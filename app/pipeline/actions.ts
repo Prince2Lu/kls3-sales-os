@@ -12,10 +12,13 @@ import type { Stage } from '@/types/domain'
 
 export async function updateOpportunityStage(
   opportunityId: string,
-  newStage: Stage,
-  changedBy: string
+  newStage: Stage
 ) {
   try {
+    // Get changedBy server-side from session
+    const { getCurrentOwner } = await import('@/lib/utils/current-owner')
+    const changedBy = await getCurrentOwner()
+
     // Get current opportunity to track previous stage
     const currentOpportunity = await getOpportunityById(opportunityId)
     const previousStage = currentOpportunity.stage

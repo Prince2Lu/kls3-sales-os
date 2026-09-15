@@ -9,6 +9,8 @@ export function getFrenchTaskType(type: TaskType): string {
     LINKEDIN: 'LinkedIn',
     MEETING: 'Réunion',
     DEMO: 'Démo',
+    PROPOSAL: 'Préparer proposition',
+    DOCUMENT: 'Envoyer document',
     FOLLOW_UP: 'Relance',
     OTHER: 'Autre',
   }

@@ -22,6 +22,8 @@ import type {
   Contact,
   Opportunity,
   CallStatus,
+  Activity,
+  Task,
 } from '@/types/domain'
 import { updateColdCallStatus, updateColdCallOpportunityStage } from './actions'
 import { Button } from '@/components/ui/button'
@@ -35,6 +37,8 @@ interface ColdCallBoardProps {
   companies: Company[]
   contacts: Contact[]
   opportunities: Opportunity[]
+  activities: Activity[]
+  tasks: Task[]
   currentOwner: 'Eric' | 'Lilian'
 }
 
@@ -57,6 +61,8 @@ export function ColdCallBoard({
   companies,
   contacts,
   opportunities,
+  activities,
+  tasks,
   currentOwner,
 }: ColdCallBoardProps) {
   const router = useRouter()
@@ -92,6 +98,34 @@ export function ColdCallBoard({
     () => Object.fromEntries(opportunities.map((o) => [o.id, o])),
     [opportunities]
   )
+
+  // Group activities by coldCallTargetId for efficient access
+  const activitiesByTargetId = useMemo(() => {
+    const grouped: Record<string, typeof activities> = {}
+    activities.forEach((activity) => {
+      if (activity.coldCallTargetId) {
+        if (!grouped[activity.coldCallTargetId]) {
+          grouped[activity.coldCallTargetId] = []
+        }
+        grouped[activity.coldCallTargetId].push(activity)
+      }
+    })
+    return grouped
+  }, [activities])
+
+  // Group tasks by coldCallTargetId for efficient access
+  const tasksByTargetId = useMemo(() => {
+    const grouped: Record<string, typeof tasks> = {}
+    tasks.forEach((task) => {
+      if (task.coldCallTargetId) {
+        if (!grouped[task.coldCallTargetId]) {
+          grouped[task.coldCallTargetId] = []
+        }
+        grouped[task.coldCallTargetId].push(task)
+      }
+    })
+    return grouped
+  }, [tasks])
 
   // Filter targets by Business Line
   const filteredTargets = useMemo(() => {
@@ -182,8 +216,9 @@ export function ColdCallBoard({
       }
 
       // Update status directly
+      // changedBy is determined server-side from session
       setIsUpdating(true)
-      const result = await updateColdCallStatus(targetId, newStatus, currentOwner)
+      const result = await updateColdCallStatus(targetId, newStatus)
       setIsUpdating(false)
 
       if (result.success) {
@@ -206,11 +241,11 @@ export function ColdCallBoard({
       // If already in this stage, do nothing
       if (opp.stage === newStage) return
 
+      // changedBy is determined server-side from session
       setIsUpdating(true)
       const result = await updateColdCallOpportunityStage(
         targetId,
-        newStage,
-        currentOwner
+        newStage
       )
       setIsUpdating(false)
 
@@ -226,8 +261,9 @@ export function ColdCallBoard({
     setShowCallbackModal(false)
     setPendingCallbackTargetId(null)
 
+    // changedBy is determined server-side from session
     setIsUpdating(true)
-    const result = await updateColdCallStatus(targetId, 'À rappeler', currentOwner, {
+    const result = await updateColdCallStatus(targetId, 'À rappeler', {
       callbackDate,
     })
     setIsUpdating(false)
@@ -286,6 +322,8 @@ export function ColdCallBoard({
               companiesMap={companiesMap}
               contactsMap={contactsMap}
               blMap={blMap}
+              activitiesByTargetId={activitiesByTargetId}
+              tasksByTargetId={tasksByTargetId}
               currentOwner={currentOwner}
             />
           ))}
@@ -300,6 +338,8 @@ export function ColdCallBoard({
               companiesMap={companiesMap}
               contactsMap={contactsMap}
               blMap={blMap}
+              activitiesByTargetId={activitiesByTargetId}
+              tasksByTargetId={tasksByTargetId}
               currentOwner={currentOwner}
               isStageColumn
             />
