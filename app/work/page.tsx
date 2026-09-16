@@ -26,7 +26,7 @@ export default async function WorkPage() {
     activities,
     tasks,
   ] = await Promise.all([
-    getColdCallTargets(), // No limit - all cold call targets
+    getColdCallTargets(), // No limit - all prospecting targets
     getOpportunities(), // No limit - all opportunities
     getBusinessLines(),
     getCompanies(), // No limit - all companies

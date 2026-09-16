@@ -1,6 +1,7 @@
 'use client'
 
-// Cold Call Kanban Column
+// Prospecting Kanban Column
+// Multi-channel: cold call, email, LinkedIn, referrals, etc.
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -118,7 +119,7 @@ export function ColdCallColumn({
         >
           <div
             ref={setNodeRef}
-            className="space-y-2 min-h-[200px] bg-background/30 rounded-lg p-2 border border-border/50"
+            className="space-y-2 min-h-[200px] bg-card-bg rounded-lg p-2 border border-border"
           >
             {targets.length === 0 && (
               <div className="text-center text-text-muted text-xs py-8">Vide</div>
@@ -240,8 +241,8 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
   async function handleStatusChange(newStatus: import('@/types/domain').CallStatus) {
     setShowStatusMenu(false)
 
-    // À rappeler requires callback date
-    if (newStatus === 'À rappeler') {
+    // Relance prévue requires callback date
+    if (newStatus === 'Relance prévue') {
       setShowCallbackModal(true)
       return
     }

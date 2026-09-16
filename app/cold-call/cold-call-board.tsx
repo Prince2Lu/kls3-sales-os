@@ -1,6 +1,7 @@
 'use client'
 
-// Cold Call Kanban Board with drag-and-drop
+// Prospecting Kanban Board with drag-and-drop
+// Multi-channel: cold call, email, LinkedIn, referrals, etc.
 
 import { useState, useMemo } from 'react'
 import {
@@ -42,14 +43,15 @@ interface ColdCallBoardProps {
   currentOwner: 'Eric' | 'Lilian'
 }
 
-// Call status columns (pre-opportunity)
+// Prospecting status columns (pre-opportunity)
+// Multi-channel: cold call, email, LinkedIn, referrals, etc.
 const CALL_STATUSES: CallStatus[] = [
-  'À appeler',
-  'À rappeler',
-  'Email Flow',
-  'Mauvais numéro',
-  'Pas intéressé',
-  'RDV booké',
+  'À contacter',
+  'Relance prévue',
+  'En séquence',
+  'Non joignable',
+  'Hors cible',
+  'Converti',
 ]
 
 // Opportunity stages for post-RDV (displayed in cold call view)
@@ -208,8 +210,8 @@ export function ColdCallBoard({
       // If already in this status, do nothing
       if (target.callStatus === newStatus) return
 
-      // Special handling for "À rappeler" - show modal
-      if (newStatus === 'À rappeler') {
+      // Special handling for "Relance prévue" - show modal for callback date
+      if (newStatus === 'Relance prévue') {
         setPendingCallbackTargetId(targetId)
         setShowCallbackModal(true)
         return
@@ -231,7 +233,7 @@ export function ColdCallBoard({
 
       // Must have an opportunity to move to Gagné/Perdu
       if (!target.opportunityId) {
-        alert('Impossible de passer à Gagné/Perdu sans RDV booké')
+        alert('Impossible de passer à Gagné/Perdu sans conversion en opportunité')
         return
       }
 
@@ -263,7 +265,7 @@ export function ColdCallBoard({
 
     // changedBy is determined server-side from session
     setIsUpdating(true)
-    const result = await updateColdCallStatus(targetId, 'À rappeler', {
+    const result = await updateColdCallStatus(targetId, 'Relance prévue', {
       callbackDate,
     })
     setIsUpdating(false)

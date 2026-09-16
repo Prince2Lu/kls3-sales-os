@@ -166,14 +166,15 @@ export default async function TodayPage(props: {
   // Display counters for non-empty work blocks per Business Line
   // ============================================================================
 
-  // Pre-RDV call statuses (for COLD_CALL_TARGETS)
+  // Pre-RDV prospecting statuses (for PROSPECTING_TARGETS)
+  // Multi-channel: cold call, email, LinkedIn, referrals, etc.
   const PRE_RDV_STATUSES: CallStatus[] = [
-    'À appeler',
-    'À rappeler',
-    'Email Flow',
-    'Mauvais numéro',
-    'Pas intéressé',
-    'RDV booké',
+    'À contacter',
+    'Relance prévue',
+    'En séquence',
+    'Non joignable',
+    'Hors cible',
+    'Converti',
   ]
 
   // Post-RDV opportunity stages

@@ -88,7 +88,7 @@ export function WorkFilters({
             Blocs de travail
           </label>
 
-          {/* Pre-RDV blocks (if COLD_CALL Business Line) */}
+          {/* Pre-RDV blocks (if Business Line uses prospecting mode) */}
           {isColdCallBusinessLine && availableStatuses.preRDV.length > 0 && (
             <div className="space-y-2 mb-4">
               <div className="text-xs text-text-muted font-medium uppercase tracking-wide">

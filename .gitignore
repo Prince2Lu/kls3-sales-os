@@ -93,3 +93,6 @@ NOTAIRES_*_MAPPING.md
 RAPPORT_CORRECTIONS_PRODUIT.md
 
 archive/
+
+# Backups (may contain sensitive CRM data)
+backups/

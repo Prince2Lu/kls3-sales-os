@@ -18,7 +18,7 @@ const CALL_RESULTS: { value: ActivityResult; label: string }[] = [
   { value: 'CONVERSATION', label: 'Conversation' },
   { value: 'MEETING_BOOKED', label: 'RDV pris' },
   { value: 'NOT_INTERESTED', label: 'Pas intéressé' },
-  { value: 'CALLBACK', label: 'À rappeler' },
+  { value: 'CALLBACK', label: 'Demande de rappel (après échange)' },
   { value: 'EMAIL_REQUESTED', label: 'Email demandé' },
   { value: 'WRONG_NUMBER', label: 'Mauvais numéro' },
 ]

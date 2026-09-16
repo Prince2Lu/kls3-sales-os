@@ -1,7 +1,8 @@
 'use client'
 
 // Work Mode client component - filters and displays work blocks
-// Supports both pre-RDV (COLD_CALL_TARGETS) and post-RDV (OPPORTUNITIES) blocks
+// Supports both pre-RDV prospecting (PROSPECTING_TARGETS) and post-RDV (OPPORTUNITIES) blocks
+// Multi-channel: cold call, email, LinkedIn, referrals, etc.
 
 import { useState, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -32,14 +33,15 @@ interface WorkModeProps {
   currentOwner: Owner
 }
 
-// Pre-RDV call statuses (for COLD_CALL_TARGETS)
+// Pre-RDV prospecting statuses (for PROSPECTING_TARGETS)
+// Multi-channel: cold call, email, LinkedIn, referrals, etc.
 const PRE_RDV_STATUSES: CallStatus[] = [
-  'À appeler',
-  'À rappeler',
-  'Email Flow',
-  'Mauvais numéro',
-  'Pas intéressé',
-  'RDV booké',
+  'À contacter',
+  'Relance prévue',
+  'En séquence',
+  'Non joignable',
+  'Hors cible',
+  'Converti',
 ]
 
 // Post-RDV opportunity stages (for OPPORTUNITIES from converted targets or DIRECT_OPPORTUNITY BLs)

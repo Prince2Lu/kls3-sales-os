@@ -24,7 +24,7 @@ export async function updateColdCallStatus(
   targetId: string,
   newStatus: CallStatus,
   metadata?: {
-    callbackDate?: string // For "À rappeler"
+    callbackDate?: string // For "Relance prévue"
   }
 ) {
   try {
@@ -52,7 +52,7 @@ export async function updateColdCallStatus(
 
     // Business logic by status
     switch (newStatus) {
-      case 'À rappeler':
+      case 'Relance prévue':
         // Create TASK for callback
         if (metadata?.callbackDate) {
           await createTask({
@@ -63,13 +63,13 @@ export async function updateColdCallStatus(
             dueAt: metadata.callbackDate,
             priority: 'MEDIUM',
             status: 'TODO',
-            notes: 'Rappel suite cold call',
+            notes: 'Relance programmée',
             owner: target.owner,
           })
         }
         break
 
-      case 'RDV booké':
+      case 'Converti':
         // Check if opportunity already exists for this company + BL
         const existingOpps = await getOpportunities({
           companyId: target.companyId,
@@ -84,7 +84,7 @@ export async function updateColdCallStatus(
 
         if (activeOpp) {
           // Reuse existing opportunity
-          // DO NOT regress stage if already advanced beyond RDV
+          // DO NOT regress stage if already advanced beyond Échange
           const stageOrder = [
             'À prospecter',
             'Contacté',
@@ -97,21 +97,21 @@ export async function updateColdCallStatus(
             'Perdu',
           ]
           const currentStageIndex = stageOrder.indexOf(activeOpp.stage)
-          const rdvStageIndex = stageOrder.indexOf('RDV')
+          const echangeStageIndex = stageOrder.indexOf('Échange')
 
-          // Only update stage if current stage is BEFORE RDV
-          if (currentStageIndex < rdvStageIndex) {
+          // Only update stage if current stage is BEFORE Échange
+          if (currentStageIndex < echangeStageIndex) {
             await updateOpportunity(activeOpp.id, {
-              stage: 'RDV',
+              stage: 'Échange',
             })
             await createStageHistory({
               opportunityId: activeOpp.id,
               fromStage: activeOpp.stage,
-              toStage: 'RDV',
+              toStage: 'Échange',
               changedBy,
             })
           }
-          // If already at RDV or beyond, just reuse without changing stage
+          // If already at Échange or beyond, just reuse without changing stage
 
           opportunityId = activeOpp.id
         } else {
@@ -121,12 +121,12 @@ export async function updateColdCallStatus(
 
           // Create new opportunity with company name
           const newOpp = await createOpportunity({
-            name: `${company.name} - Cold Call`,
+            name: `${company.name} - Prospection`,
             companyId: target.companyId,
             primaryContactId: target.contactId ?? undefined,
             businessLineId: target.businessLineId,
             owner: target.owner,
-            stage: 'RDV',
+            stage: 'Échange', // Generic conversion stage (requiresOpportunityConversion logic)
             source: 'Cold Call',
           })
 
@@ -134,7 +134,7 @@ export async function updateColdCallStatus(
           await createStageHistory({
             opportunityId: newOpp.id,
             fromStage: undefined,
-            toStage: 'RDV',
+            toStage: 'Échange',
             changedBy,
           })
 
@@ -274,7 +274,7 @@ export async function updateColdCallOpportunityStage(
 /**
  * Record a call activity for a cold call target
  * Creates ACTIVITY with result, links to opportunity if exists
- * Optionally updates call status based on result
+ * Automatically converts to Opportunity based on ActivityResult
  */
 export async function recordCallActivity(
   targetId: string,
@@ -286,6 +286,7 @@ export async function recordCallActivity(
   try {
     const { getCurrentOwner } = await import('@/lib/utils/current-owner')
     const owner = await getCurrentOwner()
+    const { requiresOpportunityConversion, getInitialOpportunityStage } = await import('@/lib/prospecting/conversion-rules')
 
     const target = await getColdCallTargetById(targetId)
 
@@ -302,48 +303,183 @@ export async function recordCallActivity(
       durationMinutes: undefined,
     })
 
-    // Automatically update call status based on result
-    switch (result) {
-      case 'MEETING_BOOKED':
-        // Trigger RDV booké workflow
-        return await updateColdCallStatus(targetId, 'RDV booké', {
-          callbackDate: metadata?.callbackDate,
-        })
+    // Check if this result requires Opportunity conversion
+    if (requiresOpportunityConversion(result)) {
+      // Get the appropriate stage based on result
+      const initialStage = getInitialOpportunityStage(result)
 
-      case 'NOT_INTERESTED':
-        // Update to Pas intéressé with history tracking
-        await changeColdCallStatus({
-          targetId,
-          toStatus: 'Pas intéressé',
-        })
-        break
+      // Check if opportunity already exists for this company + BL
+      const existingOpps = await getOpportunities({
+        companyId: target.companyId,
+        businessLineId: target.businessLineId,
+      })
 
-      case 'CALLBACK':
-        // Trigger À rappeler workflow with callback date
-        if (metadata?.callbackDate) {
-          return await updateColdCallStatus(targetId, 'À rappeler', {
-            callbackDate: metadata.callbackDate,
+      const activeOpp = existingOpps.find(
+        (opp) => opp.stage !== 'Gagné' && opp.stage !== 'Perdu'
+      )
+
+      let opportunityId: string
+
+      if (activeOpp) {
+        // Reuse existing opportunity
+        // DO NOT regress stage if already advanced beyond initialStage
+        const stageOrder = [
+          'À prospecter',
+          'Contacté',
+          'Échange',
+          'Qualifié',
+          'RDV',
+          'Opportunité',
+          'Proposition',
+          'Gagné',
+          'Perdu',
+        ]
+        const currentStageIndex = stageOrder.indexOf(activeOpp.stage)
+        const targetStageIndex = stageOrder.indexOf(initialStage)
+
+        // Only update stage if current stage is BEFORE target stage
+        if (currentStageIndex < targetStageIndex) {
+          await updateOpportunity(activeOpp.id, {
+            stage: initialStage,
           })
-        } else {
-          // If no date provided, just update status with history tracking
-          await changeColdCallStatus({
-            targetId,
-            toStatus: 'À rappeler',
+          await createStageHistory({
+            opportunityId: activeOpp.id,
+            fromStage: activeOpp.stage,
+            toStage: initialStage,
+            changedBy: owner,
           })
         }
-        break
+        // If already at target stage or beyond, just reuse without changing stage
 
-      case 'WRONG_NUMBER':
-        // Update to Mauvais numéro with history tracking
-        await changeColdCallStatus({
-          targetId,
-          toStatus: 'Mauvais numéro',
+        opportunityId = activeOpp.id
+      } else {
+        // Get company name for opportunity title
+        const { getCompanyById } = await import('@/lib/airtable')
+        const company = await getCompanyById(target.companyId)
+
+        // Create new opportunity with appropriate stage
+        const newOpp = await createOpportunity({
+          name: `${company.name} - Prospection`,
+          companyId: target.companyId,
+          primaryContactId: target.contactId ?? undefined,
+          businessLineId: target.businessLineId,
+          owner: target.owner,
+          stage: initialStage,
+          source: 'Cold Call',
         })
-        break
 
-      // NO_ANSWER and CONVERSATION: no status change
-      default:
-        break
+        // Create initial STAGE_HISTORY
+        await createStageHistory({
+          opportunityId: newOpp.id,
+          fromStage: undefined,
+          toStage: initialStage,
+          changedBy: owner,
+        })
+
+        opportunityId = newOpp.id
+      }
+
+      // Link opportunity to cold call target
+      await updateColdCallTarget(targetId, {
+        opportunityId,
+      })
+
+      // Update prospecting status to Converti
+      await changeColdCallStatus({
+        targetId,
+        toStatus: 'Converti',
+      })
+
+      // Update existing TASKS and ACTIVITIES to link them to the opportunity
+      const { getTasks, updateTask, getActivities, updateActivity } = await import('@/lib/airtable')
+
+      const [tasks, activities] = await Promise.all([
+        getTasks({
+          contactId: target.contactId ?? undefined,
+          status: 'TODO',
+        }),
+        getActivities({
+          contactId: target.contactId ?? undefined,
+        }),
+      ])
+
+      // Link TASKS that were created for THIS exact target
+      const tasksToUpdate = tasks.filter(
+        (task) => task.coldCallTargetId === targetId && !task.opportunityId
+      )
+
+      for (const task of tasksToUpdate) {
+        await updateTask(task.id, {
+          opportunityId,
+        })
+      }
+
+      // Link ACTIVITIES that were created for THIS exact target
+      const activitiesToUpdate = activities.filter(
+        (activity) =>
+          activity.coldCallTargetId === targetId && !activity.opportunityId
+      )
+
+      for (const activity of activitiesToUpdate) {
+        await updateActivity(activity.id, {
+          opportunityId,
+        })
+      }
+
+      // Create TASK for callback if CALLBACK result with date
+      if (result === 'CALLBACK' && metadata?.callbackDate) {
+        await createTask({
+          opportunityId,
+          contactId: target.contactId ?? undefined,
+          coldCallTargetId: targetId,
+          type: 'CALL',
+          dueAt: metadata.callbackDate,
+          priority: 'MEDIUM',
+          status: 'TODO',
+          notes: 'Relance programmée',
+          owner: target.owner,
+        })
+      }
+    } else {
+      // Results that DON'T create Opportunity: update status only
+      switch (result) {
+        case 'NOT_INTERESTED':
+          // Update to Hors cible with history tracking
+          await changeColdCallStatus({
+            targetId,
+            toStatus: 'Hors cible',
+          })
+          break
+
+        case 'WRONG_NUMBER':
+          // Update to Non joignable with history tracking
+          await changeColdCallStatus({
+            targetId,
+            toStatus: 'Non joignable',
+          })
+          break
+
+        case 'EMAIL_REQUESTED':
+          // Create TASK for email but stay in prospecting
+          if (metadata?.callbackDate) {
+            await createTask({
+              opportunityId: target.opportunityId ?? undefined,
+              contactId: target.contactId ?? undefined,
+              coldCallTargetId: targetId,
+              type: 'EMAIL',
+              dueAt: metadata.callbackDate,
+              priority: 'MEDIUM',
+              status: 'TODO',
+              notes: 'Email demandé',
+              owner: target.owner,
+            })
+          }
+          break
+
+        // NO_ANSWER, VOICEMAIL: no status change
+        default:
+          break
+      }
     }
 
     revalidatePath('/cold-call')

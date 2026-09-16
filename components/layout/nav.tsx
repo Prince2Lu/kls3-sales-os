@@ -14,7 +14,7 @@ const navItems = [
   { href: '/today', label: 'Ma journée' },
   { href: '/work', label: 'Mode de travail' },
   { href: '/pipeline', label: 'Pipeline' },
-  { href: '/cold-call', label: 'Cold Call' },
+  { href: '/cold-call', label: 'Prospection' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/prospects', label: 'Opportunités' },
   { href: '/companies', label: 'Entreprises' },
@@ -29,7 +29,7 @@ export function Nav({ userEmail }: NavProps = {}) {
   const pathname = usePathname()
 
   return (
-    <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+    <nav className="border-b border-border bg-background sticky top-0 z-50">
       <div className="container mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center">

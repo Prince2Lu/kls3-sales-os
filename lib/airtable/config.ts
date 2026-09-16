@@ -49,8 +49,12 @@ export const TABLE_NAMES = {
   GOALS: 'GOALS',
   STAGE_HISTORY: 'STAGE_HISTORY',
   USERS: 'USERS',
-  COLD_CALL_TARGETS: 'COLD_CALL_TARGETS',
-  CALL_STATUS_HISTORY: 'CALL_STATUS_HISTORY',
+
+  // NOTE: Table names kept as COLD_CALL_TARGETS and CALL_STATUS_HISTORY for Airtable backward compatibility
+  // These tables now handle multi-channel prospecting (not just cold calls)
+  // The domain types use ProspectingTarget/ProspectingStatus but Airtable table names remain unchanged
+  COLD_CALL_TARGETS: 'COLD_CALL_TARGETS',           // Physical table: COLD_CALL_TARGETS → Logical: Prospecting Targets
+  CALL_STATUS_HISTORY: 'CALL_STATUS_HISTORY',       // Physical table: CALL_STATUS_HISTORY → Logical: Prospecting Status History
 } as const
 
 // Helper to construct Airtable API URL

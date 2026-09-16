@@ -1,6 +1,7 @@
 'use client'
 
 // Work Card - reuses V2 card components and actions
+// Supports both prospecting targets and opportunities
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -183,13 +184,13 @@ export function WorkCard({
     }
   }
 
-  // Handle status change (CallStatus for targets, Stage for opportunities)
+  // Handle status change (ProspectingStatus for targets, Stage for opportunities)
   async function handleStatusChange(newStatus: string) {
     setShowStatusMenu(false)
 
     if (isColdCallTarget) {
-      // CallStatus change
-      if (newStatus === 'À rappeler') {
+      // ProspectingStatus change
+      if (newStatus === 'Relance prévue') {
         setShowCallbackModal(true)
         return
       }
@@ -374,7 +375,7 @@ export function WorkCard({
         />
       )}
 
-      {/* Status Change Menu (CallStatus for targets, Stage for opportunities) */}
+      {/* Status Change Menu (ProspectingStatus for targets, Stage for opportunities) */}
       {showStatusMenu && (
         <>
           {isColdCallTarget ? (

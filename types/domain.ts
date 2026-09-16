@@ -9,7 +9,11 @@ export type BusinessLineCode = 'PAUL' | 'SACHA' | 'CALYMIA' | 'KLS3_NOTAIRES'
 
 export type Category = 'PARTNER' | 'OWNED'
 
-export type ProspectingMode = 'COLD_CALL' | 'DIRECT_OPPORTUNITY'
+// ProspectingMode: How the business line manages prospects
+// - PROSPECTING: Uses PROSPECTING_TARGETS for multi-channel prospecting (cold call, email, LinkedIn)
+// - COLD_CALL: Legacy mode (backward compatibility)
+// - DIRECT_OPPORTUNITY: Creates Opportunities directly without prospecting phase
+export type ProspectingMode = 'PROSPECTING' | 'COLD_CALL' | 'DIRECT_OPPORTUNITY'
 
 export type RevenueType = 'ONE_SHOT' | 'MRR' | 'PROJECT'
 
@@ -82,13 +86,18 @@ export type TaskStatus = 'TODO' | 'DONE' | 'CANCELLED'
 
 export type ValueEventStatus = 'PENDING' | 'CONFIRMED' | 'PAID' | 'CANCELLED'
 
-export type CallStatus =
-  | 'À appeler'
-  | 'À rappeler'
-  | 'Email Flow'
-  | 'Mauvais numéro'
-  | 'Pas intéressé'
-  | 'RDV booké'
+// ProspectingStatus: Generic multi-channel prospecting status (replaces CallStatus)
+// Supports: cold calls, emails, LinkedIn, referrals, etc.
+export type ProspectingStatus =
+  | 'À contacter'      // To be contacted (any channel)
+  | 'Relance prévue'   // Scheduled follow-up (any channel)
+  | 'En séquence'      // In automated/manual sequence (email/LinkedIn/multi-touch)
+  | 'Non joignable'    // Unreachable (bad contact info, no longer at company, etc.)
+  | 'Hors cible'       // Out of target (not interested, wrong profile, etc.)
+  | 'Converti'         // Converted to Opportunity (replaces "RDV booké")
+
+// Backward compatibility alias (deprecated, use ProspectingStatus)
+export type CallStatus = ProspectingStatus
 
 // ============================================================================
 // BUSINESS_LINES (Section 22)
@@ -273,29 +282,54 @@ export interface User {
 }
 
 // ============================================================================
-// COLD_CALL_TARGETS (Pre-opportunity cold call tracking)
+// PROSPECTING_TARGETS (Pre-opportunity prospecting tracking)
+// Multi-channel: cold call, email, LinkedIn, referrals, etc.
 // ============================================================================
 
+export interface ProspectingTarget {
+  id: string
+  companyId: string
+  contactId: string | null
+  businessLineId: string
+  owner: Owner
+  prospectingStatus: ProspectingStatus
+  opportunityId: string | null // Set when converted to Opportunity
+  createdAt: string
+  updatedAt: string
+}
+
+// Backward compatibility alias (deprecated, use ProspectingTarget)
+// Note: Uses 'callStatus' property name for Airtable backward compatibility
 export interface ColdCallTarget {
   id: string
   companyId: string
   contactId: string | null
   businessLineId: string
   owner: Owner
-  callStatus: CallStatus
+  callStatus: CallStatus // Maps to prospectingStatus in Airtable
   opportunityId: string | null
   createdAt: string
   updatedAt: string
 }
 
 // ============================================================================
-// CALL_STATUS_HISTORY (Call Status transition history for Cold Call Targets)
+// PROSPECTING_STATUS_HISTORY (Prospecting status transition history)
 // ============================================================================
 
+export interface ProspectingStatusHistory {
+  id: string
+  prospectingTargetId: string // Link to PROSPECTING_TARGETS
+  fromStatus: ProspectingStatus | null // null for initial status
+  toStatus: ProspectingStatus
+  changedAt: string
+  changedBy: Owner
+}
+
+// Backward compatibility alias (deprecated, use ProspectingStatusHistory)
 export interface CallStatusHistory {
   id: string
-  coldCallTargetId: string
-  fromStatus: CallStatus | null // null for initial status
+  coldCallTargetId: string // Maps to prospectingTargetId
+  fromStatus: CallStatus | null
   toStatus: CallStatus
   changedAt: string
   changedBy: Owner

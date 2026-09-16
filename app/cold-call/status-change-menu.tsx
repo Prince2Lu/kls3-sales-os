@@ -1,24 +1,25 @@
 'use client'
 
-// Quick status change menu for cold call targets
+// Quick status change menu for prospecting targets
+// Multi-channel: cold call, email, LinkedIn, referrals, etc.
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import type { CallStatus } from '@/types/domain'
+import type { ProspectingStatus } from '@/types/domain'
 
 interface StatusChangeMenuProps {
-  onSelect: (status: CallStatus) => void
+  onSelect: (status: ProspectingStatus) => void
   onCancel: () => void
-  currentStatus: CallStatus
+  currentStatus: ProspectingStatus
 }
 
-const CALL_STATUSES: { value: CallStatus; label: string }[] = [
-  { value: 'À appeler', label: 'À appeler' },
-  { value: 'À rappeler', label: 'À rappeler' },
-  { value: 'Email Flow', label: 'Email Flow' },
-  { value: 'Mauvais numéro', label: 'Mauvais numéro' },
-  { value: 'Pas intéressé', label: 'Pas intéressé' },
-  { value: 'RDV booké', label: 'RDV booké' },
+const PROSPECTING_STATUSES: { value: ProspectingStatus; label: string; description?: string }[] = [
+  { value: 'À contacter', label: 'À contacter', description: 'Prospect non contacté' },
+  { value: 'Relance prévue', label: 'Relance prévue', description: 'Relance programmée' },
+  { value: 'En séquence', label: 'En séquence', description: 'Séquence email/LinkedIn active' },
+  { value: 'Non joignable', label: 'Non joignable', description: 'Coordonnées invalides' },
+  { value: 'Hors cible', label: 'Hors cible', description: 'Pas intéressé ou hors profil' },
+  { value: 'Converti', label: 'Converti', description: 'Converti en opportunité' },
 ]
 
 export function StatusChangeMenu({
@@ -37,15 +38,20 @@ export function StatusChangeMenu({
         </div>
 
         <div className="space-y-2">
-          {CALL_STATUSES.map((status) => (
+          {PROSPECTING_STATUSES.map((status) => (
             <Button
               key={status.value}
               onClick={() => onSelect(status.value)}
               variant={status.value === currentStatus ? 'primary' : 'ghost'}
-              className="w-full justify-start"
+              className="w-full justify-start flex-col items-start gap-0.5"
               disabled={status.value === currentStatus}
             >
-              {status.label}
+              <span>{status.label}</span>
+              {status.description && (
+                <span className="text-xs text-text-muted font-normal">
+                  {status.description}
+                </span>
+              )}
             </Button>
           ))}
         </div>
