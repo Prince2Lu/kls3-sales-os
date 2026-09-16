@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge'
 import { SectionLabel } from '@/components/ui/section-label'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getCurrentOwner } from '@/lib/utils/current-owner'
+import { AddToProspectingButton } from './add-to-prospecting-button'
 
 interface CompanyPageProps {
   params: Promise<{ id: string }>
@@ -22,10 +24,11 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
 
   try {
     const company = await getCompanyById(id)
-    const [contacts, opportunities, businessLines] = await Promise.all([
+    const [contacts, opportunities, businessLines, currentOwner] = await Promise.all([
       getContacts({ companyId: id }),
       getOpportunities({ companyId: id }),
       getBusinessLines(),
+      getCurrentOwner(),
     ])
 
     const primaryBusinessLine = company.primaryBusinessLineId
@@ -50,9 +53,18 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
               <p className="text-text-muted mt-2 text-lg">{company.industry}</p>
             )}
           </div>
-          <Link href={`/companies/${id}/edit`}>
-            <Button variant="ghost">Modifier</Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <AddToProspectingButton
+              companyId={company.id}
+              companyName={company.name}
+              contacts={contacts}
+              businessLines={businessLines}
+              currentOwner={currentOwner}
+            />
+            <Link href={`/companies/${id}/edit`}>
+              <Button variant="ghost">Modifier</Button>
+            </Link>
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">

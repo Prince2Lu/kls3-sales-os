@@ -6,12 +6,15 @@ import {
   getOpportunities,
   getActivities,
   getTasks,
+  getBusinessLines,
 } from '@/lib/airtable'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getCurrentOwner } from '@/lib/utils/current-owner'
+import { AddToProspectingButton } from './add-to-prospecting-button'
 
 interface ContactPageProps {
   params: Promise<{ id: string }>
@@ -23,13 +26,15 @@ export default async function ContactPage({ params }: ContactPageProps) {
   try {
     const contact = await getContactById(id)
 
-    const [company, opportunities, activities, tasks] = await Promise.all([
+    const [company, opportunities, activities, tasks, businessLines, currentOwner] = await Promise.all([
       contact.companyId
         ? getCompanyById(contact.companyId).catch(() => null)
         : Promise.resolve(null),
       getOpportunities({ maxRecords: 100 }),
       getActivities({ contactId: id }),
       getTasks({ contactId: id, status: 'TODO' }),
+      getBusinessLines(),
+      getCurrentOwner(),
     ])
 
     // Filter opportunities related to this contact
@@ -57,9 +62,20 @@ export default async function ContactPage({ params }: ContactPageProps) {
               <p className="text-text-muted mt-2 text-lg">{contact.jobTitle}</p>
             )}
           </div>
-          <Link href={`/contacts/${id}/edit`}>
-            <Button variant="ghost">Modifier</Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            {company && (
+              <AddToProspectingButton
+                companyId={company.id}
+                companyName={company.name}
+                contact={contact}
+                businessLines={businessLines}
+                currentOwner={currentOwner}
+              />
+            )}
+            <Link href={`/contacts/${id}/edit`}>
+              <Button variant="ghost">Modifier</Button>
+            </Link>
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
