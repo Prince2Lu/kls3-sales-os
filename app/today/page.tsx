@@ -10,6 +10,7 @@ import {
   getColdCallTargets,
   getCompanies,
   getContacts,
+  getRelationships,
 } from '@/lib/airtable'
 import { getCurrentOwner, getCurrentOwnerDisplayName } from '@/lib/utils/current-owner'
 import { isOverdue, isToday, formatFrenchDate } from '@/lib/utils/date'
@@ -27,7 +28,10 @@ import { TodayMeetingsSection } from './today-meetings-section'
 import { NoNextActionSection } from './no-next-action-section'
 import { WatchlistSection } from './watchlist-section'
 import { WorkBlocksSection } from './work-blocks-section'
+import { RelationshipsSection } from './relationships-section'
 import type { CallStatus, Stage, Owner } from '@/types/domain'
+import { enrichRelationshipsWithInteractions } from '@/lib/relationships/helpers'
+import { enrichWithPriority, getActionableToday } from '@/lib/relationships/scoring'
 
 export default async function TodayPage(props: {
   searchParams: Promise<{ businessLine?: string }>
@@ -49,6 +53,7 @@ export default async function TodayPage(props: {
     allTargets,
     companies,
     contacts,
+    relationships,
   ] = await Promise.all([
     getTasks({ owner: currentOwner }), // No limit - all tasks for current owner
     getOpportunities(), // No limit - all opportunities (filtered later)
@@ -57,6 +62,7 @@ export default async function TodayPage(props: {
     getColdCallTargets(), // No limit - all targets for work blocks
     getCompanies(), // No limit - all companies for display
     getContacts(), // No limit - all contacts for display
+    getRelationships({ maxRecords: 1000 }), // All relationships for current owner
   ])
 
   // Filter by Business Line
@@ -245,6 +251,30 @@ export default async function TodayPage(props: {
     })
   })
 
+  // ============================================================================
+  // RELATIONSHIPS TO WORK - Phase 3
+  // Actionable relationships needing attention today
+  // ============================================================================
+
+  // Filter relationships by owner
+  const ownerRelationships = relationships.filter((r) => r.owner === currentOwner)
+
+  // Enrich with interactions
+  const enrichedRelationships = enrichRelationshipsWithInteractions(
+    ownerRelationships,
+    allActivities,
+    allTasks
+  )
+
+  // Enrich with priority scores and signals
+  const relationshipsWithPriority = enrichWithPriority(
+    enrichedRelationships,
+    allOpportunities
+  )
+
+  // Get actionable relationships for today
+  const actionableRelationships = getActionableToday(relationshipsWithPriority)
+
   // Create lookup maps for sections
   const businessLineMap = Object.fromEntries(
     businessLines.map((bl) => [bl.id, bl])
@@ -291,7 +321,10 @@ export default async function TodayPage(props: {
           />
         )}
 
-        {/* 4. À surveiller (V2 - Watchlist) */}
+        {/* 4. Relations à travailler (Phase 3) */}
+        <RelationshipsSection relationships={actionableRelationships} />
+
+        {/* 5. À surveiller (V2 - Watchlist) */}
         <WatchlistSection
           opportunities={watchlistOpportunities}
           businessLineMap={businessLineMap}
@@ -300,7 +333,7 @@ export default async function TodayPage(props: {
           daysSinceActivityMap={daysSinceActivityMap}
         />
 
-        {/* 5. Continuer la prospection (V2 - Work blocks) */}
+        {/* 6. Continuer la prospection (V2 - Work blocks) */}
         <WorkBlocksSection
           workBlocks={workBlocks}
           currentOwner={currentOwner}
@@ -322,6 +355,7 @@ export default async function TodayPage(props: {
         {overdueTasks.length === 0 &&
           todayMeetings.length === 0 &&
           todayOtherTasks.length === 0 &&
+          actionableRelationships.length === 0 &&
           watchlistOpportunities.length === 0 &&
           workBlocks.length === 0 &&
           opportunitiesWithoutNextAction.filter(

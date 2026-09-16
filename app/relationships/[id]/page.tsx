@@ -367,6 +367,123 @@ export default async function RelationshipPage({ params }: RelationshipPageProps
               )}
             </CardContent>
           </Card>
+
+          {/* Introducer Performance (Phase 3) */}
+          {introducedOpportunities.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Performance apporteur</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="text-text-muted text-xs mb-1">
+                    Opportunités introduites
+                  </div>
+                  <div className="text-2xl font-bold font-syne">
+                    {introducedOpportunities.length}
+                  </div>
+                </div>
+
+                {(() => {
+                  const wonOpps = introducedOpportunities.filter(
+                    (opp) => opp.stage === 'Gagné'
+                  )
+                  const lostOpps = introducedOpportunities.filter(
+                    (opp) => opp.stage === 'Perdu'
+                  )
+                  const activeOpps = introducedOpportunities.filter(
+                    (opp) => opp.stage !== 'Gagné' && opp.stage !== 'Perdu'
+                  )
+
+                  const totalWonValue = wonOpps.reduce(
+                    (sum, opp) => sum + (opp.potentialValue || 0),
+                    0
+                  )
+
+                  return (
+                    <>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-text-muted text-xs mb-1">
+                            Gagnées
+                          </div>
+                          <div className="text-lg font-semibold text-green-500">
+                            {wonOpps.length}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-text-muted text-xs mb-1">
+                            En cours
+                          </div>
+                          <div className="text-lg font-semibold">
+                            {activeOpps.length}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-text-muted text-xs mb-1">
+                            Perdues
+                          </div>
+                          <div className="text-lg font-semibold text-text-muted">
+                            {lostOpps.length}
+                          </div>
+                        </div>
+                      </div>
+
+                      {totalWonValue > 0 && (
+                        <div className="pt-4 border-t border-border">
+                          <div className="text-text-muted text-xs mb-1">
+                            Valeur générée
+                          </div>
+                          <div className="text-2xl font-bold font-syne text-green-500">
+                            {totalWonValue.toLocaleString('fr-FR')} €
+                          </div>
+                        </div>
+                      )}
+
+                      {introducedOpportunities.length > 0 && (
+                        <div className="pt-4 border-t border-border">
+                          <div className="text-text-muted text-xs mb-2">
+                            Dernière opportunité introduite
+                          </div>
+                          {(() => {
+                            const latest = [...introducedOpportunities].sort(
+                              (a, b) =>
+                                new Date(b.createdAt).getTime() -
+                                new Date(a.createdAt).getTime()
+                            )[0]
+
+                            return (
+                              <Link
+                                href={`/prospects/${latest.id}`}
+                                className="block p-2 rounded-lg hover:bg-white/5 transition-colors"
+                              >
+                                <div className="font-medium text-sm">
+                                  {latest.name}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="default" className="text-xs">
+                                    {latest.stage}
+                                  </Badge>
+                                  {latest.potentialValue && (
+                                    <span className="text-text-muted text-xs">
+                                      {latest.potentialValue.toLocaleString(
+                                        'fr-FR'
+                                      )}{' '}
+                                      €
+                                    </span>
+                                  )}
+                                </div>
+                              </Link>
+                            )
+                          })()}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
