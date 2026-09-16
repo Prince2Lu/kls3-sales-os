@@ -248,7 +248,7 @@ export function PipelineBoard({
       </div>
 
       {isUpdating && (
-        <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
+        <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center">
           <div className="text-text-primary">Mise à jour...</div>
         </div>
       )}

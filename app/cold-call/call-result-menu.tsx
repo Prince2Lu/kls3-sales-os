@@ -25,7 +25,7 @@ const CALL_RESULTS: { value: ActivityResult; label: string }[] = [
 
 export function CallResultMenu({ onSelect, onCancel }: CallResultMenuProps) {
   return (
-    <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
+    <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center">
       <Card className="max-w-sm w-full p-4 space-y-3">
         <div>
           <h3 className="text-lg font-bold font-syne">Résultat de l'appel</h3>

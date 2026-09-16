@@ -1,13 +1,24 @@
 @import "tailwindcss";
 
 @theme {
+  /* KLS3 DESIGN SYSTEM - COLOR TOKENS */
+  /* ANTI-REGRESSION RULE: All overlay surfaces MUST use opaque colors */
+  /* FORBIDDEN: bg-* with alpha on primary surfaces */
+  /* FORBIDDEN: backdrop-blur on modals (navigation only) */
+  /* If transparency needed: use hover states only */
+
+  /* Base colors - opaque, no alpha */
   --color-background: #0d0d0d;
   --color-card: #111111;
+  --color-card-bg: #111111;
   --color-accent: #4b7bf5;
   --color-text-primary: #f0ede8;
+
+  /* Intentional transparency - text and borders only */
   --color-text-muted: rgba(240, 237, 232, 0.45);
   --color-border: rgba(255, 255, 255, 0.07);
 
+  /* Typography */
   --font-family-syne: var(--font-syne), sans-serif;
   --font-family-inter: var(--font-inter), sans-serif;
 }
@@ -23,6 +34,33 @@
 }
 
 @layer utilities {
+  /* OVERLAY SURFACE UTILITIES */
+  /* Standard styling for all interactive overlays */
+  /* Ensures consistent opaque appearance */
+
+  /* Dropdown and Popover surface - positioned, no backdrop */
+  .overlay-surface {
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  }
+
+  /* Modal backdrop - fullscreen, opaque */
+  /* IMPORTANT: NO opacity, NO backdrop-blur, NO transparency */
+  .modal-backdrop {
+    background: var(--color-background);
+  }
+
+  /* Sheet and Drawer surface - sidebar overlay */
+  .sheet-surface {
+    background: var(--color-card);
+    border-left: 1px solid var(--color-border);
+    box-shadow: -10px 0 15px -3px rgb(0 0 0 / 0.3);
+  }
+
+  /* ANIMATIONS */
+
   @keyframes slide-in-right {
     from {
       transform: translateX(100%);

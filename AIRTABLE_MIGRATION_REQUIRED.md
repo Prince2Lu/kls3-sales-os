@@ -54,7 +54,57 @@ After adding the option, update existing business lines:
 
 ---
 
-## 2. COLD_CALL_TARGETS — Rename Call Status values (OPTIONAL)
+## 2. COLD_CALL_TARGETS — Add 'Converti' option (REQUIRED FOR EMAIL_REPLY)
+
+### Context
+
+Code now writes `'Converti'` directly to Airtable (not `'RDV booké'`).
+
+**Semantic issue** :
+- Domain: `'Converti'` = "converted to Opportunity" (generic, multi-channel)
+- Airtable legacy: `'RDV booké'` = "meeting booked" (specific to MEETING_BOOKED only)
+
+**Problem** : Writing `'Converti'` as `'RDV booké'` is SEMANTICALLY FALSE
+- EMAIL_REPLY → Converti → ❌ NOT "RDV booké" (no meeting!)
+- CONVERSATION → Converti → ❌ NOT "RDV booké" (no meeting!)
+- MEETING_BOOKED → Converti → ✅ YES "RDV booké" (actual meeting)
+
+**Solution** : Add `'Converti'` as a separate option in Airtable Single Select
+
+### Migration Required
+
+**Table**: `COLD_CALL_TARGETS`
+
+**Field**: `Call Status` (Single Select)
+
+**Action**: Add new option `Converti`
+
+#### Steps:
+
+1. Open Airtable base
+2. Open table `COLD_CALL_TARGETS`
+3. Click on field `Call Status` configuration
+4. Add new option: `Converti`
+5. Keep `RDV booké` for backward compatibility (optional: can be removed later)
+
+#### Result:
+
+Available options should include:
+- `À appeler` (legacy)
+- `À rappeler` (legacy)
+- `Email Flow` (legacy)
+- `Mauvais numéro` (legacy)
+- `Pas intéressé` (legacy)
+- `RDV booké` (legacy, can coexist temporarily)
+- `Converti` (NEW, **REQUIRED**)
+
+**Status**: ⚠️  **REQUIRED** (code will write `'Converti'` directly)
+
+**Priority**: **HIGH** (blocks EMAIL_REPLY feature)
+
+---
+
+## 3. COLD_CALL_TARGETS — Rename Call Status values (OPTIONAL)
 
 ### Context
 
@@ -140,7 +190,21 @@ export function mapLegacyToProspecting(status: string): ProspectingStatus {
 
 ---
 
-## 3. CALL_STATUS_HISTORY — Same as COLD_CALL_TARGETS (OPTIONAL)
+## 4. CALL_STATUS_HISTORY — Add 'Converti' option (REQUIRED)
+
+Same as section 2, but for fields:
+- `From Status`
+- `To Status`
+
+**Action**: Add `Converti` to both Single Select fields
+
+**Status**: ⚠️  **REQUIRED**
+
+**Priority**: **HIGH**
+
+---
+
+## 5. CALL_STATUS_HISTORY — Rename other values (OPTIONAL)
 
 Same migration as section 2, but for fields:
 - `From Status`
@@ -152,15 +216,20 @@ Same migration as section 2, but for fields:
 
 ## SUMMARY
 
-### Required before production:
+### Required before EMAIL_REPLY feature works:
 
-1. ✅ Add `PROSPECTING` option to `BUSINESS_LINES.Prospecting Mode`
+1. ⚠️  **HIGH PRIORITY**: Add `Converti` option to `COLD_CALL_TARGETS.Call Status`
+2. ⚠️  **HIGH PRIORITY**: Add `Converti` option to `CALL_STATUS_HISTORY.From Status` and `To Status`
+
+### Recommended (not blocking):
+
+3. ✅ Add `PROSPECTING` option to `BUSINESS_LINES.Prospecting Mode`
 
 ### Optional (cleaner data, but not required):
 
-2. ⏸️  Rename `COLD_CALL_TARGETS.Call Status` options
-3. ⏸️  Update business lines from `COLD_CALL` to `PROSPECTING`
-4. ⏸️  Rename `CALL_STATUS_HISTORY` status options
+4. ⏸️  Rename other `COLD_CALL_TARGETS.Call Status` options
+5. ⏸️  Update business lines from `COLD_CALL` to `PROSPECTING`
+6. ⏸️  Rename `CALL_STATUS_HISTORY` status options
 
 ### Current code compatibility:
 

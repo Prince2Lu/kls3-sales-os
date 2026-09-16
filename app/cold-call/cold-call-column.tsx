@@ -21,7 +21,7 @@ import { CallResultMenu } from './call-result-menu'
 import { CallbackModal } from './callback-modal'
 import { StatusChangeMenu } from './status-change-menu'
 import { ColdCallQuickView } from './cold-call-quick-view'
-import { recordCallActivity, updateColdCallStatus } from './actions'
+import { recordCallActivity, recordEmailActivity, updateColdCallStatus } from './actions'
 import { ContactInfo } from '@/components/pipeline/contact-info'
 import { CallCounter } from '@/components/pipeline/call-counter'
 import { TaskSummary } from '@/components/pipeline/task-summary'
@@ -241,8 +241,8 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
   async function handleStatusChange(newStatus: import('@/types/domain').CallStatus) {
     setShowStatusMenu(false)
 
-    // Relance prévue requires callback date
-    if (newStatus === 'Relance prévue') {
+    // À rappeler requires callback date
+    if (newStatus === 'À rappeler') {
       setShowCallbackModal(true)
       return
     }
@@ -281,6 +281,18 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
       router.refresh()
     } else {
       alert('Erreur lors de la création de la tâche')
+    }
+  }
+
+  async function handleEmailReply() {
+    setIsRecording(true)
+    const response = await recordEmailActivity(target.id)
+    setIsRecording(false)
+
+    if (response.success) {
+      router.refresh()
+    } else {
+      alert('Erreur lors de l\'enregistrement de la réponse email')
     }
   }
 
@@ -339,6 +351,18 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
               disabled={isRecording || isChangingStatus}
             >
               📞
+            </button>
+            {/* Email reply button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleEmailReply()
+              }}
+              className="text-accent hover:text-accent/80 text-base"
+              title="Réponse email reçue"
+              disabled={isRecording || isChangingStatus}
+            >
+              📧
             </button>
             {/* Create task button */}
             <button

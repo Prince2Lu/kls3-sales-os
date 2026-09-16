@@ -36,11 +36,12 @@ interface WorkModeProps {
 // Pre-RDV prospecting statuses (for PROSPECTING_TARGETS)
 // Multi-channel: cold call, email, LinkedIn, referrals, etc.
 const PRE_RDV_STATUSES: CallStatus[] = [
-  'À contacter',
-  'Relance prévue',
-  'En séquence',
-  'Non joignable',
-  'Hors cible',
+  'À appeler',
+  'À rappeler',
+  'Email Flow',
+  'Mauvais numéro',
+  'Pas intéressé',
+  'RDV booké',
   'Converti',
 ]
 

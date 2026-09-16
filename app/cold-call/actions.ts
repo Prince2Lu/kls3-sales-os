@@ -52,7 +52,7 @@ export async function updateColdCallStatus(
 
     // Business logic by status
     switch (newStatus) {
-      case 'Relance prévue':
+      case 'À rappeler':
         // Create TASK for callback
         if (metadata?.callbackDate) {
           await createTask({
@@ -308,123 +308,24 @@ export async function recordCallActivity(
       // Get the appropriate stage based on result
       const initialStage = getInitialOpportunityStage(result)
 
-      // Check if opportunity already exists for this company + BL
-      const existingOpps = await getOpportunities({
-        companyId: target.companyId,
-        businessLineId: target.businessLineId,
-      })
-
-      const activeOpp = existingOpps.find(
-        (opp) => opp.stage !== 'Gagné' && opp.stage !== 'Perdu'
-      )
-
-      let opportunityId: string
-
-      if (activeOpp) {
-        // Reuse existing opportunity
-        // DO NOT regress stage if already advanced beyond initialStage
-        const stageOrder = [
-          'À prospecter',
-          'Contacté',
-          'Échange',
-          'Qualifié',
-          'RDV',
-          'Opportunité',
-          'Proposition',
-          'Gagné',
-          'Perdu',
-        ]
-        const currentStageIndex = stageOrder.indexOf(activeOpp.stage)
-        const targetStageIndex = stageOrder.indexOf(initialStage)
-
-        // Only update stage if current stage is BEFORE target stage
-        if (currentStageIndex < targetStageIndex) {
-          await updateOpportunity(activeOpp.id, {
-            stage: initialStage,
-          })
-          await createStageHistory({
-            opportunityId: activeOpp.id,
-            fromStage: activeOpp.stage,
-            toStage: initialStage,
-            changedBy: owner,
-          })
-        }
-        // If already at target stage or beyond, just reuse without changing stage
-
-        opportunityId = activeOpp.id
-      } else {
-        // Get company name for opportunity title
-        const { getCompanyById } = await import('@/lib/airtable')
-        const company = await getCompanyById(target.companyId)
-
-        // Create new opportunity with appropriate stage
-        const newOpp = await createOpportunity({
-          name: `${company.name} - Prospection`,
-          companyId: target.companyId,
-          primaryContactId: target.contactId ?? undefined,
-          businessLineId: target.businessLineId,
-          owner: target.owner,
-          stage: initialStage,
-          source: 'Cold Call',
-        })
-
-        // Create initial STAGE_HISTORY
-        await createStageHistory({
-          opportunityId: newOpp.id,
-          fromStage: undefined,
-          toStage: initialStage,
-          changedBy: owner,
-        })
-
-        opportunityId = newOpp.id
-      }
-
-      // Link opportunity to cold call target
-      await updateColdCallTarget(targetId, {
-        opportunityId,
-      })
-
-      // Update prospecting status to Converti
-      await changeColdCallStatus({
+      // Use centralized conversion engine
+      const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
+      const conversionResult = await convertProspectingTargetToOpportunity({
         targetId,
-        toStatus: 'Converti',
+        initialStage,
+        source: 'Cold Call',
+        owner,
+        activityResult: result,
       })
 
-      // Update existing TASKS and ACTIVITIES to link them to the opportunity
-      const { getTasks, updateTask, getActivities, updateActivity } = await import('@/lib/airtable')
-
-      const [tasks, activities] = await Promise.all([
-        getTasks({
-          contactId: target.contactId ?? undefined,
-          status: 'TODO',
-        }),
-        getActivities({
-          contactId: target.contactId ?? undefined,
-        }),
-      ])
-
-      // Link TASKS that were created for THIS exact target
-      const tasksToUpdate = tasks.filter(
-        (task) => task.coldCallTargetId === targetId && !task.opportunityId
-      )
-
-      for (const task of tasksToUpdate) {
-        await updateTask(task.id, {
-          opportunityId,
-        })
+      if (!conversionResult.success) {
+        return {
+          success: false,
+          error: conversionResult.error || 'Failed to convert to opportunity',
+        }
       }
 
-      // Link ACTIVITIES that were created for THIS exact target
-      const activitiesToUpdate = activities.filter(
-        (activity) =>
-          activity.coldCallTargetId === targetId && !activity.opportunityId
-      )
-
-      for (const activity of activitiesToUpdate) {
-        await updateActivity(activity.id, {
-          opportunityId,
-        })
-      }
+      const opportunityId = conversionResult.opportunityId!
 
       // Create TASK for callback if CALLBACK result with date
       if (result === 'CALLBACK' && metadata?.callbackDate) {
@@ -444,18 +345,18 @@ export async function recordCallActivity(
       // Results that DON'T create Opportunity: update status only
       switch (result) {
         case 'NOT_INTERESTED':
-          // Update to Hors cible with history tracking
+          // Update to Pas intéressé with history tracking
           await changeColdCallStatus({
             targetId,
-            toStatus: 'Hors cible',
+            toStatus: 'Pas intéressé',
           })
           break
 
         case 'WRONG_NUMBER':
-          // Update to Non joignable with history tracking
+          // Update to Mauvais numéro with history tracking
           await changeColdCallStatus({
             targetId,
-            toStatus: 'Non joignable',
+            toStatus: 'Mauvais numéro',
           })
           break
 
@@ -491,6 +392,71 @@ export async function recordCallActivity(
     return { success: true }
   } catch (error: any) {
     console.error('Error recording call activity:', error.message)
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * Record email reply activity (EMAIL_REPLY)
+ * Creates EMAIL activity and triggers Opportunity conversion to stage Échange
+ */
+export async function recordEmailActivity(targetId: string) {
+  try {
+    const { getCurrentOwner } = await import('@/lib/utils/current-owner')
+    const owner = await getCurrentOwner()
+    const { getInitialOpportunityStage } = await import('@/lib/prospecting/conversion-rules')
+
+    const target = await getColdCallTargetById(targetId)
+
+    const result: ActivityResult = 'EMAIL_REPLY'
+
+    // Create ACTIVITY with explicit cold call target link
+    await createActivity({
+      opportunityId: target.opportunityId ?? undefined,
+      contactId: target.contactId ?? undefined,
+      coldCallTargetId: targetId,
+      type: 'EMAIL',
+      date: new Date().toISOString(),
+      result,
+      notes: undefined,
+      owner,
+      durationMinutes: undefined,
+    })
+
+    // EMAIL_REPLY always requires Opportunity conversion
+    // Get the appropriate stage (should be 'Échange')
+    const initialStage = getInitialOpportunityStage(result)
+
+    // Use centralized conversion engine
+    const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
+    const conversionResult = await convertProspectingTargetToOpportunity({
+      targetId,
+      initialStage,
+      source: 'Cold Email',
+      owner,
+      activityResult: result,
+    })
+
+    if (!conversionResult.success) {
+      return {
+        success: false,
+        error: conversionResult.error || 'Failed to convert to opportunity',
+      }
+    }
+
+    revalidatePath('/cold-call')
+    revalidatePath('/today')
+    if (target.opportunityId) {
+      revalidatePath(`/prospects/${target.opportunityId}`)
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error recording email activity:', error.message)
 
     return {
       success: false,

@@ -11,6 +11,9 @@ interface DropdownMenuProps {
   children: ReactNode
   align?: 'left' | 'right'
   className?: string
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  hoverEnabled?: boolean
 }
 
 export function DropdownMenu({
@@ -18,9 +21,23 @@ export function DropdownMenu({
   children,
   align = 'left',
   className,
+  open: controlledOpen,
+  onOpenChange,
+  hoverEnabled = false,
 }: DropdownMenuProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Use controlled or uncontrolled state
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen
+  const setIsOpen = (open: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(open)
+    } else {
+      setInternalOpen(open)
+    }
+  }
 
   // Close on click outside
   useEffect(() => {
@@ -59,8 +76,38 @@ export function DropdownMenu({
     }
   }, [isOpen])
 
+  // Cleanup hover timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const handleMouseEnter = () => {
+    if (!hoverEnabled) return
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+    }
+    setIsOpen(true)
+  }
+
+  const handleMouseLeave = () => {
+    if (!hoverEnabled) return
+    // Delay closing to allow moving mouse to menu items
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsOpen(false)
+    }, 150)
+  }
+
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div
+      className="relative"
+      ref={dropdownRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <div
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={(e) => {
@@ -80,7 +127,7 @@ export function DropdownMenu({
       {isOpen && (
         <div
           className={cn(
-            'absolute top-full mt-2 min-w-[200px] bg-card-bg border border-border rounded-lg shadow-lg py-1 z-50',
+            'absolute top-full mt-2 min-w-[200px] overlay-surface py-1 z-50',
             align === 'right' ? 'right-0' : 'left-0',
             className
           )}

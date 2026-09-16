@@ -16,19 +16,22 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
+// Opportunités submenu items
+const opportunitiesItems = [
+  { href: '/pipeline', label: 'Vue Kanban' },
+  { href: '/prospects', label: 'Vue Liste' },
+]
+
 // Primary navigation items - always visible on desktop
 const primaryNavItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/today', label: 'Aujourd\'hui' },
-  { href: '/pipeline', label: 'Pipeline' },
   { href: '/cold-call', label: 'Cold Call' },
 ]
 
 // Secondary navigation items - in "Plus" dropdown on medium screens
 const secondaryNavItems = [
-  { href: '/work', label: 'Travail' },
   { href: '/analytics', label: 'Analytics' },
-  { href: '/prospects', label: 'Opportunités' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
 ]
@@ -37,21 +40,15 @@ const secondaryNavItems = [
 // Shows only essential items, rest in "Plus"
 const compactNavItems = [
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/pipeline', label: 'Pipeline' },
   { href: '/cold-call', label: 'Cold Call' },
 ]
 
 const compactSecondaryItems = [
   { href: '/today', label: 'Aujourd\'hui' },
-  { href: '/work', label: 'Travail' },
   { href: '/analytics', label: 'Analytics' },
-  { href: '/prospects', label: 'Opportunités' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
 ]
-
-// All navigation items for very large screens
-const allNavItems = [...primaryNavItems, ...secondaryNavItems]
 
 interface NavV2Props {
   userEmail?: string | null
@@ -60,6 +57,9 @@ interface NavV2Props {
 
 export function NavV2({ userEmail, userName }: NavV2Props = {}) {
   const pathname = usePathname()
+
+  // Check if current path is within Opportunités section
+  const isOpportunitiesActive = pathname === '/pipeline' || pathname === '/prospects'
 
   const NavItem = ({ href, label }: { href: string; label: string }) => {
     const isActive = pathname === href || pathname?.startsWith(`${href}/`)
@@ -77,6 +77,38 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
           {label}
         </Button>
       </Link>
+    )
+  }
+
+  const OpportunitesMenu = () => {
+    const trigger = (
+      <Button
+        variant={isOpportunitiesActive ? 'primary' : 'nav'}
+        size="sm"
+        className={cn(
+          'transition-all whitespace-nowrap',
+          isOpportunitiesActive && 'ring-2 ring-accent/20'
+        )}
+      >
+        Opportunités
+      </Button>
+    )
+
+    return (
+      <DropdownMenu trigger={trigger} hoverEnabled={true}>
+        {opportunitiesItems.map((item) => (
+          <Link key={item.href} href={item.href}>
+            <DropdownMenuItem
+              className={cn(
+                'cursor-pointer',
+                pathname === item.href && 'bg-accent/10 text-accent font-medium'
+              )}
+            >
+              {item.label}
+            </DropdownMenuItem>
+          </Link>
+        ))}
+      </DropdownMenu>
     )
   }
 
@@ -137,6 +169,7 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
             {compactNavItems.map((item) => (
               <NavItem key={item.href} {...item} />
             ))}
+            <OpportunitesMenu />
             <MoreMenu items={compactSecondaryItems} />
           </div>
 
@@ -145,19 +178,25 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
             {primaryNavItems.map((item) => (
               <NavItem key={item.href} {...item} />
             ))}
+            <OpportunitesMenu />
             <MoreMenu items={secondaryNavItems} />
           </div>
 
           {/* All nav items - visible on very large screens (1536px+) */}
           <div className="hidden 2xl:flex items-center gap-1.5">
-            {allNavItems.map((item) => (
+            {primaryNavItems.map((item) => (
+              <NavItem key={item.href} {...item} />
+            ))}
+            <OpportunitesMenu />
+            {secondaryNavItems.map((item) => (
               <NavItem key={item.href} {...item} />
             ))}
           </div>
 
           {/* Mobile: All items in dropdown */}
           <div className="md:hidden">
-            <MoreMenu items={allNavItems} />
+            <OpportunitesMenu />
+            <MoreMenu items={[...primaryNavItems, ...secondaryNavItems]} />
           </div>
         </div>
 

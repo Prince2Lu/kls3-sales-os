@@ -14,11 +14,12 @@ interface StatusChangeMenuProps {
 }
 
 const PROSPECTING_STATUSES: { value: ProspectingStatus; label: string; description?: string }[] = [
-  { value: 'À contacter', label: 'À contacter', description: 'Prospect non contacté' },
-  { value: 'Relance prévue', label: 'Relance prévue', description: 'Relance programmée' },
-  { value: 'En séquence', label: 'En séquence', description: 'Séquence email/LinkedIn active' },
-  { value: 'Non joignable', label: 'Non joignable', description: 'Coordonnées invalides' },
-  { value: 'Hors cible', label: 'Hors cible', description: 'Pas intéressé ou hors profil' },
+  { value: 'À appeler', label: 'À appeler', description: 'Prospect non contacté' },
+  { value: 'À rappeler', label: 'À rappeler', description: 'Relance programmée' },
+  { value: 'Email Flow', label: 'Email Flow', description: 'Séquence email/LinkedIn active' },
+  { value: 'Mauvais numéro', label: 'Mauvais numéro', description: 'Coordonnées invalides' },
+  { value: 'Pas intéressé', label: 'Pas intéressé', description: 'Pas intéressé ou hors profil' },
+  { value: 'RDV booké', label: 'RDV booké', description: 'Meeting confirmé' },
   { value: 'Converti', label: 'Converti', description: 'Converti en opportunité' },
 ]
 
@@ -28,7 +29,7 @@ export function StatusChangeMenu({
   currentStatus,
 }: StatusChangeMenuProps) {
   return (
-    <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
+    <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center">
       <Card className="max-w-sm w-full p-4 space-y-3">
         <div>
           <h3 className="text-lg font-bold font-syne">Changer le statut</h3>

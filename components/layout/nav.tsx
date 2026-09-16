@@ -7,18 +7,23 @@ import { usePathname } from 'next/navigation'
 import { Logo } from '@/components/ui/logo'
 import { Button } from '@/components/ui/button'
 import { UserMenu } from '@/components/layout/user-menu'
+import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/today', label: 'Ma journée' },
-  { href: '/work', label: 'Mode de travail' },
-  { href: '/pipeline', label: 'Pipeline' },
+  { href: '/today', label: "Aujourd'hui" },
   { href: '/cold-call', label: 'Prospection' },
+  { href: '/focus', label: 'Focus' },
   { href: '/analytics', label: 'Analytics' },
-  { href: '/prospects', label: 'Opportunités' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
+]
+
+// Opportunités submenu items
+const opportunitiesItems = [
+  { href: '/pipeline', label: 'Vue Kanban' },
+  { href: '/prospects', label: 'Vue Liste' },
 ]
 
 interface NavProps {
@@ -27,6 +32,9 @@ interface NavProps {
 
 export function Nav({ userEmail }: NavProps = {}) {
   const pathname = usePathname()
+
+  // Check if current path is within Opportunités section
+  const isOpportunitiesActive = pathname === '/pipeline' || pathname === '/prospects'
 
   return (
     <nav className="border-b border-border bg-background sticky top-0 z-50">
@@ -51,6 +59,31 @@ export function Nav({ userEmail }: NavProps = {}) {
                 </Button>
               </Link>
             ))}
+
+            {/* Opportunités dropdown menu - hover enabled on desktop */}
+            <DropdownMenu
+              hoverEnabled={true}
+              trigger={
+                <Button
+                  variant={isOpportunitiesActive ? 'primary' : 'nav'}
+                  size="sm"
+                  className={cn(
+                    'transition-all',
+                    isOpportunitiesActive && 'ring-2 ring-accent/20'
+                  )}
+                >
+                  Opportunités
+                </Button>
+              }
+            >
+              {opportunitiesItems.map((item) => (
+                <Link key={item.href} href={item.href}>
+                  <DropdownMenuItem>
+                    {item.label}
+                  </DropdownMenuItem>
+                </Link>
+              ))}
+            </DropdownMenu>
           </div>
         </div>
 

@@ -70,6 +70,7 @@ export type ActivityResult =
   | 'WRONG_NUMBER'
   | 'VOICEMAIL'
   | 'EMAIL_REQUESTED'
+  | 'EMAIL_REPLY' // Email response received (creates Opportunity)
 
 export type TaskType =
   | 'CALL'
@@ -86,15 +87,17 @@ export type TaskStatus = 'TODO' | 'DONE' | 'CANCELLED'
 
 export type ValueEventStatus = 'PENDING' | 'CONFIRMED' | 'PAID' | 'CANCELLED'
 
-// ProspectingStatus: Generic multi-channel prospecting status (replaces CallStatus)
+// ProspectingStatus: Multi-channel prospecting status
 // Supports: cold calls, emails, LinkedIn, referrals, etc.
+// DECISION: Keep Lilian's familiar UI labels (legacy values remain primary)
 export type ProspectingStatus =
-  | 'À contacter'      // To be contacted (any channel)
-  | 'Relance prévue'   // Scheduled follow-up (any channel)
-  | 'En séquence'      // In automated/manual sequence (email/LinkedIn/multi-touch)
-  | 'Non joignable'    // Unreachable (bad contact info, no longer at company, etc.)
-  | 'Hors cible'       // Out of target (not interested, wrong profile, etc.)
-  | 'Converti'         // Converted to Opportunity (replaces "RDV booké")
+  | 'À appeler'        // To be contacted (any channel) - Lilian's familiar label
+  | 'À rappeler'       // Scheduled follow-up (any channel) - Lilian's familiar label
+  | 'Email Flow'       // In automated/manual sequence - Lilian's familiar label
+  | 'Mauvais numéro'   // Unreachable (bad contact info) - Lilian's familiar label
+  | 'Pas intéressé'    // Out of target (not interested) - Lilian's familiar label
+  | 'RDV booké'        // Meeting booked (MEETING_BOOKED only) - Lilian's familiar label
+  | 'Converti'         // Generic conversion (EMAIL_REPLY, CONVERSATION) - Technical status, hidden from board
 
 // Backward compatibility alias (deprecated, use ProspectingStatus)
 export type CallStatus = ProspectingStatus

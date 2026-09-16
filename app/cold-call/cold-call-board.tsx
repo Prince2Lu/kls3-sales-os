@@ -43,15 +43,18 @@ interface ColdCallBoardProps {
   currentOwner: 'Eric' | 'Lilian'
 }
 
-// Prospecting status columns (pre-opportunity)
+// Active prospecting status columns (Lilian's familiar labels)
 // Multi-channel: cold call, email, LinkedIn, referrals, etc.
+// Includes 'Converti' - visible trace of converted prospects (EMAIL_REPLY, CONVERSATION, CALLBACK)
+// Includes 'RDV booké' - visible trace of confirmed meetings (MEETING_BOOKED)
 const CALL_STATUSES: CallStatus[] = [
-  'À contacter',
-  'Relance prévue',
-  'En séquence',
-  'Non joignable',
-  'Hors cible',
+  'À appeler',
+  'À rappeler',
+  'Email Flow',
+  'Mauvais numéro',
+  'Pas intéressé',
   'Converti',
+  'RDV booké',
 ]
 
 // Opportunity stages for post-RDV (displayed in cold call view)
@@ -210,8 +213,8 @@ export function ColdCallBoard({
       // If already in this status, do nothing
       if (target.callStatus === newStatus) return
 
-      // Special handling for "Relance prévue" - show modal for callback date
-      if (newStatus === 'Relance prévue') {
+      // Special handling for "À rappeler" - show modal for callback date
+      if (newStatus === 'À rappeler') {
         setPendingCallbackTargetId(targetId)
         setShowCallbackModal(true)
         return
@@ -265,7 +268,7 @@ export function ColdCallBoard({
 
     // changedBy is determined server-side from session
     setIsUpdating(true)
-    const result = await updateColdCallStatus(targetId, 'Relance prévue', {
+    const result = await updateColdCallStatus(targetId, 'À rappeler', {
       callbackDate,
     })
     setIsUpdating(false)
@@ -302,7 +305,7 @@ export function ColdCallBoard({
       </div>
 
       {isUpdating && (
-        <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
+        <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center">
           <div className="text-text-primary">Mise à jour...</div>
         </div>
       )}

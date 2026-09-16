@@ -1,95 +1,51 @@
-// Prospecting Status Mapper
-// Maps legacy CallStatus to new ProspectingStatus and vice versa
-// Used during migration period for backward compatibility
+// Prospecting Status Configuration
+// Defines active prospecting statuses and conversion logic
 
 import type { ProspectingStatus } from '@/types/domain'
 
-// Legacy CallStatus type (for reference)
-type LegacyCallStatus =
-  | 'À appeler'
-  | 'À rappeler'
-  | 'Email Flow'
-  | 'Mauvais numéro'
-  | 'Pas intéressé'
-  | 'RDV booké'
+/**
+ * ARCHITECTURE DECISION:
+ *
+ * ProspectingStatus uses Lilian's familiar UI labels (legacy values remain primary).
+ * No mapping needed - values read/written directly to Airtable.
+ *
+ * SEMANTIC DISTINCTION:
+ * - 'RDV booké' = MEETING_BOOKED only (actual meeting scheduled)
+ * - 'Converti' = Generic conversion (EMAIL_REPLY, CONVERSATION without meeting)
+ *
+ * UI DISPLAY RULES:
+ * - Active prospecting board shows ALL 7 statuses (including 'Converti' and 'RDV booké')
+ * - 'Converti' visible to maintain visual trace of converted prospects
+ * - 'RDV booké' visible to maintain visual trace of confirmed meetings
+ */
 
 /**
- * Map legacy CallStatus to new ProspectingStatus
- * Used when reading existing Airtable data
+ * Get all active prospecting statuses (displayed in prospecting board)
+ * Includes all 7 statuses for complete visual tracking
  */
-export function mapLegacyToProspecting(
-  legacyStatus: string
-): ProspectingStatus {
-  switch (legacyStatus) {
-    case 'À appeler':
-      return 'À contacter'
-    case 'À rappeler':
-      return 'Relance prévue'
-    case 'Email Flow':
-      return 'En séquence'
-    case 'Mauvais numéro':
-      return 'Non joignable'
-    case 'Pas intéressé':
-      return 'Hors cible'
-    case 'RDV booké':
-      return 'Converti'
-    default:
-      // If already new format, return as-is
-      return legacyStatus as ProspectingStatus
-  }
+export function getActiveProspectingStatuses(): readonly ProspectingStatus[] {
+  return [
+    'À appeler',
+    'À rappeler',
+    'Email Flow',
+    'Mauvais numéro',
+    'Pas intéressé',
+    'Converti',
+    'RDV booké',
+  ] as const
 }
 
 /**
- * Map new ProspectingStatus to legacy CallStatus
- * Used when writing to Airtable during migration period
- *
- * DECISION: Option A (Map to legacy) implemented
- *
- * Why Option A:
- * - Airtable Single Select currently ONLY contains legacy values ('À appeler', 'À rappeler', etc.)
- * - Writing new values ('À contacter') would cause Airtable API errors
- * - This mapper ensures write compatibility
- *
- * Future migration path to Option B (write new values directly):
- * 1. Update Airtable COLD_CALL_TARGETS.Call Status Single Select options:
- *    - Rename 'À appeler' → 'À contacter'
- *    - Rename 'À rappeler' → 'Relance prévue'
- *    - Rename 'Email Flow' → 'En séquence'
- *    - Rename 'Mauvais numéro' → 'Non joignable'
- *    - Rename 'Pas intéressé' → 'Hors cible'
- *    - Rename 'RDV booké' → 'Converti'
- * 2. Remove this mapper (return status directly)
- * 3. Remove mapLegacyToProspecting from read path
- */
-export function mapProspectingToLegacy(
-  status: ProspectingStatus
-): LegacyCallStatus {
-  switch (status) {
-    case 'À contacter':
-      return 'À appeler'
-    case 'Relance prévue':
-      return 'À rappeler'
-    case 'En séquence':
-      return 'Email Flow'
-    case 'Non joignable':
-      return 'Mauvais numéro'
-    case 'Hors cible':
-      return 'Pas intéressé'
-    case 'Converti':
-      return 'RDV booké'
-  }
-}
-
-/**
- * Get all valid ProspectingStatus values
+ * Get all valid ProspectingStatus values (including technical statuses)
  */
 export function getAllProspectingStatuses(): readonly ProspectingStatus[] {
   return [
-    'À contacter',
-    'Relance prévue',
-    'En séquence',
-    'Non joignable',
-    'Hors cible',
+    'À appeler',
+    'À rappeler',
+    'Email Flow',
+    'Mauvais numéro',
+    'Pas intéressé',
+    'RDV booké',
     'Converti',
   ] as const
 }
