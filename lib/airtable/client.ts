@@ -18,6 +18,7 @@ import type {
   AirtableUserFields,
   AirtableColdCallTargetFields,
   AirtableCallStatusHistoryFields,
+  AirtableRelationshipFields,
 } from './types'
 import {
   mapBusinessLine,
@@ -32,6 +33,7 @@ import {
   mapUser,
   mapColdCallTarget,
   mapCallStatusHistory,
+  mapRelationship,
 } from './mappers'
 
 import type {
@@ -47,8 +49,12 @@ import type {
   User,
   ColdCallTarget,
   CallStatusHistory,
+  Relationship,
   CallStatus,
   Owner,
+  RelationshipType,
+  RelationshipStatus,
+  RelationshipImportance,
 } from '@/types/domain'
 
 // ============================================================================
@@ -776,6 +782,8 @@ export interface CreateOpportunityInput {
   problem?: string
   need?: string
   nextStepNotes?: string
+  introducedByRelationshipId?: string
+  introducedByContactId?: string
 }
 
 export async function createOpportunity(
@@ -800,6 +808,8 @@ export async function createOpportunity(
     Problem: input.problem,
     Need: input.need,
     'Next Step Notes': input.nextStepNotes,
+    'Introduced By Relationship': input.introducedByRelationshipId ? [input.introducedByRelationshipId] : undefined,
+    'Introduced By Contact': input.introducedByContactId ? [input.introducedByContactId] : undefined,
     'Created At': now,
     'Updated At': now,
   }
@@ -847,6 +857,10 @@ export async function updateOpportunity(
   if (input.need !== undefined) fields.Need = input.need
   if (input.nextStepNotes !== undefined)
     fields['Next Step Notes'] = input.nextStepNotes
+  if (input.introducedByRelationshipId !== undefined)
+    fields['Introduced By Relationship'] = input.introducedByRelationshipId ? [input.introducedByRelationshipId] : []
+  if (input.introducedByContactId !== undefined)
+    fields['Introduced By Contact'] = input.introducedByContactId ? [input.introducedByContactId] : []
   if (input.wonAt !== undefined) fields['Won At'] = input.wonAt
   if (input.lostAt !== undefined) fields['Lost At'] = input.lostAt
   if (input.lostReason !== undefined) fields['Lost Reason'] = input.lostReason
@@ -867,6 +881,7 @@ export interface CreateActivityInput {
   opportunityId?: string
   contactId?: string
   coldCallTargetId?: string
+  relationshipId?: string
   type: string
   date: string
   result?: string
@@ -884,6 +899,7 @@ export async function createActivity(
     Opportunity: input.opportunityId ? [input.opportunityId] : undefined,
     Contact: input.contactId ? [input.contactId] : undefined,
     'Cold Call Target': input.coldCallTargetId ? [input.coldCallTargetId] : undefined,
+    Relationship: input.relationshipId ? [input.relationshipId] : undefined,
     Type: input.type,
     Date: input.date,
     Result: input.result,
@@ -912,6 +928,8 @@ export async function updateActivity(
     fields.Contact = input.contactId ? [input.contactId] : []
   if (input.coldCallTargetId !== undefined)
     fields['Cold Call Target'] = input.coldCallTargetId ? [input.coldCallTargetId] : []
+  if (input.relationshipId !== undefined)
+    fields.Relationship = input.relationshipId ? [input.relationshipId] : []
   if (input.type !== undefined) fields.Type = input.type
   if (input.date !== undefined) fields.Date = input.date
   if (input.result !== undefined) fields.Result = input.result
@@ -936,6 +954,7 @@ export interface CreateTaskInput {
   opportunityId?: string
   contactId?: string
   coldCallTargetId?: string
+  relationshipId?: string
   type: string
   dueAt?: string
   priority?: string
@@ -951,6 +970,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     Opportunity: input.opportunityId ? [input.opportunityId] : undefined,
     Contact: input.contactId ? [input.contactId] : undefined,
     'Cold Call Target': input.coldCallTargetId ? [input.coldCallTargetId] : undefined,
+    Relationship: input.relationshipId ? [input.relationshipId] : undefined,
     Type: input.type,
     'Due At': input.dueAt,
     Priority: input.priority,
@@ -979,6 +999,8 @@ export async function updateTask(
     fields.Contact = input.contactId ? [input.contactId] : []
   if (input.coldCallTargetId !== undefined)
     fields['Cold Call Target'] = input.coldCallTargetId ? [input.coldCallTargetId] : []
+  if (input.relationshipId !== undefined)
+    fields.Relationship = input.relationshipId ? [input.relationshipId] : []
   if (input.type !== undefined) fields.Type = input.type
   if (input.dueAt !== undefined) fields['Due At'] = input.dueAt
   if (input.priority !== undefined) fields.Priority = input.priority
@@ -1381,4 +1403,140 @@ export async function getCallStatusHistory(
   }
 
   return filteredRecords.map(mapCallStatusHistory).filter((h): h is CallStatusHistory => h !== null)
+}
+
+// ============================================================================
+// RELATIONSHIPS
+// ============================================================================
+
+export async function getRelationships(options?: {
+  companyId?: string
+  contactId?: string
+  owner?: Owner
+  status?: RelationshipStatus
+  maxRecords?: number
+}): Promise<Relationship[]> {
+  const filters: string[] = []
+
+  if (options?.status) {
+    filters.push(`{Status} = "${options.status}"`)
+  }
+
+  if (options?.owner) {
+    filters.push(`{Owner} = "${options.owner}"`)
+  }
+
+  const filterByFormula = filters.length > 0 ? `AND(${filters.join(', ')})` : undefined
+
+  const records = await fetchRecords<AirtableRelationshipFields>(
+    TABLE_NAMES.RELATIONSHIPS,
+    {
+      filterByFormula,
+      sort: [{ field: 'Updated At', direction: 'desc' }],
+      maxRecords: (options?.companyId || options?.contactId) ? undefined : options?.maxRecords,
+    }
+  )
+
+  // Filter linked records in-memory since Airtable formula filtering is unreliable
+  let filteredRecords = records
+
+  if (options?.companyId) {
+    filteredRecords = filteredRecords.filter(record =>
+      record.fields.Company?.includes(options.companyId!)
+    )
+  }
+
+  if (options?.contactId) {
+    filteredRecords = filteredRecords.filter(record =>
+      record.fields.Contact?.includes(options.contactId!)
+    )
+  }
+
+  // Apply maxRecords after in-memory filtering
+  if ((options?.companyId || options?.contactId) && options?.maxRecords) {
+    filteredRecords = filteredRecords.slice(0, options.maxRecords)
+  }
+
+  return filteredRecords.map(mapRelationship)
+}
+
+export async function getRelationshipById(id: string): Promise<Relationship> {
+  const record = await fetchRecordById<AirtableRelationshipFields>(
+    TABLE_NAMES.RELATIONSHIPS,
+    id
+  )
+  return mapRelationship(record)
+}
+
+export interface CreateRelationshipInput {
+  name: string
+  companyId?: string
+  contactId?: string
+  owner: Owner
+  relationshipType: RelationshipType
+  status: RelationshipStatus
+  objective?: string
+  importance: RelationshipImportance
+  notes?: string
+}
+
+export async function createRelationship(
+  input: CreateRelationshipInput
+): Promise<Relationship> {
+  const now = new Date().toISOString()
+
+  const fields: Partial<AirtableRelationshipFields> = {
+    Name: input.name,
+    Company: input.companyId ? [input.companyId] : undefined,
+    Contact: input.contactId ? [input.contactId] : undefined,
+    Owner: input.owner,
+    'Relationship Type': input.relationshipType,
+    Status: input.status,
+    Objective: input.objective,
+    Importance: input.importance,
+    Notes: input.notes,
+    'Created At': now,
+    'Updated At': now,
+  }
+
+  const record = await createRecord<AirtableRelationshipFields>(
+    TABLE_NAMES.RELATIONSHIPS,
+    fields
+  )
+  return mapRelationship(record)
+}
+
+export async function updateRelationship(
+  id: string,
+  updates: Partial<CreateRelationshipInput>
+): Promise<Relationship> {
+  const now = new Date().toISOString()
+
+  const fields: Partial<AirtableRelationshipFields> = {
+    Name: updates.name,
+    Company: updates.companyId !== undefined ? (updates.companyId ? [updates.companyId] : undefined) : undefined,
+    Contact: updates.contactId !== undefined ? (updates.contactId ? [updates.contactId] : undefined) : undefined,
+    Owner: updates.owner,
+    'Relationship Type': updates.relationshipType,
+    Status: updates.status,
+    Objective: updates.objective !== undefined ? updates.objective : undefined,
+    Importance: updates.importance,
+    Notes: updates.notes !== undefined ? updates.notes : undefined,
+    'Updated At': now,
+  }
+
+  // Remove undefined fields
+  const cleanedFields: Partial<AirtableRelationshipFields> = {}
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value !== undefined) {
+      cleanedFields[key as keyof AirtableRelationshipFields] = value as any
+    }
+  })
+
+  const record = await updateRecord<AirtableRelationshipFields>(
+    TABLE_NAMES.RELATIONSHIPS,
+    id,
+    cleanedFields
+  )
+  return mapRelationship(record)
 }

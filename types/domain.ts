@@ -49,6 +49,25 @@ export type Source =
 
 export type Owner = 'Eric' | 'Lilian'
 
+export type RelationshipType =
+  | 'Réseau'
+  | 'Prescripteur'
+  | 'Apporteur'
+  | 'Partenaire'
+  | 'Institution'
+  | 'Contact stratégique'
+  | 'Autre'
+
+export type RelationshipStatus =
+  | 'À activer'
+  | 'En discussion'
+  | 'Action prévue'
+  | 'Actif'
+  | 'Dormant'
+  | 'Clos'
+
+export type RelationshipImportance = 'Haute' | 'Normale' | 'Faible'
+
 export type UserRole = 'ADMIN' | 'SALES_DIRECTOR' | 'SALES'
 
 export type ActivityType =
@@ -180,6 +199,8 @@ export interface Opportunity {
   need: string | null
   nextStepNotes: string | null
   lostReason: string | null
+  introducedByRelationshipId: string | null // Link to RELATIONSHIPS
+  introducedByContactId: string | null // Link to CONTACTS
   createdAt: string
   updatedAt: string
   wonAt: string | null
@@ -195,6 +216,7 @@ export interface Activity {
   opportunityId: string | null
   contactId: string | null
   coldCallTargetId: string | null
+  relationshipId: string | null // Link to RELATIONSHIPS
   type: ActivityType
   date: string
   result: ActivityResult | null
@@ -213,6 +235,7 @@ export interface Task {
   opportunityId: string | null
   contactId: string | null
   coldCallTargetId: string | null
+  relationshipId: string | null // Link to RELATIONSHIPS
   type: TaskType
   dueAt: string | null
   priority: Priority | null
@@ -336,4 +359,23 @@ export interface CallStatusHistory {
   toStatus: CallStatus
   changedAt: string
   changedBy: Owner
+}
+
+// ============================================================================
+// RELATIONSHIPS (Relations stratégiques)
+// ============================================================================
+
+export interface Relationship {
+  id: string
+  name: string
+  companyId: string | null // Link to COMPANIES
+  contactId: string | null // Link to CONTACTS
+  owner: Owner
+  relationshipType: RelationshipType
+  status: RelationshipStatus
+  objective: string | null
+  importance: RelationshipImportance
+  notes: string | null
+  createdAt: string
+  updatedAt: string
 }

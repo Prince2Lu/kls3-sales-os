@@ -74,6 +74,8 @@ export interface AirtableOpportunityFields {
   Need?: string
   'Next Step Notes'?: string
   'Lost Reason'?: string
+  'Introduced By Relationship'?: string[] // Link to RELATIONSHIPS
+  'Introduced By Contact'?: string[] // Link to CONTACTS
   'Created At': string
   'Updated At': string
   'Won At'?: string
@@ -84,6 +86,7 @@ export interface AirtableActivityFields {
   Opportunity?: string[]
   Contact?: string[]
   'Cold Call Target'?: string[]
+  Relationship?: string[] // Link to RELATIONSHIPS
   Type: string
   Date: string
   Result?: string
@@ -97,6 +100,7 @@ export interface AirtableTaskFields {
   Opportunity?: string[]
   Contact?: string[]
   'Cold Call Target'?: string[]
+  Relationship?: string[] // Link to RELATIONSHIPS
   Type: string
   'Due At'?: string
   Priority?: string
@@ -166,4 +170,18 @@ export interface AirtableCallStatusHistoryFields {
   'To Status': string
   'Changed At': string
   'Changed By': string
+}
+
+export interface AirtableRelationshipFields {
+  Name: string // Primary field
+  Company?: string[] // Link to COMPANIES (single record)
+  Contact?: string[] // Link to CONTACTS (single record)
+  Owner: string
+  'Relationship Type': string
+  Status: string
+  Objective?: string
+  Importance: string
+  Notes?: string
+  'Created At': string
+  'Updated At': string
 }

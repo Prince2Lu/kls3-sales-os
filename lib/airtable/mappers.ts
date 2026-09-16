@@ -15,6 +15,7 @@ import type {
   AirtableUserFields,
   AirtableColdCallTargetFields,
   AirtableCallStatusHistoryFields,
+  AirtableRelationshipFields,
 } from './types'
 
 import type {
@@ -30,6 +31,7 @@ import type {
   User,
   ColdCallTarget,
   CallStatusHistory,
+  Relationship,
   BusinessLineCode,
   Category,
   EventType,
@@ -46,6 +48,9 @@ import type {
   ValueEventStatus,
   UserRole,
   CallStatus,
+  RelationshipType,
+  RelationshipStatus,
+  RelationshipImportance,
 } from '@/types/domain'
 
 
@@ -150,6 +155,8 @@ export function mapOpportunity(
     need: fields.Need ?? null,
     nextStepNotes: fields['Next Step Notes'] ?? null,
     lostReason: fields['Lost Reason'] ?? null,
+    introducedByRelationshipId: fields['Introduced By Relationship']?.[0] ?? null,
+    introducedByContactId: fields['Introduced By Contact']?.[0] ?? null,
     createdAt: fields['Created At'],
     updatedAt: fields['Updated At'],
     wonAt: fields['Won At'] ?? null,
@@ -170,6 +177,7 @@ export function mapActivity(
     opportunityId: fields.Opportunity?.[0] ?? null,
     contactId: fields.Contact?.[0] ?? null,
     coldCallTargetId: fields['Cold Call Target']?.[0] ?? null,
+    relationshipId: fields.Relationship?.[0] ?? null,
     type: fields.Type as ActivityType,
     date: fields.Date,
     result: (fields.Result as ActivityResult) ?? null,
@@ -191,6 +199,7 @@ export function mapTask(record: AirtableRecord<AirtableTaskFields>): Task {
     opportunityId: fields.Opportunity?.[0] ?? null,
     contactId: fields.Contact?.[0] ?? null,
     coldCallTargetId: fields['Cold Call Target']?.[0] ?? null,
+    relationshipId: fields.Relationship?.[0] ?? null,
     type: fields.Type as TaskType,
     dueAt: fields['Due At'] ?? null,
     priority: (fields.Priority as Priority) ?? null,
@@ -334,5 +343,29 @@ export function mapCallStatusHistory(
     toStatus: fields['To Status'] as CallStatus,
     changedAt: fields['Changed At'],
     changedBy: fields['Changed By'] as Owner,
+  }
+}
+
+// ============================================================================
+// RELATIONSHIPS
+// ============================================================================
+
+export function mapRelationship(
+  record: AirtableRecord<AirtableRelationshipFields>
+): Relationship {
+  const fields = record.fields
+  return {
+    id: record.id,
+    name: fields.Name,
+    companyId: fields.Company?.[0] ?? null,
+    contactId: fields.Contact?.[0] ?? null,
+    owner: fields.Owner as Owner,
+    relationshipType: fields['Relationship Type'] as RelationshipType,
+    status: fields.Status as RelationshipStatus,
+    objective: fields.Objective ?? null,
+    importance: fields.Importance as RelationshipImportance,
+    notes: fields.Notes ?? null,
+    createdAt: fields['Created At'],
+    updatedAt: fields['Updated At'],
   }
 }
