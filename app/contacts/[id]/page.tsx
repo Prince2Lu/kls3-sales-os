@@ -8,6 +8,8 @@ import {
   getTasks,
   getBusinessLines,
 } from '@/lib/airtable'
+import { loadContactRelationships } from '@/app/relationships/actions'
+import { RelationshipCard } from '@/components/relationships/relationship-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,7 +28,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
   try {
     const contact = await getContactById(id)
 
-    const [company, opportunities, activities, tasks, businessLines, currentOwner] = await Promise.all([
+    const [company, opportunities, activities, tasks, businessLines, currentOwner, relationshipsResult] = await Promise.all([
       contact.companyId
         ? getCompanyById(contact.companyId).catch(() => null)
         : Promise.resolve(null),
@@ -35,7 +37,10 @@ export default async function ContactPage({ params }: ContactPageProps) {
       getTasks({ contactId: id, status: 'TODO' }),
       getBusinessLines(),
       getCurrentOwner(),
+      loadContactRelationships(id),
     ])
+
+    const relationships = relationshipsResult.success ? relationshipsResult.data : []
 
     // Filter opportunities related to this contact
     const contactOpportunities = opportunities.filter(
@@ -223,6 +228,32 @@ export default async function ContactPage({ params }: ContactPageProps) {
 
           {/* Opportunities and Activities */}
           <div className="lg:col-span-3 space-y-6">
+            {/* Relationships */}
+            {relationships.length > 0 && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg">
+                    Relations stratégiques ({relationships.length})
+                  </CardTitle>
+                  <Link href={`/relationships/new?contactId=${id}`}>
+                    <Button size="sm" variant="ghost">
+                      + Créer
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {relationships.map((relationship) => (
+                      <RelationshipCard
+                        key={relationship.id}
+                        relationship={relationship}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Opportunities */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">

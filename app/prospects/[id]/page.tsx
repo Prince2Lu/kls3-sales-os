@@ -9,6 +9,7 @@ import {
   getTasks,
   getStageHistory,
   getValueEvents,
+  getRelationshipById,
 } from '@/lib/airtable'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,8 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
       tasks,
       stageHistory,
       valueEvents,
+      introducedByRelationship,
+      introducedByContact,
     ] = await Promise.all([
       getBusinessLineById(opportunity.businessLineId),
       opportunity.companyId
@@ -55,6 +58,12 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
       getTasks({ opportunityId: id }),
       getStageHistory({ opportunityId: id }),
       getValueEvents({ opportunityId: id }),
+      opportunity.introducedByRelationshipId
+        ? getRelationshipById(opportunity.introducedByRelationshipId).catch(() => null)
+        : Promise.resolve(null),
+      opportunity.introducedByContactId && opportunity.introducedByContactId !== opportunity.primaryContactId
+        ? getContactById(opportunity.introducedByContactId).catch(() => null)
+        : Promise.resolve(null),
     ])
 
     // Find next TODO task
@@ -160,6 +169,37 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                     {contact.jobTitle && (
                       <div className="text-text-muted text-xs mt-1">
                         {contact.jobTitle}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Introduced By */}
+                {(introducedByRelationship || introducedByContact) && (
+                  <div className="pt-4 border-t border-border">
+                    <div className="text-text-muted text-xs mb-1">Introduit par</div>
+                    {introducedByRelationship && (
+                      <div className="mb-2">
+                        <Link
+                          href={`/relationships/${introducedByRelationship.id}`}
+                          className="text-accent hover:underline text-sm"
+                        >
+                          {introducedByRelationship.name}
+                        </Link>
+                        <Badge variant="muted" className="ml-2 text-xs">
+                          {introducedByRelationship.relationshipType}
+                        </Badge>
+                      </div>
+                    )}
+                    {introducedByContact && (
+                      <div className="text-sm">
+                        via{' '}
+                        <Link
+                          href={`/contacts/${introducedByContact.id}`}
+                          className="text-accent hover:underline"
+                        >
+                          {introducedByContact.firstName} {introducedByContact.lastName}
+                        </Link>
                       </div>
                     )}
                   </div>
