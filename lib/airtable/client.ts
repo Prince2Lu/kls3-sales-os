@@ -1220,8 +1220,14 @@ export async function getColdCallTargets(options?: {
   owner?: string
   callStatus?: string
   maxRecords?: number
+  includeArchived?: boolean
 }): Promise<ColdCallTarget[]> {
   const filters: string[] = []
+
+  // Filter archived targets by default (includeArchived defaults to false)
+  if (!options?.includeArchived) {
+    filters.push(`{Archived} = FALSE()`)
+  }
 
   // Only use formula filtering for non-linked-record fields
   if (options?.owner) {
@@ -1303,7 +1309,12 @@ export async function createColdCallTarget(
 
 export async function updateColdCallTarget(
   id: string,
-  input: Partial<CreateColdCallTargetInput> & { opportunityId?: string }
+  input: Partial<CreateColdCallTargetInput> & {
+    opportunityId?: string
+    archived?: boolean
+    archivedAt?: string | null
+    archivedBy?: string | null
+  }
 ): Promise<ColdCallTarget> {
   const now = new Date().toISOString()
 
@@ -1321,6 +1332,9 @@ export async function updateColdCallTarget(
   if (input.callStatus !== undefined) fields['Call Status'] = input.callStatus
   if (input.opportunityId !== undefined)
     fields.Opportunity = input.opportunityId ? [input.opportunityId] : []
+  if (input.archived !== undefined) fields.Archived = input.archived
+  if (input.archivedAt !== undefined) fields['Archived At'] = input.archivedAt || undefined
+  if (input.archivedBy !== undefined) fields['Archived By'] = input.archivedBy || undefined
 
   const record = await updateRecord<AirtableColdCallTargetFields>(
     TABLE_NAMES.COLD_CALL_TARGETS,

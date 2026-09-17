@@ -10,7 +10,7 @@ import {
 } from '@/lib/airtable'
 import type { ColdCallTarget, Owner, ProspectingStatus } from '@/types/domain'
 
-export type TargetAction = 'CREATE_NEW' | 'REUSE_EXISTING' | 'ENRICH_CONTACTLESS_TARGET'
+export type TargetAction = 'CREATE_NEW' | 'REUSE_EXISTING' | 'ENRICH_CONTACTLESS_TARGET' | 'RESTORED'
 
 export interface FindOrPrepareResult {
   action: TargetAction
@@ -61,9 +61,10 @@ export async function findOrPrepareProspectingTarget(
   // Normalize contactId (undefined → null)
   const normalizedContactId = contactId || null
 
-  // Fetch all existing targets for this Business Line
+  // Fetch all existing targets for this Business Line (including archived for duplicate detection)
   const existingTargets = await getColdCallTargets({
     businessLineId,
+    includeArchived: true, // IMPORTANT: Check archived targets to detect duplicates
   })
 
   // Filter targets for this company
@@ -85,7 +86,16 @@ export async function findOrPrepareProspectingTarget(
   )
 
   if (exactMatch) {
-    // Exact match found → REUSE_EXISTING
+    // Check if target is archived → RESTORED
+    if (exactMatch.archived) {
+      return {
+        action: 'RESTORED',
+        target: exactMatch,
+        message: `Cible archivée trouvée. Elle sera restaurée (Call Status: ${exactMatch.callStatus}).`,
+      }
+    }
+
+    // Exact match found (active) → REUSE_EXISTING
     let statusInfo = `Statut: ${exactMatch.callStatus}`
     if (exactMatch.opportunityId) {
       statusInfo += ` (lié à une Opportunity)`
@@ -175,6 +185,23 @@ export async function executeTargetAction(
       })
 
       return enrichedTarget
+    }
+
+    case 'RESTORED': {
+      // Restore archived target (preserve Call Status)
+      if (!result.target) {
+        throw new Error('RESTORED action requires existing target')
+      }
+
+      const restoredTarget = await updateColdCallTarget(result.target.id, {
+        archived: false,
+        archivedAt: null,
+        archivedBy: null,
+        // Call Status preserved (no reset)
+        // Owner, contact, opportunity preserved
+      })
+
+      return restoredTarget
     }
 
     default: {

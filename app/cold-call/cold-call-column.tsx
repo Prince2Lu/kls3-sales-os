@@ -21,6 +21,8 @@ import { CallResultMenu } from './call-result-menu'
 import { CallbackModal } from './callback-modal'
 import { StatusChangeMenu } from './status-change-menu'
 import { ColdCallQuickView } from './cold-call-quick-view'
+import { TargetOptionsMenu } from './target-options-menu'
+import { RemoveFromProspectingModal } from './remove-from-prospecting-modal'
 import { recordCallActivity, recordEmailActivity, updateColdCallStatus } from './actions'
 import { ContactInfo } from '@/components/pipeline/contact-info'
 import { CallCounter } from '@/components/pipeline/call-counter'
@@ -175,6 +177,8 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
   const [showCallbackModal, setShowCallbackModal] = useState(false)
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false)
+  const [showRemoveModal, setShowRemoveModal] = useState(false)
   const [taskInitialType, setTaskInitialType] = useState<import('@/types/domain').TaskType | undefined>(undefined)
   const [isRecording, setIsRecording] = useState(false)
   const [isChangingStatus, setIsChangingStatus] = useState(false)
@@ -296,6 +300,30 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
     }
   }
 
+  async function handleRemoveFromProspecting() {
+    setShowOptionsMenu(false)
+    setShowRemoveModal(true)
+  }
+
+  async function handleRemoveConfirm() {
+    setShowRemoveModal(false)
+    setIsRecording(true)
+
+    const { removeFromProspecting } = await import('@/lib/actions/prospecting-actions')
+    const response = await removeFromProspecting(target.id)
+
+    setIsRecording(false)
+
+    if (response.success) {
+      router.refresh()
+    } else {
+      alert(response.message || 'Erreur lors du retrait de la prospection')
+    }
+  }
+
+  // Count open tasks
+  const openTasksCount = tasks.filter(t => t.status === 'TODO').length
+
   return (
     <div
       ref={setNodeRef}
@@ -388,6 +416,18 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
             >
               ⚡
             </button>
+            {/* Options menu button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowOptionsMenu(true)
+              }}
+              className="text-text-muted hover:text-text-primary text-base"
+              title="Options"
+              disabled={isRecording || isChangingStatus}
+            >
+              ⋮
+            </button>
             {target.opportunityId && (
               <Link
                 href={`/prospects/${target.opportunityId}`}
@@ -435,6 +475,27 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
           currentStatus={target.callStatus}
           onSelect={handleStatusChange}
           onCancel={() => setShowStatusMenu(false)}
+        />
+      )}
+
+      {/* Options Menu */}
+      {showOptionsMenu && (
+        <TargetOptionsMenu
+          onRemoveFromProspecting={handleRemoveFromProspecting}
+          onCancel={() => setShowOptionsMenu(false)}
+        />
+      )}
+
+      {/* Remove from Prospecting Modal */}
+      {showRemoveModal && (
+        <RemoveFromProspectingModal
+          company={company || null}
+          contact={contact || null}
+          businessLine={businessLine || null}
+          callStatus={target.callStatus}
+          openTasksCount={openTasksCount}
+          onConfirm={handleRemoveConfirm}
+          onCancel={() => setShowRemoveModal(false)}
         />
       )}
     </div>

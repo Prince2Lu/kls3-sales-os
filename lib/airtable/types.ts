@@ -159,6 +159,9 @@ export interface AirtableColdCallTargetFields {
   Owner: string
   'Call Status': string
   Opportunity?: string[]
+  Archived?: boolean
+  'Archived At'?: string
+  'Archived By'?: string
   'Created At': string
   'Updated At': string
 }

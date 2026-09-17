@@ -314,6 +314,9 @@ export function mapColdCallTarget(
     owner: fields.Owner as Owner,
     callStatus: fields['Call Status'] as CallStatus,
     opportunityId: fields.Opportunity?.[0] ?? null,
+    archived: fields.Archived === true,
+    archivedAt: fields['Archived At'] ?? null,
+    archivedBy: (fields['Archived By'] as Owner) ?? null,
     createdAt: fields['Created At'],
     updatedAt: fields['Updated At'],
   }

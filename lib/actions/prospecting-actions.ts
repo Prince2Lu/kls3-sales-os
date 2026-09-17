@@ -24,12 +24,17 @@ export interface AddToProspectingInput {
   owner?: Owner // Optional - defaults to current owner
 }
 
-export type AddToProspectingAction = 'CREATED' | 'REUSED' | 'ENRICHED'
+export type AddToProspectingAction = 'CREATED' | 'REUSED' | 'ENRICHED' | 'RESTORED'
 
 export interface AddToProspectingResult {
   success: boolean
   action?: AddToProspectingAction
   targetId?: string
+  message: string
+}
+
+export interface RemoveFromProspectingResult {
+  success: boolean
   message: string
 }
 
@@ -39,6 +44,7 @@ export type ProspectingCheckState =
   | 'EXISTING'
   | 'WILL_ENRICH'
   | 'OTHER_CONTACT_EXISTS'
+  | 'WILL_RESTORE'
 
 export interface ProspectingCheckInput {
   companyId: string
@@ -171,6 +177,11 @@ export async function addToProspecting(
         message = 'La cible existante a été enrichie avec ce contact'
         break
 
+      case 'RESTORED':
+        action = 'RESTORED'
+        message = 'Cible archivée restaurée'
+        break
+
       default:
         return {
           success: false,
@@ -289,6 +300,13 @@ export async function checkProspectingTarget(
         }
       }
 
+      case 'RESTORED': {
+        return {
+          state: 'WILL_RESTORE',
+          targetId: result.target?.id,
+        }
+      }
+
       default:
         return { state: 'NEW' }
     }
@@ -296,5 +314,80 @@ export async function checkProspectingTarget(
     console.error('Error in checkProspectingTarget:', error)
     // On error, default to NEW (submit will handle real validation)
     return { state: 'NEW' }
+  }
+}
+
+/**
+ * Remove Company/Contact from Prospecting (Archive)
+ *
+ * Archives a ProspectingTarget without deleting it.
+ *
+ * BUSINESS RULES:
+ * - Never physically delete target
+ * - Always archive (set Archived=true)
+ * - Preserve all Activities, Tasks, Opportunity, History
+ * - Do NOT cancel Tasks (user manages manually)
+ * - Do NOT modify Call Status
+ * - Do NOT create artificial Activity/Value Event
+ *
+ * VALIDATION:
+ * - Session required (getCurrentOwner)
+ * - Target must exist
+ * - Target must not already be archived (idempotent)
+ *
+ * @param targetId Prospecting Target ID
+ * @returns Success/failure with message
+ */
+export async function removeFromProspecting(
+  targetId: string
+): Promise<RemoveFromProspectingResult> {
+  try {
+    // 1. Get current owner (validates session)
+    const currentOwner = await getCurrentOwner()
+
+    // 2. Validate Target exists
+    let target
+    try {
+      const { getColdCallTargetById } = await import('@/lib/airtable')
+      target = await getColdCallTargetById(targetId)
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Cible introuvable',
+      }
+    }
+
+    // 3. Check if already archived (idempotent)
+    if (target.archived) {
+      return {
+        success: true, // Success but already archived
+        message: 'Cette cible est déjà archivée',
+      }
+    }
+
+    // 4. Archive target
+    const { updateColdCallTarget } = await import('@/lib/airtable')
+    await updateColdCallTarget(targetId, {
+      archived: true,
+      archivedAt: new Date().toISOString(),
+      archivedBy: currentOwner,
+    })
+
+    // 5. Revalidate paths
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath('/cold-call')
+    revalidatePath('/today')
+    revalidatePath('/work')
+
+    return {
+      success: true,
+      message: 'Retiré de la prospection',
+    }
+  } catch (error: any) {
+    console.error('Error in removeFromProspecting:', error)
+    return {
+      success: false,
+      message: error.message || 'Une erreur est survenue',
+    }
   }
 }

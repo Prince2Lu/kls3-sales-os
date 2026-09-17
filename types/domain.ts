@@ -320,6 +320,9 @@ export interface ProspectingTarget {
   owner: Owner
   prospectingStatus: ProspectingStatus
   opportunityId: string | null // Set when converted to Opportunity
+  archived: boolean
+  archivedAt: string | null
+  archivedBy: Owner | null
   createdAt: string
   updatedAt: string
 }
@@ -334,6 +337,9 @@ export interface ColdCallTarget {
   owner: Owner
   callStatus: CallStatus // Maps to prospectingStatus in Airtable
   opportunityId: string | null
+  archived: boolean
+  archivedAt: string | null
+  archivedBy: Owner | null
   createdAt: string
   updatedAt: string
 }
