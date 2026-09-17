@@ -216,7 +216,7 @@ export default async function RelationshipPage({ params }: RelationshipPageProps
                 <div className="text-text-muted text-sm p-3 rounded-lg bg-white/5">
                   Aucune tâche planifiée
                   <div className="mt-2">
-                    <Link href={`/prospects/new?relationshipId=${id}`}>
+                    <Link href={`/relationships/${id}/task`}>
                       <Button size="sm" variant="ghost">+ Créer une tâche</Button>
                     </Link>
                   </div>
