@@ -789,6 +789,26 @@ export interface CreateOpportunityInput {
 export async function createOpportunity(
   input: CreateOpportunityInput
 ): Promise<Opportunity> {
+  // Validation: Referral source requires at least one introducer
+  if (input.source === 'Referral') {
+    if (!input.introducedByRelationshipId && !input.introducedByContactId) {
+      throw new AirtableError(
+        'Source "Referral" nécessite au moins un introducer (Relationship ou Contact)',
+        400
+      )
+    }
+  }
+
+  // Validation: Introduced By fields should only be used with Referral source
+  if (input.source !== 'Referral') {
+    if (input.introducedByRelationshipId || input.introducedByContactId) {
+      throw new AirtableError(
+        'Les champs "Introduced By" ne peuvent être utilisés qu\'avec Source "Referral"',
+        400
+      )
+    }
+  }
+
   const now = new Date().toISOString()
 
   const fields: Partial<AirtableOpportunityFields> = {
@@ -829,6 +849,42 @@ export async function updateOpportunity(
     lostReason?: string
   }
 ): Promise<Opportunity> {
+  // Validation: Referral source requires at least one introducer
+  if (input.source === 'Referral') {
+    // For updates, need to check existing opportunity if introducers not provided in update
+    if (input.introducedByRelationshipId === undefined && input.introducedByContactId === undefined) {
+      // Fetch existing opportunity to check if it has introducers
+      const existing = await getOpportunityById(id)
+      if (!existing.introducedByRelationshipId && !existing.introducedByContactId) {
+        throw new AirtableError(
+          'Source "Referral" nécessite au moins un introducer (Relationship ou Contact)',
+          400
+        )
+      }
+    } else {
+      // Check if at least one introducer is provided in the update
+      const hasRelationship = input.introducedByRelationshipId !== undefined && input.introducedByRelationshipId !== null
+      const hasContact = input.introducedByContactId !== undefined && input.introducedByContactId !== null
+
+      if (!hasRelationship && !hasContact) {
+        throw new AirtableError(
+          'Source "Referral" nécessite au moins un introducer (Relationship ou Contact)',
+          400
+        )
+      }
+    }
+  }
+
+  // Validation: Introduced By fields should only be used with Referral source
+  if (input.source !== undefined && input.source !== 'Referral') {
+    if (input.introducedByRelationshipId || input.introducedByContactId) {
+      throw new AirtableError(
+        'Les champs "Introduced By" ne peuvent être utilisés qu\'avec Source "Referral"',
+        400
+      )
+    }
+  }
+
   const now = new Date().toISOString()
 
   const fields: Partial<AirtableOpportunityFields> = {
@@ -1497,6 +1553,36 @@ export interface CreateRelationshipInput {
 export async function createRelationship(
   input: CreateRelationshipInput
 ): Promise<Relationship> {
+  // Anti-duplicate check
+  // Logical identity: (Contact OR Company) + Type
+  // Excludes "Clos" status from duplicate detection (allows reactivation)
+  const existingRelationships = await getRelationships({ maxRecords: 1000 })
+
+  const activeDuplicate = existingRelationships.find((r) => {
+    // Exclude closed relationships from duplicate detection
+    if (r.status === 'Clos') return false
+
+    // If contact provided, check Contact + Type uniqueness
+    if (input.contactId && r.contactId === input.contactId) {
+      return r.relationshipType === input.relationshipType
+    }
+
+    // If no contact but company provided, check Company + Type uniqueness
+    if (!input.contactId && input.companyId && r.companyId === input.companyId && !r.contactId) {
+      return r.relationshipType === input.relationshipType
+    }
+
+    return false
+  })
+
+  if (activeDuplicate) {
+    throw new AirtableError(
+      `Une Relationship "${input.relationshipType}" active existe déjà pour ce ${input.contactId ? 'Contact' : 'Company'}`,
+      400,
+      { existingId: activeDuplicate.id }
+    )
+  }
+
   const now = new Date().toISOString()
 
   const fields: Partial<AirtableRelationshipFields> = {

@@ -14,6 +14,7 @@ import {
   getCompanyById,
 } from '@/lib/airtable'
 import { enrichRelationshipsWithInteractions } from '@/lib/relationships/helpers'
+import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { revalidatePath } from 'next/cache'
 import type {
   RelationshipType,
@@ -30,7 +31,7 @@ export interface CreateRelationshipInput {
   name: string
   companyId?: string
   contactId?: string
-  owner: Owner
+  owner?: Owner // Optional - defaults to current user
   relationshipType: RelationshipType
   status: RelationshipStatus
   objective?: string
@@ -40,11 +41,14 @@ export interface CreateRelationshipInput {
 
 export async function createRelationshipAction(input: CreateRelationshipInput) {
   try {
+    // Default owner to current user if not provided
+    const owner = input.owner || (await getCurrentOwner())
+
     const relationship = await createRelationship({
       name: input.name,
       companyId: input.companyId,
       contactId: input.contactId,
-      owner: input.owner,
+      owner,
       relationshipType: input.relationshipType,
       status: input.status,
       objective: input.objective,

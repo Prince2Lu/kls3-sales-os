@@ -18,6 +18,7 @@ const navItems = [
   { href: '/analytics', label: 'Analytics' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
+  { href: '/relationships', label: 'Relations' },
 ]
 
 // Opportunités submenu items
