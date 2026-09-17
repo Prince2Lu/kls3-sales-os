@@ -34,6 +34,7 @@ const secondaryNavItems = [
   { href: '/analytics', label: 'Analytics' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
+  { href: '/relationships', label: 'Relations' },
 ]
 
 // Compact navigation for medium screens (tablet/small laptop)
@@ -48,6 +49,7 @@ const compactSecondaryItems = [
   { href: '/analytics', label: 'Analytics' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
+  { href: '/relationships', label: 'Relations' },
 ]
 
 interface NavV2Props {
