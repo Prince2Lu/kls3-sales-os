@@ -37,7 +37,7 @@ export default async function ColdCallPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold font-syne">Pipeline Prospection</h1>
+        <h1 className="text-4xl font-bold font-syne">Pipeline Cold Call</h1>
         <p className="text-text-muted mt-2">
           {targets.length} cible{targets.length !== 1 ? 's' : ''} de prospection multicanale
         </p>
