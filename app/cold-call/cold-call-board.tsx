@@ -92,6 +92,13 @@ export function ColdCallBoard({
     [businessLines]
   )
 
+  // Filter Business Lines for dropdown: only COLD_CALL mode
+  // (All BLs needed for badge display, but only COLD_CALL BLs for filtering/actions)
+  const coldCallBusinessLines = useMemo(
+    () => businessLines.filter((bl) => bl.prospectingMode === 'COLD_CALL'),
+    [businessLines]
+  )
+
   const companiesMap = useMemo(
     () => Object.fromEntries(companies.map((c) => [c.id, c])),
     [companies]
@@ -389,7 +396,7 @@ export function ColdCallBoard({
             className="px-3 py-1 bg-card-bg border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <option value="">Toutes</option>
-            {businessLines.map((bl) => (
+            {coldCallBusinessLines.map((bl) => (
               <option key={bl.id} value={bl.id}>
                 {bl.code === 'SACHA' ? 'Leverio' : bl.name}
               </option>

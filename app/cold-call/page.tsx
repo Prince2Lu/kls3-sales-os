@@ -29,11 +29,6 @@ export default async function ColdCallPage() {
       getTasks({ status: 'TODO' }), // No limit - all TODO tasks
     ])
 
-  // Filter for Business Lines with COLD_CALL prospecting mode
-  const coldCallBusinessLines = businessLines.filter(
-    (bl) => bl.prospectingMode === 'COLD_CALL'
-  )
-
   return (
     <div className="space-y-8">
       <div>
@@ -45,7 +40,7 @@ export default async function ColdCallPage() {
 
       <ColdCallBoard
         targets={targets}
-        businessLines={coldCallBusinessLines}
+        businessLines={businessLines}
         companies={companies}
         contacts={contacts}
         opportunities={opportunities}
