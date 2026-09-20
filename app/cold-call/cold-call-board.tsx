@@ -31,6 +31,8 @@ import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { ColdCallColumn } from './cold-call-column'
 import { CallbackModal } from './callback-modal'
+import { Search, X } from 'lucide-react'
+import { normalizeSearchValue, combineSearchValues, normalizePhoneForSearch } from '@/lib/utils/search'
 
 interface ColdCallBoardProps {
   targets: ColdCallTarget[]
@@ -76,6 +78,7 @@ export function ColdCallBoard({
   const [selectedBusinessLineId, setSelectedBusinessLineId] = useState<
     string | null
   >(null)
+  const [search, setSearch] = useState('')
 
   // Callback modal state
   const [showCallbackModal, setShowCallbackModal] = useState(false)
@@ -132,11 +135,81 @@ export function ColdCallBoard({
     return grouped
   }, [tasks])
 
-  // Filter targets by Business Line
+  // Filter targets by Business Line and Search
   const filteredTargets = useMemo(() => {
-    if (!selectedBusinessLineId) return targets
-    return targets.filter((t) => t.businessLineId === selectedBusinessLineId)
-  }, [targets, selectedBusinessLineId])
+    let result = [...targets]
+
+    // 1. Filter by Business Line
+    if (selectedBusinessLineId) {
+      result = result.filter((t) => t.businessLineId === selectedBusinessLineId)
+    }
+
+    // 2. Filter by Search
+    if (search.trim()) {
+      const searchNormalized = normalizeSearchValue(search)
+      const searchPhone = normalizePhoneForSearch(search)
+
+      result = result.filter((target) => {
+        const company = companiesMap[target.companyId]
+        const contact = target.contactId ? contactsMap[target.contactId] : null
+
+        // Search company name
+        if (normalizeSearchValue(company?.name).includes(searchNormalized)) {
+          return true
+        }
+
+        // Search contact if exists
+        if (contact) {
+          // Search firstName
+          if (normalizeSearchValue(contact.firstName).includes(searchNormalized)) {
+            return true
+          }
+
+          // Search lastName
+          if (normalizeSearchValue(contact.lastName).includes(searchNormalized)) {
+            return true
+          }
+
+          // Search fullName (firstName lastName)
+          const fullName = combineSearchValues([contact.firstName, contact.lastName])
+          if (fullName.includes(searchNormalized)) {
+            return true
+          }
+
+          // Search reversed fullName (lastName firstName)
+          const reversedFullName = combineSearchValues([contact.lastName, contact.firstName])
+          if (reversedFullName.includes(searchNormalized)) {
+            return true
+          }
+
+          // Search email
+          if (normalizeSearchValue(contact.email).includes(searchNormalized)) {
+            return true
+          }
+
+          // Search contact phone
+          if (contact.phone) {
+            const phoneNormalized = normalizePhoneForSearch(contact.phone)
+            if (phoneNormalized.includes(searchPhone)) {
+              return true
+            }
+          }
+        }
+
+        // Search company phone (fallback or primary)
+        if (company?.phone) {
+          const phoneNormalized = normalizePhoneForSearch(company.phone)
+          if (phoneNormalized.includes(searchPhone)) {
+            return true
+          }
+        }
+
+        return false
+      })
+    }
+
+    return result
+  }, [targets, selectedBusinessLineId, search, companiesMap, contactsMap])
 
   // Group targets by call status (pre-opportunity)
   const targetsByStatus = useMemo(() => {
@@ -284,6 +357,27 @@ export function ColdCallBoard({
 
   return (
     <div className="relative space-y-4">
+      {/* Search Input */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+        <input
+          type="text"
+          placeholder="Rechercher un contact, une entreprise, un email ou un téléphone..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-card-bg border border-border rounded-full pl-10 pr-10 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+            aria-label="Effacer la recherche"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {/* Filters and Controls */}
       <div className="flex items-center gap-4 flex-wrap">
         {/* Business Line Filter */}
@@ -302,6 +396,13 @@ export function ColdCallBoard({
             ))}
           </select>
         </div>
+
+        {/* Result count when search active */}
+        {search && (
+          <div className="text-sm text-text-muted">
+            {filteredTargets.length} résultat{filteredTargets.length !== 1 ? 's' : ''}
+          </div>
+        )}
       </div>
 
       {isUpdating && (
