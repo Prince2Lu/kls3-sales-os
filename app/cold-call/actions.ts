@@ -70,116 +70,24 @@ export async function updateColdCallStatus(
         break
 
       case 'Converti':
-        // Check if opportunity already exists for this company + BL
-        const existingOpps = await getOpportunities({
-          companyId: target.companyId,
-          businessLineId: target.businessLineId,
+        // Use centralized conversion engine
+        // Manual conversion (drag & drop or status menu) defaults to 'Échange' stage
+        // Status already changed by changeColdCallStatus above, skip duplicate status update
+        const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
+        const conversionResult = await convertProspectingTargetToOpportunity({
+          targetId,
+          initialStage: 'Échange',
+          source: 'Cold Call',
+          owner: changedBy,
+          activityResult: 'CONVERSATION', // Manual conversion defaults to CONVERSATION
+          skipStatusChange: true, // Status already changed by changeColdCallStatus above
         })
 
-        const activeOpp = existingOpps.find(
-          (opp) => opp.stage !== 'Gagné' && opp.stage !== 'Perdu'
-        )
-
-        let opportunityId: string
-
-        if (activeOpp) {
-          // Reuse existing opportunity
-          // DO NOT regress stage if already advanced beyond Échange
-          const stageOrder = [
-            'À prospecter',
-            'Contacté',
-            'Échange',
-            'Qualifié',
-            'RDV',
-            'Opportunité',
-            'Proposition',
-            'Gagné',
-            'Perdu',
-          ]
-          const currentStageIndex = stageOrder.indexOf(activeOpp.stage)
-          const echangeStageIndex = stageOrder.indexOf('Échange')
-
-          // Only update stage if current stage is BEFORE Échange
-          if (currentStageIndex < echangeStageIndex) {
-            await updateOpportunity(activeOpp.id, {
-              stage: 'Échange',
-            })
-            await createStageHistory({
-              opportunityId: activeOpp.id,
-              fromStage: activeOpp.stage,
-              toStage: 'Échange',
-              changedBy,
-            })
+        if (!conversionResult.success) {
+          return {
+            success: false,
+            error: conversionResult.error || 'Failed to convert to opportunity',
           }
-          // If already at Échange or beyond, just reuse without changing stage
-
-          opportunityId = activeOpp.id
-        } else {
-          // Get company name for opportunity title
-          const { getCompanyById } = await import('@/lib/airtable')
-          const company = await getCompanyById(target.companyId)
-
-          // Create new opportunity with company name
-          const newOpp = await createOpportunity({
-            name: `${company.name} - Prospection`,
-            companyId: target.companyId,
-            primaryContactId: target.contactId ?? undefined,
-            businessLineId: target.businessLineId,
-            owner: target.owner,
-            stage: 'Échange', // Generic conversion stage (requiresOpportunityConversion logic)
-            source: 'Cold Call',
-          })
-
-          // Create initial STAGE_HISTORY
-          await createStageHistory({
-            opportunityId: newOpp.id,
-            fromStage: undefined,
-            toStage: 'Échange',
-            changedBy,
-          })
-
-          opportunityId = newOpp.id
-        }
-
-        // Link opportunity to cold call target
-        await updateColdCallTarget(targetId, {
-          opportunityId,
-        })
-
-        // Update existing TASKS (callbacks) to link them to the opportunity
-        const { getTasks, updateTask, getActivities, updateActivity } = await import('@/lib/airtable')
-
-        const [tasks, activities] = await Promise.all([
-          getTasks({
-            contactId: target.contactId ?? undefined,
-            status: 'TODO',
-          }),
-          getActivities({
-            contactId: target.contactId ?? undefined,
-          }),
-        ])
-
-        // Link TASKS that were created for THIS exact target
-        const tasksToUpdate = tasks.filter(
-          (task) => task.coldCallTargetId === targetId && !task.opportunityId
-        )
-
-        for (const task of tasksToUpdate) {
-          await updateTask(task.id, {
-            opportunityId,
-          })
-        }
-
-        // Link ACTIVITIES that were created for THIS exact target
-        const activitiesToUpdate = activities.filter(
-          (activity) =>
-            activity.coldCallTargetId === targetId && !activity.opportunityId
-        )
-
-        for (const activity of activitiesToUpdate) {
-          await updateActivity(activity.id, {
-            opportunityId,
-          })
         }
 
         break

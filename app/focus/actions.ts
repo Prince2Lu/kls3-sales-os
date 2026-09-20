@@ -114,6 +114,7 @@ export async function processConversation(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
   owner: Owner
   currentStage: Stage | null | undefined
   nextActionType: TaskType
@@ -123,8 +124,9 @@ export async function processConversation(input: {
 }) {
   const {
     taskId,
-    opportunityId,
+    opportunityId: initialOpportunityId,
     contactId,
+    coldCallTargetId,
     owner,
     currentStage,
     nextActionType,
@@ -133,10 +135,30 @@ export async function processConversation(input: {
     notes,
   } = input
 
+  let opportunityId = initialOpportunityId
+
+  // CONVERSION: If no Opportunity exists but task has coldCallTargetId, convert
+  if (!opportunityId && coldCallTargetId) {
+    const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
+    const conversionResult = await convertProspectingTargetToOpportunity({
+      targetId: coldCallTargetId,
+      initialStage: 'Échange',
+      source: 'Cold Call',
+      owner,
+      activityResult: 'CONVERSATION',
+    })
+
+    if (conversionResult.success) {
+      opportunityId = conversionResult.opportunityId!
+    }
+    // Continue even if conversion fails (activity/task will be created without opportunity)
+  }
+
   // 1. Create ACTIVITY
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
     type: 'CALL',
     date: new Date().toISOString(),
     result: 'CONVERSATION',
@@ -149,6 +171,7 @@ export async function processConversation(input: {
   await createTask({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
     type: nextActionType,
     dueAt: combineDateTimeToISO(nextActionDate, nextActionTime),
     priority: 'MEDIUM',
@@ -158,6 +181,7 @@ export async function processConversation(input: {
   })
 
   // 3. Stage transition if appropriate (early stage → Échange)
+  // Note: If conversion just happened, stage is already 'Échange', transition will be skipped
   if (opportunityId && shouldTransitionToEchange(currentStage)) {
     await updateOpportunity(opportunityId, {
       stage: 'Échange',
@@ -194,6 +218,7 @@ export async function processMeetingBooked(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
   owner: Owner
   currentStage: Stage | null | undefined
   meetingDate: string
@@ -202,8 +227,9 @@ export async function processMeetingBooked(input: {
 }) {
   const {
     taskId,
-    opportunityId,
+    opportunityId: initialOpportunityId,
     contactId,
+    coldCallTargetId,
     owner,
     currentStage,
     meetingDate,
@@ -211,10 +237,30 @@ export async function processMeetingBooked(input: {
     notes,
   } = input
 
+  let opportunityId = initialOpportunityId
+
+  // CONVERSION: If no Opportunity exists but task has coldCallTargetId, convert
+  if (!opportunityId && coldCallTargetId) {
+    const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
+    const conversionResult = await convertProspectingTargetToOpportunity({
+      targetId: coldCallTargetId,
+      initialStage: 'RDV',
+      source: 'Cold Call',
+      owner,
+      activityResult: 'MEETING_BOOKED',
+    })
+
+    if (conversionResult.success) {
+      opportunityId = conversionResult.opportunityId!
+    }
+    // Continue even if conversion fails (activity/task will be created without opportunity)
+  }
+
   // 1. Create ACTIVITY
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
     type: 'CALL',
     date: new Date().toISOString(),
     result: 'MEETING_BOOKED',
@@ -227,6 +273,7 @@ export async function processMeetingBooked(input: {
   await createTask({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
     type: 'MEETING',
     dueAt: combineDateTimeToISO(meetingDate, meetingTime),
     priority: 'HIGH',
@@ -236,6 +283,7 @@ export async function processMeetingBooked(input: {
   })
 
   // 3. Stage transition if appropriate (earlier stage → RDV)
+  // Note: If conversion just happened, stage is already 'RDV', transition will be skipped
   if (opportunityId && shouldTransitionToRDV(currentStage)) {
     await updateOpportunity(opportunityId, {
       stage: 'RDV',
