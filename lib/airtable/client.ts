@@ -1345,10 +1345,46 @@ export interface CreateColdCallTargetInput {
   callStatus: string
 }
 
+/**
+ * Validate Target Company/Contact integrity
+ * BUSINESS RULE: If a Target has both Company and Contact,
+ * then Contact.Company MUST equal Target.Company
+ * (no cross-company targeting allowed)
+ */
+async function validateTargetCompanyContactIntegrity(
+  companyId: string,
+  contactId: string | null | undefined
+): Promise<void> {
+  // If no contact, no validation needed (generic target)
+  if (!contactId) return
+
+  // Fetch contact to verify its company
+  const contact = await getContactById(contactId)
+
+  // If contact has no company, cannot validate (should not happen but handle gracefully)
+  if (!contact.companyId) {
+    throw new Error(
+      `Ce contact n'est rattaché à aucune entreprise`
+    )
+  }
+
+  // Check integrity: Contact.Company must match Target.Company
+  if (contact.companyId !== companyId) {
+    const contactCompany = await getCompanyById(contact.companyId).catch(() => null)
+
+    throw new Error(
+      `Ce contact est rattaché à une autre entreprise (${contactCompany?.name ?? 'Entreprise inconnue'})`
+    )
+  }
+}
+
 export async function createColdCallTarget(
   input: CreateColdCallTargetInput
 ): Promise<ColdCallTarget> {
   const now = new Date().toISOString()
+
+  // INTEGRITY CHECK: Validate Company/Contact consistency
+  await validateTargetCompanyContactIntegrity(input.companyId, input.contactId)
 
   const fields: Partial<AirtableColdCallTargetFields> = {
     Company: [input.companyId],
@@ -1377,6 +1413,17 @@ export async function updateColdCallTarget(
   }
 ): Promise<ColdCallTarget> {
   const now = new Date().toISOString()
+
+  // INTEGRITY CHECK: If updating Company or Contact, validate consistency
+  // Need to fetch current target to determine final state
+  if (input.companyId !== undefined || input.contactId !== undefined) {
+    const currentTarget = await getColdCallTargetById(id)
+
+    const finalCompanyId = input.companyId !== undefined ? input.companyId : currentTarget.companyId
+    const finalContactId = input.contactId !== undefined ? input.contactId : currentTarget.contactId
+
+    await validateTargetCompanyContactIntegrity(finalCompanyId, finalContactId)
+  }
 
   const fields: Partial<AirtableColdCallTargetFields> = {
     'Updated At': now,
