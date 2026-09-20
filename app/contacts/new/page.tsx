@@ -1,6 +1,6 @@
 // Contact creation page (Phase 2.5 bugfix)
 
-import { getCompanies } from '@/lib/airtable'
+import { getCompanies, getBusinessLines } from '@/lib/airtable'
 import { ContactForm } from '../contact-form'
 import Link from 'next/link'
 
@@ -12,7 +12,10 @@ export default async function NewContactPage({
   searchParams,
 }: NewContactPageProps) {
   const params = await searchParams
-  const companies = await getCompanies({ maxRecords: 500 })
+  const [companies, businessLines] = await Promise.all([
+    getCompanies({ maxRecords: 500 }),
+    getBusinessLines(),
+  ])
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -28,6 +31,7 @@ export default async function NewContactPage({
 
       <ContactForm
         companies={companies}
+        businessLines={businessLines}
         defaultCompanyId={params.companyId}
         mode="create"
       />

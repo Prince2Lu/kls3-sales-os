@@ -66,6 +66,18 @@ export default async function ContactPage({ params }: ContactPageProps) {
             {contact.jobTitle && (
               <p className="text-text-muted mt-2 text-lg">{contact.jobTitle}</p>
             )}
+            {contact.businessLineIds.length > 0 && (
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {contact.businessLineIds.map((blId) => {
+                  const bl = businessLines.find((b) => b.id === blId)
+                  return bl ? (
+                    <Badge key={blId} variant="accent">
+                      {bl.name}
+                    </Badge>
+                  ) : null
+                })}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             {company && (

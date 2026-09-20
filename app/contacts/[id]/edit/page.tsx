@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getContactById, getCompanies } from '@/lib/airtable'
+import { getContactById, getCompanies, getBusinessLines } from '@/lib/airtable'
 import { ContactForm } from '../../contact-form'
 
 interface PageProps {
@@ -17,7 +17,10 @@ export default async function EditContactPage({ params }: PageProps) {
     notFound()
   }
 
-  const companies = await getCompanies({ maxRecords: 500 })
+  const [companies, businessLines] = await Promise.all([
+    getCompanies({ maxRecords: 500 }),
+    getBusinessLines(),
+  ])
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
@@ -30,7 +33,12 @@ export default async function EditContactPage({ params }: PageProps) {
         </p>
       </div>
 
-      <ContactForm companies={companies} contact={contact} mode="edit" />
+      <ContactForm
+        companies={companies}
+        businessLines={businessLines}
+        contact={contact}
+        mode="edit"
+      />
     </div>
   )
 }

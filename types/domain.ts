@@ -169,6 +169,7 @@ export interface Contact {
   firstName: string
   lastName: string
   companyId: string | null
+  businessLineIds: string[] // Linked records to BUSINESS_LINES (optional segmentation)
   jobTitle: string | null
   email: string | null
   phone: string | null

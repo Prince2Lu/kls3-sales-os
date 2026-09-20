@@ -6,11 +6,12 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import type { Company, Contact } from '@/types/domain'
+import type { Company, Contact, BusinessLine } from '@/types/domain'
 import { createContactAction, updateContactAction } from './actions'
 
 interface ContactFormProps {
   companies: Company[]
+  businessLines: BusinessLine[]
   defaultCompanyId?: string
   contact?: Contact
   mode: 'create' | 'edit'
@@ -18,6 +19,7 @@ interface ContactFormProps {
 
 export function ContactForm({
   companies,
+  businessLines,
   defaultCompanyId,
   contact,
   mode,
@@ -25,6 +27,9 @@ export function ContactForm({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [selectedBusinessLineIds, setSelectedBusinessLineIds] = useState<string[]>(
+    contact?.businessLineIds || []
+  )
 
   async function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -34,6 +39,7 @@ export function ContactForm({
         firstName: formData.get('firstName') as string,
         lastName: formData.get('lastName') as string,
         companyId: (formData.get('companyId') as string) || undefined,
+        businessLineIds: selectedBusinessLineIds.length > 0 ? selectedBusinessLineIds : undefined,
         jobTitle: (formData.get('jobTitle') as string) || undefined,
         email: (formData.get('email') as string) || undefined,
         phone: (formData.get('phone') as string) || undefined,
@@ -118,6 +124,37 @@ export function ContactForm({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Business Lines */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Offres pertinentes
+            </label>
+            <div className="space-y-2">
+              {businessLines.map((bl) => (
+                <label
+                  key={bl.id}
+                  className="flex items-center gap-2 cursor-pointer p-2 rounded-md hover:bg-card/50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedBusinessLineIds.includes(bl.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedBusinessLineIds([...selectedBusinessLineIds, bl.id])
+                      } else {
+                        setSelectedBusinessLineIds(
+                          selectedBusinessLineIds.filter((id) => id !== bl.id)
+                        )
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-border bg-card text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0"
+                  />
+                  <span className="text-sm">{bl.name}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Job Title */}

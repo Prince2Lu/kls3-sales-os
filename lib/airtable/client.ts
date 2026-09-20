@@ -703,6 +703,7 @@ export interface CreateContactInput {
   firstName: string
   lastName: string
   companyId?: string
+  businessLineIds?: string[]
   jobTitle?: string
   email?: string
   phone?: string
@@ -719,6 +720,7 @@ export async function createContact(
     'First Name': input.firstName,
     'Last Name': input.lastName,
     Company: input.companyId ? [input.companyId] : undefined,
+    'Business Lines': input.businessLineIds,
     'Job Title': input.jobTitle,
     Email: input.email,
     Phone: input.phone,
@@ -749,6 +751,8 @@ export async function updateContact(
   if (input.lastName !== undefined) fields['Last Name'] = input.lastName
   if (input.companyId !== undefined)
     fields.Company = input.companyId ? [input.companyId] : []
+  if (input.businessLineIds !== undefined)
+    fields['Business Lines'] = input.businessLineIds
   if (input.jobTitle !== undefined) fields['Job Title'] = input.jobTitle
   if (input.email !== undefined) fields.Email = input.email
   if (input.phone !== undefined) fields.Phone = input.phone

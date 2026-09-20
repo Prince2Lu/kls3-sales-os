@@ -49,6 +49,7 @@ export interface AirtableContactFields {
   'First Name': string
   'Last Name': string
   Company?: string[]
+  'Business Lines'?: string[] // Linked records to BUSINESS_LINES (optional)
   'Job Title'?: string
   Email?: string
   Phone?: string

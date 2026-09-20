@@ -13,6 +13,7 @@ export interface CreateContactInput {
   firstName: string
   lastName: string
   companyId?: string
+  businessLineIds?: string[]
   jobTitle?: string
   email?: string
   phone?: string
@@ -26,6 +27,7 @@ export async function createContactAction(input: CreateContactInput) {
       firstName: input.firstName,
       lastName: input.lastName,
       companyId: input.companyId,
+      businessLineIds: input.businessLineIds,
       jobTitle: input.jobTitle,
       email: input.email,
       phone: input.phone,
@@ -57,6 +59,7 @@ export async function updateContactAction(
       firstName: input.firstName,
       lastName: input.lastName,
       companyId: input.companyId,
+      businessLineIds: input.businessLineIds,
       jobTitle: input.jobTitle,
       email: input.email,
       phone: input.phone,

@@ -120,6 +120,7 @@ export function mapContact(
     firstName: fields['First Name'],
     lastName: fields['Last Name'],
     companyId: fields.Company?.[0] ?? null,
+    businessLineIds: fields['Business Lines'] ?? [],
     jobTitle: fields['Job Title'] ?? null,
     email: fields.Email ?? null,
     phone: fields.Phone ?? null,

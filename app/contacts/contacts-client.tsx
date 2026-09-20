@@ -11,7 +11,7 @@ import { FilterToolbar } from '@/components/ui/filter-toolbar'
 import { useViewPersistence } from '@/lib/hooks/use-view-persistence'
 import { normalizeSearchValue, combineSearchValues } from '@/lib/utils/search'
 import { compareStringsAsc, compareStringsDesc } from '@/lib/utils/sorting'
-import { deriveContactBusinessLines, getBusinessLineNames } from '@/lib/utils/business-lines'
+import { getBusinessLineNames } from '@/lib/utils/business-lines'
 import { extractUniqueValues, extractUniqueArrayValues, isValueStillValid } from '@/lib/utils/faceted-filters'
 import type { Contact, Company, Opportunity, BusinessLine } from '@/types/domain'
 
@@ -58,16 +58,14 @@ export function ContactsClient({
     [businessLines]
   )
 
-  // Derive Business Lines and opportunity counts for each contact
+  // Derive Business Line names and opportunity counts for each contact
   const contactData = useMemo(() => {
     return contacts.map((contact) => {
-      const businessLineIds = deriveContactBusinessLines(contact.id, opportunities)
-      const businessLineNames = getBusinessLineNames(businessLineIds, businessLines)
+      const businessLineNames = getBusinessLineNames(contact.businessLineIds, businessLines)
       const opportunityCount = opportunities.filter((opp) => opp.primaryContactId === contact.id).length
 
       return {
         ...contact,
-        businessLineIds,
         businessLineNames,
         opportunityCount,
       }
