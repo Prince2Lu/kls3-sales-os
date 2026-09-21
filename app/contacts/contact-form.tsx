@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { CompanySelector } from '@/components/contacts/company-selector'
 import type { Company, Contact, BusinessLine } from '@/types/domain'
 import { createContactAction, updateContactAction } from './actions'
 
@@ -27,6 +28,9 @@ export function ContactForm({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    contact?.companyId || defaultCompanyId || null
+  )
   const [selectedBusinessLineIds, setSelectedBusinessLineIds] = useState<string[]>(
     contact?.businessLineIds || []
   )
@@ -38,7 +42,7 @@ export function ContactForm({
       const data = {
         firstName: formData.get('firstName') as string,
         lastName: formData.get('lastName') as string,
-        companyId: (formData.get('companyId') as string) || undefined,
+        companyId: selectedCompanyId || undefined,
         businessLineIds: selectedBusinessLineIds.length > 0 ? selectedBusinessLineIds : undefined,
         jobTitle: (formData.get('jobTitle') as string) || undefined,
         email: (formData.get('email') as string) || undefined,
@@ -107,24 +111,12 @@ export function ContactForm({
           </div>
 
           {/* Company */}
-          <div>
-            <label htmlFor="companyId" className="block text-sm font-medium mb-2">
-              Entreprise
-            </label>
-            <select
-              id="companyId"
-              name="companyId"
-              defaultValue={contact?.companyId || defaultCompanyId || ''}
-              className="w-full px-3 py-2 bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
-            >
-              <option value="">Aucune</option>
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <CompanySelector
+            companies={companies}
+            value={selectedCompanyId}
+            onChange={setSelectedCompanyId}
+            required={false}
+          />
 
           {/* Business Lines */}
           <div>
