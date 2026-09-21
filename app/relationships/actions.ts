@@ -13,6 +13,7 @@ import {
   getContactById,
   getCompanyById,
   createTask,
+  createActivity,
 } from '@/lib/airtable'
 import { enrichRelationshipsWithInteractions } from '@/lib/relationships/helpers'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
@@ -145,6 +146,50 @@ export async function createRelationshipTaskAction(input: CreateRelationshipTask
     return { success: true }
   } catch (error) {
     console.error('Failed to create relationship task:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+// ============================================================================
+// ACTIVITY ACTIONS
+// ============================================================================
+
+export interface CreateRelationshipActivityInput {
+  relationshipId: string
+  contactId?: string
+  type: string
+  date: string
+  result?: string
+  notes?: string
+  owner: Owner
+  durationMinutes?: number
+}
+
+export async function createRelationshipActivityAction(
+  input: CreateRelationshipActivityInput
+) {
+  try {
+    await createActivity({
+      relationshipId: input.relationshipId,
+      contactId: input.contactId,
+      type: input.type,
+      date: input.date,
+      result: input.result,
+      notes: input.notes,
+      owner: input.owner,
+      durationMinutes: input.durationMinutes,
+    })
+
+    revalidatePath(`/relationships/${input.relationshipId}`)
+    revalidatePath('/relationships')
+    revalidatePath('/today')
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to create relationship activity:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

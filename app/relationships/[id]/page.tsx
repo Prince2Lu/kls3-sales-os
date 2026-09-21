@@ -149,7 +149,12 @@ export default async function RelationshipPage({ params }: RelationshipPageProps
           <CardContent className="space-y-6">
             {/* Last Interaction */}
             <div>
-              <div className="text-sm font-medium mb-2">Dernière interaction</div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium">Dernière interaction</div>
+                <Link href={`/relationships/${id}/activity`}>
+                  <Button size="sm" variant="ghost">+ Ajouter une activité</Button>
+                </Link>
+              </div>
               {relationship.lastInteraction ? (
                 <div className="p-3 rounded-lg bg-white/5">
                   <div className="flex items-center gap-2 text-sm mb-1">
