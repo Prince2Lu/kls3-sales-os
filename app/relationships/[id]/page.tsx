@@ -66,9 +66,19 @@ export default async function RelationshipPage({ params }: RelationshipPageProps
             </Badge>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex gap-2 flex-wrap">
           <Link href={`/relationships/${id}/edit`}>
-            <Button variant="ghost">Modifier</Button>
+            <Button variant="ghost" size="sm">
+              Modifier
+            </Button>
+          </Link>
+          <Link href={`/relationships/${id}/activity`}>
+            <Button size="sm">+ Activité</Button>
+          </Link>
+          <Link href={`/relationships/${id}/task`}>
+            <Button size="sm" variant="ghost">
+              + Tâche
+            </Button>
           </Link>
         </div>
       </div>
@@ -149,12 +159,7 @@ export default async function RelationshipPage({ params }: RelationshipPageProps
           <CardContent className="space-y-6">
             {/* Last Interaction */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-medium">Dernière interaction</div>
-                <Link href={`/relationships/${id}/activity`}>
-                  <Button size="sm" variant="ghost">+ Ajouter une activité</Button>
-                </Link>
-              </div>
+              <div className="text-sm font-medium mb-2">Dernière interaction</div>
               {relationship.lastInteraction ? (
                 <div className="p-3 rounded-lg bg-white/5">
                   <div className="flex items-center gap-2 text-sm mb-1">
@@ -220,11 +225,6 @@ export default async function RelationshipPage({ params }: RelationshipPageProps
               ) : (
                 <div className="text-text-muted text-sm p-3 rounded-lg bg-white/5">
                   Aucune tâche planifiée
-                  <div className="mt-2">
-                    <Link href={`/relationships/${id}/task`}>
-                      <Button size="sm" variant="ghost">+ Créer une tâche</Button>
-                    </Link>
-                  </div>
                 </div>
               )}
             </div>
