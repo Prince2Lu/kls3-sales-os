@@ -368,7 +368,7 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                                 </div>
                               )}
                               {item.notes && (
-                                <div className="text-sm">{item.notes}</div>
+                                <div className="text-sm whitespace-pre-wrap">{item.notes}</div>
                               )}
                               <ActivityActions opportunityId={id} activity={item} />
                             </>
@@ -404,7 +404,7 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                                 </div>
                               )}
                               {item.notes && (
-                                <div className="text-sm">{item.notes}</div>
+                                <div className="text-sm whitespace-pre-wrap">{item.notes}</div>
                               )}
                               <TaskActions opportunityId={id} task={item} />
                             </>
