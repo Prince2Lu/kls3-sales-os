@@ -39,6 +39,7 @@ interface EntityQuickViewProps {
   contact: Contact | null
   lastActivity: Activity | null
   nextTask: Task | null
+  activities?: Activity[] // Optional: full activity history (if provided, shows timeline instead of just lastActivity)
 
   // Optional sections
   showWebsite?: boolean
@@ -57,12 +58,18 @@ export function EntityQuickView({
   contact,
   lastActivity,
   nextTask,
+  activities,
   showWebsite = false,
   actions,
 }: EntityQuickViewProps) {
   // Determine phone to use: contact phone > company phone
   const phoneNumber = contact?.phone || company?.phone
   const phoneType = contact?.phone ? 'Direct' : 'Standard'
+
+  // Sort activities by date (most recent first) if provided
+  const sortedActivities = activities
+    ? [...activities].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    : []
 
   return (
     <Sheet open={open} onClose={onClose} side="right">
@@ -143,39 +150,74 @@ export function EntityQuickView({
           </div>
         </section>
 
-        {/* DERNIÈRE ACTIVITÉ */}
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-accent">
-            Dernière activité
-          </h3>
+        {/* HISTORIQUE MULTICANAL (if activities provided) or DERNIÈRE ACTIVITÉ (fallback) */}
+        {activities && activities.length > 0 ? (
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-accent">
+              Historique multicanal
+            </h3>
 
-          {lastActivity ? (
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <Badge variant="muted">
-                  {getFrenchActivityType(lastActivity.type)}
-                </Badge>
-                {lastActivity.result && (
-                  <Badge variant="default">{lastActivity.result}</Badge>
+            <div className="space-y-3">
+              {sortedActivities.map((activity) => (
+                <div key={activity.id} className="space-y-2 text-sm pb-3 border-b border-border last:border-b-0 last:pb-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="muted">
+                      {getFrenchActivityType(activity.type)}
+                    </Badge>
+                    {activity.result && (
+                      <Badge variant="default">{activity.result}</Badge>
+                    )}
+                  </div>
+                  <div className="text-text-muted text-xs">
+                    {new Date(activity.date).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </div>
+                  {activity.notes && (
+                    <p className="text-text-primary text-xs line-clamp-2">
+                      {activity.notes}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-accent">
+              Dernière activité
+            </h3>
+
+            {lastActivity ? (
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Badge variant="muted">
+                    {getFrenchActivityType(lastActivity.type)}
+                  </Badge>
+                  {lastActivity.result && (
+                    <Badge variant="default">{lastActivity.result}</Badge>
+                  )}
+                </div>
+                <div className="text-text-muted">
+                  {new Date(lastActivity.date).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </div>
+                {lastActivity.notes && (
+                  <p className="text-text-primary line-clamp-3">
+                    {lastActivity.notes}
+                  </p>
                 )}
               </div>
-              <div className="text-text-muted">
-                {new Date(lastActivity.date).toLocaleDateString('fr-FR', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </div>
-              {lastActivity.notes && (
-                <p className="text-text-primary line-clamp-3">
-                  {lastActivity.notes}
-                </p>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-text-muted">Aucune activité enregistrée</p>
-          )}
-        </section>
+            ) : (
+              <p className="text-sm text-text-muted">Aucune activité enregistrée</p>
+            )}
+          </section>
+        )}
 
         {/* PROCHAINE TÂCHE */}
         <section className="space-y-3">

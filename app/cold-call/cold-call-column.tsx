@@ -153,6 +153,7 @@ export function ColdCallColumn({
           businessLine={selectedBusinessLine}
           lastActivity={lastActivity}
           nextTask={nextTask}
+          activities={selectedActivities}
           open={!!selectedTargetId}
           onClose={() => setSelectedTargetId(null)}
         />

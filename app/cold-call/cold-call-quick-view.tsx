@@ -22,6 +22,7 @@ interface ColdCallQuickViewProps {
   businessLine: BusinessLine | null
   lastActivity: Activity | null
   nextTask: Task | null
+  activities: Activity[]
   open: boolean
   onClose: () => void
 }
@@ -33,6 +34,7 @@ export function ColdCallQuickView({
   businessLine,
   lastActivity,
   nextTask,
+  activities,
   open,
   onClose,
 }: ColdCallQuickViewProps) {
@@ -82,6 +84,7 @@ export function ColdCallQuickView({
       contact={contact}
       lastActivity={lastActivity}
       nextTask={nextTask}
+      activities={activities}
       showWebsite={true}
       actions={actions}
     />
