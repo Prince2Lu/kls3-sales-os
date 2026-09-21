@@ -1049,7 +1049,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
 
 export async function updateTask(
   id: string,
-  input: Partial<CreateTaskInput> & { completedAt?: string }
+  input: Partial<CreateTaskInput> & { completedAt?: string | null }
 ): Promise<Task> {
   const fields: Partial<AirtableTaskFields> = {}
 

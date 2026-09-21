@@ -109,7 +109,7 @@ export interface AirtableTaskFields {
   Notes?: string
   Owner: string
   'Created At': string
-  'Completed At'?: string
+  'Completed At'?: string | null
 }
 
 export interface AirtableValueEventFields {

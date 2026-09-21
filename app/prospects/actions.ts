@@ -229,15 +229,15 @@ export async function updateTaskAction(
   input: Partial<CreateTaskInput>
 ) {
   try {
-    const updateData: Partial<CreateTaskInput> & { completedAt?: string } = { ...input }
+    const updateData: Partial<CreateTaskInput> & { completedAt?: string | null } = { ...input }
 
     // Handle completedAt based on status changes
     if (input.status === 'DONE') {
       // Mark as completed now if not already completed
       updateData.completedAt = new Date().toISOString()
     } else if (input.status === 'TODO' || input.status === 'CANCELLED') {
-      // Clear completedAt when reopening or cancelling (empty string clears the field in Airtable)
-      updateData.completedAt = ''
+      // Clear completedAt when reopening or cancelling (null clears the field in Airtable)
+      updateData.completedAt = null
     }
 
     await updateTask(taskId, updateData)
@@ -282,6 +282,7 @@ export async function cancelTaskAction(taskId: string) {
   try {
     await updateTask(taskId, {
       status: 'CANCELLED',
+      completedAt: null,
     })
 
     revalidatePath('/prospects')
