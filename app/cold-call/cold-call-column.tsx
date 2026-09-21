@@ -23,7 +23,8 @@ import { StatusChangeMenu } from './status-change-menu'
 import { ColdCallQuickView } from './cold-call-quick-view'
 import { TargetOptionsMenu } from './target-options-menu'
 import { RemoveFromProspectingModal } from './remove-from-prospecting-modal'
-import { recordCallActivity, recordEmailActivity, updateColdCallStatus } from './actions'
+import { MultichannelActionMenu } from './multichannel-action-menu'
+import { recordCallActivity, recordEmailActivity, recordLinkedInActivity, updateColdCallStatus } from './actions'
 import { ContactInfo } from '@/components/pipeline/contact-info'
 import { CallCounter } from '@/components/pipeline/call-counter'
 import { TaskSummary } from '@/components/pipeline/task-summary'
@@ -174,6 +175,7 @@ interface TargetCardProps {
 function TargetCard({ target, company, contact, businessLine, activities, tasks, currentOwner, onOpenQuickView }: TargetCardProps) {
   const router = useRouter()
   const [showCallMenu, setShowCallMenu] = useState(false)
+  const [showMultichannelMenu, setShowMultichannelMenu] = useState(false)
   const [showCallbackModal, setShowCallbackModal] = useState(false)
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
@@ -288,15 +290,55 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
     }
   }
 
-  async function handleEmailReply() {
+  async function handleEmailSent() {
+    setShowMultichannelMenu(false)
     setIsRecording(true)
-    const response = await recordEmailActivity(target.id)
+    const response = await recordEmailActivity(target.id, 'EMAIL_SENT')
+    setIsRecording(false)
+
+    if (response.success) {
+      router.refresh()
+    } else {
+      alert('Erreur lors de l\'enregistrement de l\'email envoyé')
+    }
+  }
+
+  async function handleEmailReply() {
+    setShowMultichannelMenu(false)
+    setIsRecording(true)
+    const response = await recordEmailActivity(target.id, 'EMAIL_REPLY')
     setIsRecording(false)
 
     if (response.success) {
       router.refresh()
     } else {
       alert('Erreur lors de l\'enregistrement de la réponse email')
+    }
+  }
+
+  async function handleLinkedInSent() {
+    setShowMultichannelMenu(false)
+    setIsRecording(true)
+    const response = await recordLinkedInActivity(target.id, 'LINKEDIN_SENT')
+    setIsRecording(false)
+
+    if (response.success) {
+      router.refresh()
+    } else {
+      alert('Erreur lors de l\'enregistrement du message LinkedIn envoyé')
+    }
+  }
+
+  async function handleLinkedInReply() {
+    setShowMultichannelMenu(false)
+    setIsRecording(true)
+    const response = await recordLinkedInActivity(target.id, 'LINKEDIN_REPLY')
+    setIsRecording(false)
+
+    if (response.success) {
+      router.refresh()
+    } else {
+      alert('Erreur lors de l\'enregistrement de la réponse LinkedIn')
     }
   }
 
@@ -380,17 +422,17 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
             >
               📞
             </button>
-            {/* Email reply button */}
+            {/* Multichannel button (Email + LinkedIn) */}
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                handleEmailReply()
+                setShowMultichannelMenu(true)
               }}
               className="text-accent hover:text-accent/80 text-base"
-              title="Réponse email reçue"
+              title="Email / LinkedIn"
               disabled={isRecording || isChangingStatus}
             >
-              📧
+              ✉️
             </button>
             {/* Create task button */}
             <button
@@ -446,6 +488,17 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
         <CallResultMenu
           onSelect={handleCallResult}
           onCancel={() => setShowCallMenu(false)}
+        />
+      )}
+
+      {/* Multichannel Action Menu */}
+      {showMultichannelMenu && (
+        <MultichannelActionMenu
+          onEmailSent={handleEmailSent}
+          onEmailReply={handleEmailReply}
+          onLinkedInSent={handleLinkedInSent}
+          onLinkedInReply={handleLinkedInReply}
+          onCancel={() => setShowMultichannelMenu(false)}
         />
       )}
 

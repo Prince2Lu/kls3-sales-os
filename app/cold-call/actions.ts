@@ -309,18 +309,20 @@ export async function recordCallActivity(
 }
 
 /**
- * Record email reply activity (EMAIL_REPLY)
- * Creates EMAIL activity and triggers Opportunity conversion to stage Échange
+ * Record email activity (EMAIL_SENT or EMAIL_REPLY)
+ * - EMAIL_SENT: Creates EMAIL activity, stays in prospecting
+ * - EMAIL_REPLY: Creates EMAIL activity and triggers Opportunity conversion to stage Échange
  */
-export async function recordEmailActivity(targetId: string) {
+export async function recordEmailActivity(
+  targetId: string,
+  result: 'EMAIL_SENT' | 'EMAIL_REPLY'
+) {
   try {
     const { getCurrentOwner } = await import('@/lib/utils/current-owner')
     const owner = await getCurrentOwner()
-    const { getInitialOpportunityStage } = await import('@/lib/prospecting/conversion-rules')
+    const { requiresOpportunityConversion, getInitialOpportunityStage } = await import('@/lib/prospecting/conversion-rules')
 
     const target = await getColdCallTargetById(targetId)
-
-    const result: ActivityResult = 'EMAIL_REPLY'
 
     // Create ACTIVITY with explicit cold call target link
     await createActivity({
@@ -335,24 +337,26 @@ export async function recordEmailActivity(targetId: string) {
       durationMinutes: undefined,
     })
 
-    // EMAIL_REPLY always requires Opportunity conversion
-    // Get the appropriate stage (should be 'Échange')
-    const initialStage = getInitialOpportunityStage(result)
+    // Check if this result requires Opportunity conversion
+    if (requiresOpportunityConversion(result)) {
+      // Get the appropriate stage (should be 'Échange' for EMAIL_REPLY)
+      const initialStage = getInitialOpportunityStage(result)
 
-    // Use centralized conversion engine
-    const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
-    const conversionResult = await convertProspectingTargetToOpportunity({
-      targetId,
-      initialStage,
-      source: 'Cold Email',
-      owner,
-      activityResult: result,
-    })
+      // Use centralized conversion engine
+      const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
+      const conversionResult = await convertProspectingTargetToOpportunity({
+        targetId,
+        initialStage,
+        source: 'Cold Email',
+        owner,
+        activityResult: result,
+      })
 
-    if (!conversionResult.success) {
-      return {
-        success: false,
-        error: conversionResult.error || 'Failed to convert to opportunity',
+      if (!conversionResult.success) {
+        return {
+          success: false,
+          error: conversionResult.error || 'Failed to convert to opportunity',
+        }
       }
     }
 
@@ -365,6 +369,75 @@ export async function recordEmailActivity(targetId: string) {
     return { success: true }
   } catch (error: any) {
     console.error('Error recording email activity:', error.message)
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * Record LinkedIn activity (LINKEDIN_SENT or LINKEDIN_REPLY)
+ * - LINKEDIN_SENT: Creates LINKEDIN activity, stays in prospecting
+ * - LINKEDIN_REPLY: Creates LINKEDIN activity and triggers Opportunity conversion to stage Échange
+ */
+export async function recordLinkedInActivity(
+  targetId: string,
+  result: 'LINKEDIN_SENT' | 'LINKEDIN_REPLY'
+) {
+  try {
+    const { getCurrentOwner } = await import('@/lib/utils/current-owner')
+    const owner = await getCurrentOwner()
+    const { requiresOpportunityConversion, getInitialOpportunityStage } = await import('@/lib/prospecting/conversion-rules')
+
+    const target = await getColdCallTargetById(targetId)
+
+    // Create ACTIVITY with explicit cold call target link
+    await createActivity({
+      opportunityId: target.opportunityId ?? undefined,
+      contactId: target.contactId ?? undefined,
+      coldCallTargetId: targetId,
+      type: 'LINKEDIN',
+      date: new Date().toISOString(),
+      result,
+      notes: undefined,
+      owner,
+      durationMinutes: undefined,
+    })
+
+    // Check if this result requires Opportunity conversion
+    if (requiresOpportunityConversion(result)) {
+      // Get the appropriate stage (should be 'Échange' for LINKEDIN_REPLY)
+      const initialStage = getInitialOpportunityStage(result)
+
+      // Use centralized conversion engine
+      const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
+      const conversionResult = await convertProspectingTargetToOpportunity({
+        targetId,
+        initialStage,
+        source: 'LinkedIn',
+        owner,
+        activityResult: result,
+      })
+
+      if (!conversionResult.success) {
+        return {
+          success: false,
+          error: conversionResult.error || 'Failed to convert to opportunity',
+        }
+      }
+    }
+
+    revalidatePath('/cold-call')
+    revalidatePath('/today')
+    if (target.opportunityId) {
+      revalidatePath(`/prospects/${target.opportunityId}`)
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error recording LinkedIn activity:', error.message)
 
     return {
       success: false,

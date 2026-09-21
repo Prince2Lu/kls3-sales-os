@@ -89,7 +89,10 @@ export type ActivityResult =
   | 'WRONG_NUMBER'
   | 'VOICEMAIL'
   | 'EMAIL_REQUESTED'
+  | 'EMAIL_SENT' // Email sent without reply (no Opportunity)
   | 'EMAIL_REPLY' // Email response received (creates Opportunity)
+  | 'LINKEDIN_SENT' // LinkedIn message sent without reply (no Opportunity)
+  | 'LINKEDIN_REPLY' // LinkedIn response received (creates Opportunity)
 
 export type TaskType =
   | 'CALL'
