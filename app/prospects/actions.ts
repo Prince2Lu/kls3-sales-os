@@ -198,6 +198,7 @@ export interface CreateTaskInput {
   type: string
   dueAt?: string
   priority?: Priority
+  status?: string
   notes?: string
   owner: Owner
 }
@@ -228,11 +229,23 @@ export async function updateTaskAction(
   input: Partial<CreateTaskInput>
 ) {
   try {
-    await updateTask(taskId, input)
+    const updateData: Partial<CreateTaskInput> & { completedAt?: string } = { ...input }
+
+    // Handle completedAt based on status changes
+    if (input.status === 'DONE') {
+      // Mark as completed now if not already completed
+      updateData.completedAt = new Date().toISOString()
+    } else if (input.status === 'TODO' || input.status === 'CANCELLED') {
+      // Clear completedAt when reopening or cancelling (empty string clears the field in Airtable)
+      updateData.completedAt = ''
+    }
+
+    await updateTask(taskId, updateData)
 
     revalidatePath(`/prospects/${opportunityId}`)
     revalidatePath('/prospects')
     revalidatePath('/pipeline')
+    revalidatePath('/today')
 
     return { success: true }
   } catch (error) {
@@ -253,6 +266,7 @@ export async function completeTaskAction(taskId: string) {
 
     revalidatePath('/prospects')
     revalidatePath('/pipeline')
+    revalidatePath('/today')
 
     return { success: true }
   } catch (error) {
@@ -272,6 +286,7 @@ export async function cancelTaskAction(taskId: string) {
 
     revalidatePath('/prospects')
     revalidatePath('/pipeline')
+    revalidatePath('/today')
 
     return { success: true }
   } catch (error) {

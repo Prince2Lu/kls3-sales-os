@@ -24,6 +24,12 @@ const TASK_TYPES = [
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const
 
+const STATUSES = [
+  { value: 'TODO', label: 'À faire' },
+  { value: 'DONE', label: 'Terminée' },
+  { value: 'CANCELLED', label: 'Annulée' },
+] as const
+
 const OWNERS = ['Eric', 'Lilian'] as const
 
 interface TaskEditFormProps {
@@ -61,6 +67,7 @@ export function TaskEditForm({
 
     const data = {
       type: formData.get('type') as string,
+      status: formData.get('status') as string,
       dueAt,
       priority: (formData.get('priority') as any) || undefined,
       notes: (formData.get('notes') as string) || undefined,
@@ -100,6 +107,19 @@ export function TaskEditForm({
               {TASK_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {type}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              Statut <span className="text-red-500">*</span>
+            </label>
+            <Select name="status" required defaultValue={task.status}>
+              {STATUSES.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
                 </option>
               ))}
             </Select>
