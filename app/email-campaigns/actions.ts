@@ -49,6 +49,14 @@ export async function createCampaignDraftAction(input: { name: string; subject: 
   }).filter((item) => !!item.email).slice(0, 25)
 
   if (!eligible.length) return { success: false, error: 'Aucun destinataire avec un email exploitable.' }
+  const sendMode = getBrevoSendMode()
+  if (sendMode === 'test') {
+    const testEmail = getBrevoTestRecipientEmail()
+    if (!testEmail) return { success: false, error: "BREVO_TEST_RECIPIENT_EMAIL n'est pas configuré." }
+    if (eligible.length !== 1 || eligible[0].email?.toLowerCase() !== testEmail) {
+      return { success: false, error: `Mode test : le brouillon doit contenir uniquement ${testEmail}.` }
+    }
+  }
   const senderEmail = process.env.BREVO_SENDER_EMAIL ?? ''
   const senderName = process.env.BREVO_SENDER_NAME ?? 'KLS3'
   const replyTo = process.env.BREVO_REPLY_TO ?? senderEmail

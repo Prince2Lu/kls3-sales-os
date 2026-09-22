@@ -14,7 +14,12 @@ export function CampaignsClient({ campaigns, recipients, companies, sendMode, te
   const [name, setName] = useState('Pilote notaires')
   const [subject, setSubject] = useState('Une solution pensée pour votre office notarial')
   const [message, setMessage] = useState<string | null>(null)
-  const [selected, setSelected] = useState<string[]>(companies.filter((item) => !item.blocked).slice(0, 25).map((item) => item.id))
+  const [selected, setSelected] = useState<string[]>(() => {
+    if (sendMode === 'test' && testRecipientEmail) {
+      return companies.filter((item) => !item.blocked && item.email.toLowerCase() === testRecipientEmail.toLowerCase()).slice(0, 1).map((item) => item.id)
+    }
+    return []
+  })
   const [pending, startTransition] = useTransition()
   const createDraft = () => startTransition(async () => {
     const result = await createCampaignDraftAction({ name, subject, companyIds: selected })
@@ -39,7 +44,7 @@ export function CampaignsClient({ campaigns, recipients, companies, sendMode, te
       </p>
       <div className="mt-4 grid gap-4 md:grid-cols-2"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nom de campagne" /><Input value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Objet" /></div>
       <div className="mt-4 rounded-lg border border-border">
-        <div className="flex items-center justify-between border-b border-border bg-muted px-3 py-2 text-sm"><span>{selected.length} office(s) sélectionné(s)</span><button className="text-accent" onClick={() => setSelected(companies.filter((item) => !item.blocked).slice(0, 25).map((item) => item.id))}>Sélectionner les 25 premiers</button></div>
+        <div className="flex items-center justify-between border-b border-border bg-muted px-3 py-2 text-sm"><span>{selected.length} office(s) sélectionné(s)</span><button className="text-accent" onClick={() => setSelected(sendMode === 'test' && testRecipientEmail ? companies.filter((item) => !item.blocked && item.email.toLowerCase() === testRecipientEmail.toLowerCase()).slice(0, 1).map((item) => item.id) : companies.filter((item) => !item.blocked).slice(0, 25).map((item) => item.id))}>{sendMode === 'test' ? 'Sélectionner le destinataire test' : 'Sélectionner les 25 premiers'}</button></div>
         <div className="max-h-64 overflow-auto">{companies.map((company) => <label key={company.id} className="flex items-center gap-3 border-b border-border px-3 py-2 text-sm last:border-0">
           <input type="checkbox" checked={selected.includes(company.id)} disabled={company.blocked || (!selected.includes(company.id) && selected.length >= 25)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, company.id].slice(0, 25) : current.filter((id) => id !== company.id))} />
           <span className="flex-1"><span className="font-medium">{company.name}</span> <span className="text-muted-foreground">· {company.city ?? 'Ville inconnue'} · {company.recipientLabel}</span></span>

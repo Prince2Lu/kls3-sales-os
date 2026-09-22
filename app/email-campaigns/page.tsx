@@ -10,7 +10,7 @@ export default async function EmailCampaignsPage() {
     const direct = contacts.find((contact) => contact.companyId === company.id && contact.decisionMaker && !!contact.email)
     const email = direct?.email ?? company.email ?? ''
     const blocked = !email || suppressions.some((item) => item.active && ((item.scope === 'EMAIL' && item.email.toLowerCase() === email.toLowerCase()) || (item.scope === 'COMPANY' && item.companyId === company.id) || (item.scope === 'CONTACT' && item.contactId === direct?.id)))
-    return { id: company.id, name: company.name, city: company.city, email, recipientLabel: direct ? `${direct.firstName} ${direct.lastName}` : email || 'Email manquant', blocked }
+    return { id: company.id, name: company.name, city: company.city, email, recipientLabel: direct ? `${direct.firstName} ${direct.lastName} · ${email}` : email || 'Email manquant', blocked }
   })
   return <div className="space-y-8">
     <div><h1 className="text-4xl font-bold font-syne">Campagnes email</h1><p className="mt-2 text-muted-foreground">Préparation, envoi Brevo et suivi des signaux.</p></div>
