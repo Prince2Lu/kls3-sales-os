@@ -38,6 +38,9 @@ export interface AirtableCompanyFields {
   City?: string
   Country?: string
   Phone?: string
+  Email?: string
+  'Notary Count'?: number
+  'Import Batch'?: string[]
   'Company Size'?: string
   LinkedIn?: string
   Notes?: string
@@ -53,6 +56,7 @@ export interface AirtableContactFields {
   'Job Title'?: string
   Email?: string
   Phone?: string
+  'Decision Maker'?: boolean
   LinkedIn?: string
   Notes?: string
   'Created At': string
@@ -188,4 +192,79 @@ export interface AirtableRelationshipFields {
   Notes?: string
   'Created At': string
   'Updated At': string
+}
+
+export interface AirtableImportBatchFields {
+  Name: string
+  Source?: string
+  Criteria?: string
+  'Requested Count': number
+  'Companies Created': number
+  'Companies Updated': number
+  'Contacts Created': number
+  'Duplicates Skipped': number
+  Excluded: number
+  Errors: number
+  'Imported By': string
+  Status: string
+  'Imported At'?: string
+  'Created At': string
+}
+
+export interface AirtableEmailSuppressionFields {
+  Email: string
+  Company?: string[]
+  Contact?: string[]
+  Scope: string
+  Reason: string
+  Source: string
+  Active: boolean
+  Details?: string
+  'Created At': string
+}
+
+export interface AirtableEmailCampaignFields {
+  Name: string
+  'Business Line': string[]
+  'Brevo Campaign ID'?: string
+  Status: string
+  Subject: string
+  'Template ID'?: string
+  'Sender Name': string
+  'Sender Email': string
+  'Reply To'?: string
+  'Recipient Count': number
+  'Created By': string
+  'Created At': string
+  'Sent At'?: string
+}
+
+export interface AirtableEmailRecipientFields {
+  Name: string
+  Campaign: string[]
+  Company: string[]
+  Contact?: string[]
+  'Prospecting Target'?: string[]
+  Email: string
+  'Recipient Type': string
+  Status: string
+  'Open Count': number
+  'Click Count': number
+  'Last Event At'?: string
+  'Last Click URL'?: string
+  'Exclusion Reason'?: string
+  'Created At': string
+  'Updated At': string
+}
+
+export interface AirtableEmailEventFields {
+  'Event Key': string
+  Recipient: string[]
+  'Event Type': string
+  'Occurred At': string
+  Email: string
+  URL?: string
+  'Message ID'?: string
+  'Raw Payload'?: string
+  'Created At': string
 }

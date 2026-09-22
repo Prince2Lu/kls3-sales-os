@@ -50,6 +50,11 @@ export const TABLE_NAMES = {
   STAGE_HISTORY: 'STAGE_HISTORY',
   USERS: 'USERS',
   RELATIONSHIPS: 'RELATIONSHIPS',
+  IMPORT_BATCHES: 'IMPORT_BATCHES',
+  EMAIL_CAMPAIGNS: 'EMAIL_CAMPAIGNS',
+  EMAIL_RECIPIENTS: 'EMAIL_RECIPIENTS',
+  EMAIL_EVENTS: 'EMAIL_EVENTS',
+  EMAIL_SUPPRESSIONS: 'EMAIL_SUPPRESSIONS',
 
   // NOTE: Table names kept as COLD_CALL_TARGETS and CALL_STATUS_HISTORY for Airtable backward compatibility
   // These tables now handle multi-channel prospecting (not just cold calls)

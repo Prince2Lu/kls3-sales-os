@@ -1,6 +1,6 @@
 // Overdue tasks section (Phase 4)
 
-import { getOpportunities, getCompanies, getContacts } from '@/lib/airtable'
+import { getOpportunities, getCompanies, getContacts, getColdCallTargets } from '@/lib/airtable'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import type { Task, BusinessLine } from '@/types/domain'
 import { TaskCard } from './task-card'
@@ -15,10 +15,11 @@ export async function OverdueSection({
   businessLineMap,
 }: OverdueSectionProps) {
   // Fetch related data
-  const [opportunities, companies, contacts] = await Promise.all([
+  const [opportunities, companies, contacts, targets] = await Promise.all([
     getOpportunities({ maxRecords: 500 }),
     getCompanies({ maxRecords: 500 }),
     getContacts({ maxRecords: 500 }),
+    getColdCallTargets({ maxRecords: 1000 }),
   ])
 
   // Create lookup maps
@@ -27,6 +28,7 @@ export async function OverdueSection({
   )
   const companyMap = Object.fromEntries(companies.map((c) => [c.id, c]))
   const contactMap = Object.fromEntries(contacts.map((c) => [c.id, c]))
+  const targetMap = Object.fromEntries(targets.map((target) => [target.id, target]))
 
   // Sort by priority then due date
   const priorityOrder = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
@@ -59,15 +61,18 @@ export async function OverdueSection({
             const opportunity = task.opportunityId
               ? opportunityMap[task.opportunityId]
               : undefined
+            const target = task.coldCallTargetId ? targetMap[task.coldCallTargetId] : undefined
+            const companyId = opportunity?.companyId ?? target?.companyId
             const company =
-              opportunity?.companyId
-                ? companyMap[opportunity.companyId]
+              companyId
+                ? companyMap[companyId]
                 : undefined
             const contact = task.contactId
               ? contactMap[task.contactId]
               : undefined
-            const businessLine = opportunity?.businessLineId
-              ? businessLineMap[opportunity.businessLineId]
+            const businessLineId = opportunity?.businessLineId ?? target?.businessLineId
+            const businessLine = businessLineId
+              ? businessLineMap[businessLineId]
               : undefined
 
             return (

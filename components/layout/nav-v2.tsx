@@ -31,6 +31,8 @@ const primaryNavItems = [
 
 // Secondary navigation items - in "Plus" dropdown on medium screens
 const secondaryNavItems = [
+  { href: '/imports', label: 'Ajouter des prospects' },
+  { href: '/email-campaigns', label: 'Campagnes email' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
@@ -45,6 +47,8 @@ const compactNavItems = [
 ]
 
 const compactSecondaryItems = [
+  { href: '/imports', label: 'Ajouter des prospects' },
+  { href: '/email-campaigns', label: 'Campagnes email' },
   { href: '/today', label: 'Aujourd\'hui' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/companies', label: 'Entreprises' },

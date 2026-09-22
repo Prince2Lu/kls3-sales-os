@@ -76,7 +76,8 @@ export default async function TodayPage(props: {
     allTasks,
     allOpportunities,
     businessLines,
-    selectedBusinessLineCode
+    selectedBusinessLineCode,
+    allTargets
   )
 
   // Filter tasks by status and date

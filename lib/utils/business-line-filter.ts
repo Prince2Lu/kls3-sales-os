@@ -1,7 +1,7 @@
 // Business Line filtering utilities for Today/Focus
 // URL-based Business Line context for operational workflows
 
-import type { BusinessLine, Opportunity, Task } from '@/types/domain'
+import type { BusinessLine, Opportunity, Task, ColdCallTarget } from '@/types/domain'
 
 /**
  * Valid Business Line codes
@@ -80,7 +80,8 @@ export function filterTasksByBusinessLine(
   tasks: Task[],
   opportunities: Opportunity[],
   businessLines: BusinessLine[],
-  code: BusinessLineCode | null
+  code: BusinessLineCode | null,
+  targets: ColdCallTarget[] = []
 ): Task[] {
   if (!code) return tasks
 
@@ -93,10 +94,12 @@ export function filterTasksByBusinessLine(
       .filter((opp) => opp.businessLineId === selectedBL.id)
       .map((opp) => opp.id)
   )
+  const filteredTargetIds = new Set(targets.filter((target) => target.businessLineId === selectedBL.id).map((target) => target.id))
 
   return tasks.filter((task) => {
-    if (!task.opportunityId) return false // Tasks without opportunity excluded when filtered
-    return filteredOppIds.has(task.opportunityId)
+    if (task.opportunityId) return filteredOppIds.has(task.opportunityId)
+    if (task.coldCallTargetId) return filteredTargetIds.has(task.coldCallTargetId)
+    return false
   })
 }
 

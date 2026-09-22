@@ -156,6 +156,9 @@ export interface Company {
   city: string | null
   country: string | null
   phone: string | null
+  email: string | null
+  notaryCount: number | null
+  importBatchId: string | null
   companySize: string | null
   linkedin: string | null
   notes: string | null
@@ -176,10 +179,100 @@ export interface Contact {
   jobTitle: string | null
   email: string | null
   phone: string | null
+  decisionMaker: boolean
   linkedin: string | null
   notes: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type ImportBatchStatus = 'PREVIEWED' | 'COMPLETED' | 'FAILED'
+
+export interface ImportBatch {
+  id: string
+  name: string
+  source: string | null
+  criteria: string | null
+  requestedCount: number
+  companiesCreated: number
+  companiesUpdated: number
+  contactsCreated: number
+  duplicatesSkipped: number
+  excluded: number
+  errors: number
+  importedBy: Owner
+  status: ImportBatchStatus
+  importedAt: string | null
+  createdAt: string
+}
+
+export type EmailCampaignStatus = 'DRAFT' | 'SCHEDULED' | 'SENT' | 'CANCELLED' | 'FAILED'
+export type EmailRecipientStatus =
+  | 'READY' | 'SENT' | 'DELIVERED' | 'OPENED' | 'CLICKED' | 'REPLIED'
+  | 'SOFT_BOUNCE' | 'HARD_BOUNCE' | 'UNSUBSCRIBED' | 'SPAM' | 'FAILED' | 'EXCLUDED'
+export type EmailSuppressionReason =
+  | 'UNSUBSCRIBED' | 'OPPOSED' | 'HARD_BOUNCE' | 'SPAM_COMPLAINT' | 'INVALID_EMAIL' | 'MANUAL'
+
+export interface EmailSuppression {
+  id: string
+  email: string
+  companyId: string | null
+  contactId: string | null
+  scope: 'EMAIL' | 'CONTACT' | 'COMPANY'
+  reason: EmailSuppressionReason
+  source: 'BREVO' | 'REPLY' | 'CRM' | 'IMPORT'
+  active: boolean
+  details: string | null
+  createdAt: string
+}
+
+export interface EmailCampaign {
+  id: string
+  name: string
+  businessLineId: string
+  brevoCampaignId: string | null
+  status: EmailCampaignStatus
+  subject: string
+  templateId: string | null
+  senderName: string
+  senderEmail: string
+  replyTo: string | null
+  recipientCount: number
+  createdBy: Owner
+  createdAt: string
+  sentAt: string | null
+}
+
+export interface EmailRecipient {
+  id: string
+  name: string
+  campaignId: string
+  companyId: string
+  contactId: string | null
+  prospectingTargetId: string | null
+  email: string
+  recipientType: 'COMPANY' | 'CONTACT'
+  status: EmailRecipientStatus
+  openCount: number
+  clickCount: number
+  lastEventAt: string | null
+  lastClickUrl: string | null
+  exclusionReason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EmailEvent {
+  id: string
+  eventKey: string
+  recipientId: string
+  eventType: Exclude<EmailRecipientStatus, 'READY' | 'REPLIED' | 'EXCLUDED'> | 'ERROR'
+  occurredAt: string
+  email: string
+  url: string | null
+  messageId: string | null
+  rawPayload: string | null
+  createdAt: string
 }
 
 // ============================================================================

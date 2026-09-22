@@ -113,6 +113,12 @@ export function TaskCard({
               )}
             </div>
           )}
+          {!opportunityName && companyName && (
+            <div className="text-sm font-medium text-text-primary">
+              {companyName}
+              {contactName && <span className="ml-2 text-xs font-normal text-text-muted">· {contactName}</span>}
+            </div>
+          )}
 
           {/* Fourth line: Notes (if present) */}
           {task.notes && (

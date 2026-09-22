@@ -19,6 +19,11 @@ import type {
   AirtableColdCallTargetFields,
   AirtableCallStatusHistoryFields,
   AirtableRelationshipFields,
+  AirtableImportBatchFields,
+  AirtableEmailSuppressionFields,
+  AirtableEmailCampaignFields,
+  AirtableEmailRecipientFields,
+  AirtableEmailEventFields,
 } from './types'
 import {
   mapBusinessLine,
@@ -34,6 +39,11 @@ import {
   mapColdCallTarget,
   mapCallStatusHistory,
   mapRelationship,
+  mapImportBatch,
+  mapEmailSuppression,
+  mapEmailCampaign,
+  mapEmailRecipient,
+  mapEmailEvent,
 } from './mappers'
 
 import type {
@@ -55,6 +65,13 @@ import type {
   RelationshipType,
   RelationshipStatus,
   RelationshipImportance,
+  ImportBatch,
+  EmailSuppression,
+  EmailSuppressionReason,
+  EmailCampaign,
+  EmailRecipient,
+  EmailEvent,
+  EmailRecipientStatus,
 } from '@/types/domain'
 
 // ============================================================================
@@ -375,6 +392,7 @@ export async function getActivityById(id: string): Promise<Activity> {
 export async function getTasks(options?: {
   opportunityId?: string
   contactId?: string
+  coldCallTargetId?: string
   status?: string
   owner?: string
   maxRecords?: number
@@ -414,6 +432,10 @@ export async function getTasks(options?: {
     filteredRecords = filteredRecords.filter(record =>
       record.fields.Contact?.includes(contactId)
     )
+  }
+  if (options?.coldCallTargetId) {
+    const targetId = options.coldCallTargetId
+    filteredRecords = filteredRecords.filter(record => record.fields['Cold Call Target']?.includes(targetId))
   }
 
   return filteredRecords.map(mapTask)
@@ -618,6 +640,9 @@ export interface CreateCompanyInput {
   city?: string
   country?: string
   phone?: string
+  email?: string
+  notaryCount?: number
+  importBatchId?: string
   companySize?: string
   linkedin?: string
   notes?: string
@@ -643,6 +668,9 @@ export async function createCompany(
     City: input.city,
     Country: input.country,
     Phone: input.phone,
+    Email: input.email,
+    'Notary Count': input.notaryCount,
+    'Import Batch': input.importBatchId ? [input.importBatchId] : undefined,
     'Company Size': input.companySize,
     LinkedIn: input.linkedin,
     Notes: input.notes,
@@ -683,6 +711,9 @@ export async function updateCompany(
   if (input.city !== undefined) fields.City = input.city
   if (input.country !== undefined) fields.Country = input.country
   if (input.phone !== undefined) fields.Phone = input.phone
+  if (input.email !== undefined) fields.Email = input.email
+  if (input.notaryCount !== undefined) fields['Notary Count'] = input.notaryCount
+  if (input.importBatchId !== undefined) fields['Import Batch'] = input.importBatchId ? [input.importBatchId] : []
   if (input.companySize !== undefined) fields['Company Size'] = input.companySize
   if (input.linkedin !== undefined) fields.LinkedIn = input.linkedin
   if (input.notes !== undefined) fields.Notes = input.notes
@@ -707,6 +738,7 @@ export interface CreateContactInput {
   jobTitle?: string
   email?: string
   phone?: string
+  decisionMaker?: boolean
   linkedin?: string
   notes?: string
 }
@@ -724,6 +756,7 @@ export async function createContact(
     'Job Title': input.jobTitle,
     Email: input.email,
     Phone: input.phone,
+    'Decision Maker': input.decisionMaker,
     LinkedIn: input.linkedin,
     Notes: input.notes,
     'Created At': now,
@@ -756,6 +789,7 @@ export async function updateContact(
   if (input.jobTitle !== undefined) fields['Job Title'] = input.jobTitle
   if (input.email !== undefined) fields.Email = input.email
   if (input.phone !== undefined) fields.Phone = input.phone
+  if (input.decisionMaker !== undefined) fields['Decision Maker'] = input.decisionMaker
   if (input.linkedin !== undefined) fields.LinkedIn = input.linkedin
   if (input.notes !== undefined) fields.Notes = input.notes
 
@@ -1690,4 +1724,190 @@ export async function updateRelationship(
     cleanedFields
   )
   return mapRelationship(record)
+}
+
+// ============================================================================
+// IMPORTS & EMAIL COMPLIANCE
+// ============================================================================
+
+export interface CreateImportBatchInput {
+  name: string
+  source: string
+  criteria: string
+  requestedCount: number
+  importedBy: Owner
+  status?: 'PREVIEWED' | 'COMPLETED' | 'FAILED'
+  companiesCreated?: number
+  companiesUpdated?: number
+  contactsCreated?: number
+  duplicatesSkipped?: number
+  excluded?: number
+  errors?: number
+}
+
+export async function getImportBatches(options?: { maxRecords?: number }): Promise<ImportBatch[]> {
+  const records = await fetchRecords<AirtableImportBatchFields>(TABLE_NAMES.IMPORT_BATCHES, {
+    sort: [{ field: 'Created At', direction: 'desc' }],
+    maxRecords: options?.maxRecords,
+  })
+  return records.map(mapImportBatch)
+}
+
+export async function createImportBatch(input: CreateImportBatchInput): Promise<ImportBatch> {
+  const now = new Date().toISOString()
+  const record = await createRecord<AirtableImportBatchFields>(TABLE_NAMES.IMPORT_BATCHES, {
+    Name: input.name,
+    Source: input.source,
+    Criteria: input.criteria,
+    'Requested Count': input.requestedCount,
+    'Companies Created': input.companiesCreated ?? 0,
+    'Companies Updated': input.companiesUpdated ?? 0,
+    'Contacts Created': input.contactsCreated ?? 0,
+    'Duplicates Skipped': input.duplicatesSkipped ?? 0,
+    Excluded: input.excluded ?? 0,
+    Errors: input.errors ?? 0,
+    'Imported By': input.importedBy,
+    Status: input.status ?? 'PREVIEWED',
+    'Created At': now,
+  })
+  return mapImportBatch(record)
+}
+
+export async function completeImportBatch(
+  id: string,
+  stats: Pick<CreateImportBatchInput, 'companiesCreated' | 'companiesUpdated' | 'contactsCreated' | 'duplicatesSkipped' | 'excluded' | 'errors'>
+): Promise<ImportBatch> {
+  const record = await updateRecord<AirtableImportBatchFields>(TABLE_NAMES.IMPORT_BATCHES, id, {
+    Status: (stats.errors ?? 0) > 0 ? 'FAILED' : 'COMPLETED',
+    'Companies Created': stats.companiesCreated ?? 0,
+    'Companies Updated': stats.companiesUpdated ?? 0,
+    'Contacts Created': stats.contactsCreated ?? 0,
+    'Duplicates Skipped': stats.duplicatesSkipped ?? 0,
+    Excluded: stats.excluded ?? 0,
+    Errors: stats.errors ?? 0,
+    'Imported At': new Date().toISOString(),
+  })
+  return mapImportBatch(record)
+}
+
+export async function getEmailSuppressions(): Promise<EmailSuppression[]> {
+  const records = await fetchRecords<AirtableEmailSuppressionFields>(TABLE_NAMES.EMAIL_SUPPRESSIONS, {
+    filterByFormula: '{Active} = TRUE()',
+  })
+  return records.map(mapEmailSuppression)
+}
+
+export async function createEmailSuppression(input: {
+  email: string
+  companyId?: string
+  contactId?: string
+  scope: EmailSuppression['scope']
+  reason: EmailSuppressionReason
+  source: EmailSuppression['source']
+  details?: string
+}): Promise<EmailSuppression> {
+  const normalizedEmail = input.email.trim().toLowerCase()
+  const existing = (await getEmailSuppressions()).find((item) =>
+    item.email.toLowerCase() === normalizedEmail && item.scope === input.scope &&
+    item.companyId === (input.companyId ?? null) && item.contactId === (input.contactId ?? null)
+  )
+  if (existing) return existing
+
+  const record = await createRecord<AirtableEmailSuppressionFields>(TABLE_NAMES.EMAIL_SUPPRESSIONS, {
+    Email: normalizedEmail,
+    Company: input.companyId ? [input.companyId] : undefined,
+    Contact: input.contactId ? [input.contactId] : undefined,
+    Scope: input.scope,
+    Reason: input.reason,
+    Source: input.source,
+    Active: true,
+    Details: input.details,
+    'Created At': new Date().toISOString(),
+  })
+  return mapEmailSuppression(record)
+}
+
+export async function isEmailSuppressed(email: string, companyId?: string, contactId?: string): Promise<boolean> {
+  const normalized = email.trim().toLowerCase()
+  const suppressions = await getEmailSuppressions()
+  return suppressions.some((item) =>
+    item.active && (
+      (item.scope === 'EMAIL' && item.email.toLowerCase() === normalized) ||
+      (item.scope === 'COMPANY' && !!companyId && item.companyId === companyId) ||
+      (item.scope === 'CONTACT' && !!contactId && item.contactId === contactId)
+    )
+  )
+}
+
+export async function getEmailCampaigns(options?: { maxRecords?: number }): Promise<EmailCampaign[]> {
+  const records = await fetchRecords<AirtableEmailCampaignFields>(TABLE_NAMES.EMAIL_CAMPAIGNS, {
+    sort: [{ field: 'Created At', direction: 'desc' }], maxRecords: options?.maxRecords,
+  })
+  return records.map(mapEmailCampaign)
+}
+
+export async function getEmailCampaignById(id: string): Promise<EmailCampaign> {
+  return mapEmailCampaign(await fetchRecordById<AirtableEmailCampaignFields>(TABLE_NAMES.EMAIL_CAMPAIGNS, id))
+}
+
+export async function createEmailCampaign(input: {
+  name: string; businessLineId: string; subject: string; templateId?: string; senderName: string; senderEmail: string; replyTo?: string; recipientCount: number; createdBy: Owner
+}): Promise<EmailCampaign> {
+  const record = await createRecord<AirtableEmailCampaignFields>(TABLE_NAMES.EMAIL_CAMPAIGNS, {
+    Name: input.name, 'Business Line': [input.businessLineId], Status: 'DRAFT', Subject: input.subject,
+    'Template ID': input.templateId, 'Sender Name': input.senderName, 'Sender Email': input.senderEmail, 'Reply To': input.replyTo,
+    'Recipient Count': input.recipientCount, 'Created By': input.createdBy, 'Created At': new Date().toISOString(),
+  })
+  return mapEmailCampaign(record)
+}
+
+export async function updateEmailCampaign(id: string, input: { brevoCampaignId?: string; status?: EmailCampaign['status']; sentAt?: string; recipientCount?: number }): Promise<EmailCampaign> {
+  const fields: Partial<AirtableEmailCampaignFields> = {}
+  if (input.brevoCampaignId !== undefined) fields['Brevo Campaign ID'] = input.brevoCampaignId
+  if (input.status !== undefined) fields.Status = input.status
+  if (input.sentAt !== undefined) fields['Sent At'] = input.sentAt
+  if (input.recipientCount !== undefined) fields['Recipient Count'] = input.recipientCount
+  return mapEmailCampaign(await updateRecord<AirtableEmailCampaignFields>(TABLE_NAMES.EMAIL_CAMPAIGNS, id, fields))
+}
+
+export async function getEmailRecipients(options?: { campaignId?: string }): Promise<EmailRecipient[]> {
+  const records = await fetchRecords<AirtableEmailRecipientFields>(TABLE_NAMES.EMAIL_RECIPIENTS, { sort: [{ field: 'Created At', direction: 'desc' }] })
+  return records.filter((record) => !options?.campaignId || record.fields.Campaign?.includes(options.campaignId)).map(mapEmailRecipient)
+}
+
+export async function createEmailRecipient(input: {
+  name: string; campaignId: string; companyId: string; contactId?: string; email: string; recipientType: 'COMPANY' | 'CONTACT'; status?: EmailRecipientStatus; exclusionReason?: string
+}): Promise<EmailRecipient> {
+  const now = new Date().toISOString()
+  return mapEmailRecipient(await createRecord<AirtableEmailRecipientFields>(TABLE_NAMES.EMAIL_RECIPIENTS, {
+    Name: input.name, Campaign: [input.campaignId], Company: [input.companyId], Contact: input.contactId ? [input.contactId] : undefined,
+    Email: input.email.toLowerCase(), 'Recipient Type': input.recipientType, Status: input.status ?? 'READY', 'Open Count': 0, 'Click Count': 0,
+    'Exclusion Reason': input.exclusionReason, 'Created At': now, 'Updated At': now,
+  }))
+}
+
+export async function updateEmailRecipient(id: string, input: {
+  prospectingTargetId?: string; status?: EmailRecipientStatus; openCount?: number; clickCount?: number; lastEventAt?: string; lastClickUrl?: string; exclusionReason?: string
+}): Promise<EmailRecipient> {
+  const fields: Partial<AirtableEmailRecipientFields> = { 'Updated At': new Date().toISOString() }
+  if (input.prospectingTargetId !== undefined) fields['Prospecting Target'] = input.prospectingTargetId ? [input.prospectingTargetId] : []
+  if (input.status !== undefined) fields.Status = input.status
+  if (input.openCount !== undefined) fields['Open Count'] = input.openCount
+  if (input.clickCount !== undefined) fields['Click Count'] = input.clickCount
+  if (input.lastEventAt !== undefined) fields['Last Event At'] = input.lastEventAt
+  if (input.lastClickUrl !== undefined) fields['Last Click URL'] = input.lastClickUrl
+  if (input.exclusionReason !== undefined) fields['Exclusion Reason'] = input.exclusionReason
+  return mapEmailRecipient(await updateRecord<AirtableEmailRecipientFields>(TABLE_NAMES.EMAIL_RECIPIENTS, id, fields))
+}
+
+export async function getEmailEvents(): Promise<EmailEvent[]> {
+  return (await fetchRecords<AirtableEmailEventFields>(TABLE_NAMES.EMAIL_EVENTS)).map(mapEmailEvent)
+}
+
+export async function createEmailEvent(input: Omit<EmailEvent, 'id' | 'createdAt'>): Promise<EmailEvent> {
+  return mapEmailEvent(await createRecord<AirtableEmailEventFields>(TABLE_NAMES.EMAIL_EVENTS, {
+    'Event Key': input.eventKey, Recipient: [input.recipientId], 'Event Type': input.eventType, 'Occurred At': input.occurredAt,
+    Email: input.email, URL: input.url ?? undefined, 'Message ID': input.messageId ?? undefined, 'Raw Payload': input.rawPayload ?? undefined,
+    'Created At': new Date().toISOString(),
+  }))
 }

@@ -16,6 +16,11 @@ import type {
   AirtableColdCallTargetFields,
   AirtableCallStatusHistoryFields,
   AirtableRelationshipFields,
+  AirtableImportBatchFields,
+  AirtableEmailSuppressionFields,
+  AirtableEmailCampaignFields,
+  AirtableEmailRecipientFields,
+  AirtableEmailEventFields,
 } from './types'
 
 import type {
@@ -51,6 +56,15 @@ import type {
   RelationshipType,
   RelationshipStatus,
   RelationshipImportance,
+  ImportBatch,
+  ImportBatchStatus,
+  EmailSuppression,
+  EmailSuppressionReason,
+  EmailCampaign,
+  EmailRecipient,
+  EmailEvent,
+  EmailCampaignStatus,
+  EmailRecipientStatus,
 } from '@/types/domain'
 
 
@@ -99,6 +113,9 @@ export function mapCompany(
     city: fields.City ?? null,
     country: fields.Country ?? null,
     phone: fields.Phone ?? null,
+    email: fields.Email ?? null,
+    notaryCount: fields['Notary Count'] ?? null,
+    importBatchId: fields['Import Batch']?.[0] ?? null,
     companySize: fields['Company Size'] ?? null,
     linkedin: fields.LinkedIn ?? null,
     notes: fields.Notes ?? null,
@@ -124,11 +141,73 @@ export function mapContact(
     jobTitle: fields['Job Title'] ?? null,
     email: fields.Email ?? null,
     phone: fields.Phone ?? null,
+    decisionMaker: fields['Decision Maker'] ?? false,
     linkedin: fields.LinkedIn ?? null,
     notes: fields.Notes ?? null,
     createdAt: fields['Created At'],
     updatedAt: fields['Updated At'],
   }
+}
+
+export function mapImportBatch(record: AirtableRecord<AirtableImportBatchFields>): ImportBatch {
+  const fields = record.fields
+  return {
+    id: record.id,
+    name: fields.Name,
+    source: fields.Source ?? null,
+    criteria: fields.Criteria ?? null,
+    requestedCount: fields['Requested Count'] ?? 0,
+    companiesCreated: fields['Companies Created'] ?? 0,
+    companiesUpdated: fields['Companies Updated'] ?? 0,
+    contactsCreated: fields['Contacts Created'] ?? 0,
+    duplicatesSkipped: fields['Duplicates Skipped'] ?? 0,
+    excluded: fields.Excluded ?? 0,
+    errors: fields.Errors ?? 0,
+    importedBy: fields['Imported By'] as Owner,
+    status: fields.Status as ImportBatchStatus,
+    importedAt: fields['Imported At'] ?? null,
+    createdAt: fields['Created At'],
+  }
+}
+
+export function mapEmailSuppression(record: AirtableRecord<AirtableEmailSuppressionFields>): EmailSuppression {
+  const fields = record.fields
+  return {
+    id: record.id,
+    email: fields.Email,
+    companyId: fields.Company?.[0] ?? null,
+    contactId: fields.Contact?.[0] ?? null,
+    scope: fields.Scope as EmailSuppression['scope'],
+    reason: fields.Reason as EmailSuppressionReason,
+    source: fields.Source as EmailSuppression['source'],
+    active: fields.Active,
+    details: fields.Details ?? null,
+    createdAt: fields['Created At'],
+  }
+}
+
+export function mapEmailCampaign(record: AirtableRecord<AirtableEmailCampaignFields>): EmailCampaign {
+  const fields = record.fields
+  return { id: record.id, name: fields.Name, businessLineId: fields['Business Line'][0], brevoCampaignId: fields['Brevo Campaign ID'] ?? null,
+    status: fields.Status as EmailCampaignStatus, subject: fields.Subject, templateId: fields['Template ID'] ?? null,
+    senderName: fields['Sender Name'], senderEmail: fields['Sender Email'], replyTo: fields['Reply To'] ?? null,
+    recipientCount: fields['Recipient Count'] ?? 0, createdBy: fields['Created By'] as Owner, createdAt: fields['Created At'], sentAt: fields['Sent At'] ?? null }
+}
+
+export function mapEmailRecipient(record: AirtableRecord<AirtableEmailRecipientFields>): EmailRecipient {
+  const fields = record.fields
+  return { id: record.id, name: fields.Name, campaignId: fields.Campaign[0], companyId: fields.Company[0], contactId: fields.Contact?.[0] ?? null,
+    prospectingTargetId: fields['Prospecting Target']?.[0] ?? null, email: fields.Email, recipientType: fields['Recipient Type'] as EmailRecipient['recipientType'],
+    status: fields.Status as EmailRecipientStatus, openCount: fields['Open Count'] ?? 0, clickCount: fields['Click Count'] ?? 0,
+    lastEventAt: fields['Last Event At'] ?? null, lastClickUrl: fields['Last Click URL'] ?? null, exclusionReason: fields['Exclusion Reason'] ?? null,
+    createdAt: fields['Created At'], updatedAt: fields['Updated At'] }
+}
+
+export function mapEmailEvent(record: AirtableRecord<AirtableEmailEventFields>): EmailEvent {
+  const fields = record.fields
+  return { id: record.id, eventKey: fields['Event Key'], recipientId: fields.Recipient[0], eventType: fields['Event Type'] as EmailEvent['eventType'],
+    occurredAt: fields['Occurred At'], email: fields.Email, url: fields.URL ?? null, messageId: fields['Message ID'] ?? null,
+    rawPayload: fields['Raw Payload'] ?? null, createdAt: fields['Created At'] }
 }
 
 // ============================================================================
