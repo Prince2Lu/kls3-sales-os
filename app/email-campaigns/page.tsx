@@ -1,5 +1,6 @@
 import { getBusinessLineByCode, getCompanies, getContacts, getEmailCampaigns, getEmailRecipients, getEmailSuppressions } from '@/lib/airtable'
 import { CampaignsClient } from './campaigns-client'
+import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
 
 export default async function EmailCampaignsPage() {
   const [campaigns, recipients, allCompanies, contacts, suppressions, businessLine] = await Promise.all([
@@ -13,6 +14,6 @@ export default async function EmailCampaignsPage() {
   })
   return <div className="space-y-8">
     <div><h1 className="text-4xl font-bold font-syne">Campagnes email</h1><p className="mt-2 text-muted-foreground">Préparation, envoi Brevo et suivi des signaux.</p></div>
-    <CampaignsClient campaigns={campaigns} recipients={recipients} companies={companies} />
+    <CampaignsClient campaigns={campaigns} recipients={recipients} companies={companies} sendMode={getBrevoSendMode()} testRecipientEmail={getBrevoTestRecipientEmail()} />
   </div>
 }

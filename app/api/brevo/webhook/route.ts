@@ -1,18 +1,27 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  createEmailEvent, createEmailSuppression, createTask, getEmailCampaigns, getEmailEvents, getEmailRecipients, getTasks,
+  createEmailEvent, createEmailSuppression, createTask, getEmailCampaigns, getEmailEventByKey, getEmailRecipients, getTasks,
   updateEmailRecipient,
 } from '@/lib/airtable'
 import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
+import { logger } from '@/lib/observability/logger'
+import { nextBusinessDayAtNineParis } from '@/lib/utils/business-day'
 import type { EmailEvent, EmailRecipientStatus } from '@/types/domain'
 
 export const runtime = 'nodejs'
 
+export async function GET() {
+  return NextResponse.json(
+    { status: 'ok', service: 'brevo-webhook', checkedAt: new Date().toISOString() },
+    { headers: { 'Cache-Control': 'no-store' } }
+  )
+}
+
 function authorized(request: NextRequest): boolean {
   const expected = process.env.BREVO_WEBHOOK_SECRET
   if (!expected) return false
-  const received = request.headers.get('x-kls3-webhook-secret') ?? request.nextUrl.searchParams.get('token') ?? ''
+  const received = request.headers.get('x-kls3-webhook-secret') ?? ''
   const left = Buffer.from(received)
   const right = Buffer.from(expected)
   return left.length === right.length && timingSafeEqual(left, right)
@@ -41,26 +50,39 @@ function resolveRecipientStatus(current: EmailRecipientStatus, incoming: EmailRe
 }
 
 export async function POST(request: NextRequest) {
-  if (!authorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const payload = await request.json() as Record<string, unknown>
+  if (!authorized(request)) {
+    logger.warn('brevo.webhook.unauthorized')
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  let payload: Record<string, unknown>
+  try {
+    payload = await request.json() as Record<string, unknown>
+  } catch {
+    logger.warn('brevo.webhook.invalid_json')
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
   const email = String(payload.email ?? '').trim().toLowerCase()
   const rawEvent = String(payload.event ?? '').toLowerCase()
   const status = eventMap[rawEvent]
-  const brevoCampaignId = String(payload.campaignId ?? payload['campaign id'] ?? payload.camp_id ?? '')
+  const brevoCampaignId = String(payload.campaignId ?? payload.campaign_id ?? payload['campaign id'] ?? payload.camp_id ?? '')
   const url = String(payload.link ?? payload.url ?? '') || null
   const messageId = String(payload['message-id'] ?? payload.messageId ?? '') || null
-  if (!email || !status) return NextResponse.json({ ignored: true })
+  if (!email || !status || !brevoCampaignId) {
+    logger.warn('brevo.webhook.ignored', { reason: 'missing_required_field', rawEvent, hasEmail: !!email, hasCampaignId: !!brevoCampaignId })
+    return NextResponse.json({ ignored: true, reason: 'missing_required_field' })
+  }
 
   const campaigns = await getEmailCampaigns({ maxRecords: 100 })
-  const campaign = campaigns.find((item) => !brevoCampaignId || item.brevoCampaignId === brevoCampaignId)
+  const campaign = campaigns.find((item) => item.brevoCampaignId === brevoCampaignId)
   if (!campaign) return NextResponse.json({ ignored: true, reason: 'campaign' })
   const recipients = await getEmailRecipients({ campaignId: campaign.id })
   const recipient = recipients.find((item) => item.email.toLowerCase() === email)
   if (!recipient) return NextResponse.json({ ignored: true, reason: 'recipient' })
 
   const occurredAt = eventDate(payload)
-  const eventKey = createHash('sha256').update([campaign.id, email, rawEvent, occurredAt, url ?? '', messageId ?? ''].join('|')).digest('hex')
-  if ((await getEmailEvents()).some((item) => item.eventKey === eventKey)) return NextResponse.json({ duplicate: true })
+  const providerEventId = String(payload.event_uuid ?? payload.eventUuid ?? '')
+  const eventKey = createHash('sha256').update(providerEventId || [campaign.id, email, rawEvent, occurredAt, url ?? '', messageId ?? ''].join('|')).digest('hex')
+  if (await getEmailEventByKey(eventKey)) return NextResponse.json({ duplicate: true })
   await createEmailEvent({ eventKey, recipientId: recipient.id, eventType: status === 'ERROR' ? 'ERROR' : status, occurredAt, email, url, messageId, rawPayload: JSON.stringify(payload).slice(0, 90000) })
 
   const terminal = ['UNSUBSCRIBED', 'SPAM', 'HARD_BOUNCE'].includes(status) || rawEvent === 'invalid_email'
@@ -76,9 +98,8 @@ export async function POST(request: NextRequest) {
   })
 
   if (terminal) {
-    const isCompany = recipient.recipientType === 'COMPANY'
-    await createEmailSuppression({ email, companyId: isCompany ? recipient.companyId : undefined, contactId: !isCompany ? recipient.contactId ?? undefined : undefined,
-      scope: isCompany ? 'COMPANY' : 'CONTACT', reason: rawEvent === 'invalid_email' ? 'INVALID_EMAIL' : nextStatus === 'UNSUBSCRIBED' ? 'UNSUBSCRIBED' : nextStatus === 'SPAM' ? 'SPAM_COMPLAINT' : 'HARD_BOUNCE', source: 'BREVO', details: `Webhook ${rawEvent}` })
+    await createEmailSuppression({ email, companyId: recipient.companyId, contactId: recipient.contactId ?? undefined,
+      scope: 'EMAIL', reason: rawEvent === 'invalid_email' ? 'INVALID_EMAIL' : nextStatus === 'UNSUBSCRIBED' ? 'UNSUBSCRIBED' : nextStatus === 'SPAM' ? 'SPAM_COMPLAINT' : 'HARD_BOUNCE', source: 'BREVO', details: `Webhook ${rawEvent}` })
   }
 
   const interestPattern = process.env.BREVO_INTEREST_URL_PATTERN ?? '/demo'
@@ -87,11 +108,13 @@ export async function POST(request: NextRequest) {
       owner: campaign.createdBy, status: 'Email Flow' })
     await updateEmailRecipient(recipient.id, { prospectingTargetId: target.id })
     const openTasks = await getTasks({ coldCallTargetId: target.id, status: 'TODO', maxRecords: 1000 })
-    if (!openTasks.length) {
-      const due = new Date(); due.setUTCDate(due.getUTCDate() + 1); due.setUTCHours(9, 0, 0, 0)
+    const taskMarker = `[BREVO_INTEREST:${recipient.id}]`
+    if (!openTasks.some((task) => task.notes?.includes(taskMarker))) {
+      const due = nextBusinessDayAtNineParis()
       await createTask({ coldCallTargetId: target.id, contactId: recipient.contactId ?? undefined, type: 'FOLLOW_UP', dueAt: due.toISOString(), priority: 'HIGH', status: 'TODO',
-        notes: `Signal d’intérêt : clic sur ${url}. Relancer cet office.`, owner: campaign.createdBy })
+        notes: `${taskMarker} Signal d’intérêt : clic sur ${url}. Relancer cet office.`, owner: campaign.createdBy })
     }
   }
+  logger.info('brevo.webhook.processed', { campaignId: campaign.id, recipientId: recipient.id, eventType: status })
   return NextResponse.json({ received: true })
 }

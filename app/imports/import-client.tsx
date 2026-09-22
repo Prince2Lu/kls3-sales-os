@@ -7,7 +7,7 @@ import type { ImportBatch } from '@/types/domain'
 import type { NotaryDirectoryCandidate } from '@/lib/notaries/directory'
 import { importNotaryPilotAction, previewNotaryImportAction } from './actions'
 
-export function ImportClient({ lastImport }: { lastImport: ImportBatch | null }) {
+export function ImportClient({ lastImport, importEnabled }: { lastImport: ImportBatch | null; importEnabled: boolean }) {
   const [candidates, setCandidates] = useState<NotaryDirectoryCandidate[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -53,11 +53,17 @@ export function ImportClient({ lastImport }: { lastImport: ImportBatch | null })
             <h2 className="text-xl font-semibold">Nouveau lot</h2>
             <p className="text-sm text-muted-foreground">La prévisualisation ne modifie aucune donnée.</p>
           </div>
-          <Button onClick={preview} disabled={isPending}>
+          <Button onClick={preview} disabled={isPending || !importEnabled}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Prévisualiser 25 offices
           </Button>
         </div>
+
+        {!importEnabled && (
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+            Import verrouillé tant que la réutilisation commerciale de la source n’est pas autorisée.
+          </p>
+        )}
 
         {message && <p className="mt-4 rounded-lg bg-muted p-3 text-sm">{message}</p>}
 

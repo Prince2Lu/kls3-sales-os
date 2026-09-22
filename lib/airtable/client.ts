@@ -1790,9 +1790,10 @@ export async function completeImportBatch(
   return mapImportBatch(record)
 }
 
-export async function getEmailSuppressions(): Promise<EmailSuppression[]> {
+export async function getEmailSuppressions(options?: { activeOnly?: boolean }): Promise<EmailSuppression[]> {
   const records = await fetchRecords<AirtableEmailSuppressionFields>(TABLE_NAMES.EMAIL_SUPPRESSIONS, {
-    filterByFormula: '{Active} = TRUE()',
+    filterByFormula: options?.activeOnly === false ? undefined : '{Active} = TRUE()',
+    sort: [{ field: 'Created At', direction: 'desc' }],
   })
   return records.map(mapEmailSuppression)
 }
@@ -1807,11 +1808,19 @@ export async function createEmailSuppression(input: {
   details?: string
 }): Promise<EmailSuppression> {
   const normalizedEmail = input.email.trim().toLowerCase()
-  const existing = (await getEmailSuppressions()).find((item) =>
+  const existing = (await getEmailSuppressions({ activeOnly: false })).find((item) =>
     item.email.toLowerCase() === normalizedEmail && item.scope === input.scope &&
     item.companyId === (input.companyId ?? null) && item.contactId === (input.contactId ?? null)
   )
-  if (existing) return existing
+  if (existing) {
+    if (existing.active) return existing
+    return mapEmailSuppression(await updateRecord<AirtableEmailSuppressionFields>(TABLE_NAMES.EMAIL_SUPPRESSIONS, existing.id, {
+      Active: true,
+      Reason: input.reason,
+      Source: input.source,
+      Details: input.details,
+    }))
+  }
 
   const record = await createRecord<AirtableEmailSuppressionFields>(TABLE_NAMES.EMAIL_SUPPRESSIONS, {
     Email: normalizedEmail,
@@ -1825,6 +1834,10 @@ export async function createEmailSuppression(input: {
     'Created At': new Date().toISOString(),
   })
   return mapEmailSuppression(record)
+}
+
+export async function setEmailSuppressionActive(id: string, active: boolean): Promise<EmailSuppression> {
+  return mapEmailSuppression(await updateRecord<AirtableEmailSuppressionFields>(TABLE_NAMES.EMAIL_SUPPRESSIONS, id, { Active: active }))
 }
 
 export async function isEmailSuppressed(email: string, companyId?: string, contactId?: string): Promise<boolean> {
@@ -1902,6 +1915,14 @@ export async function updateEmailRecipient(id: string, input: {
 
 export async function getEmailEvents(): Promise<EmailEvent[]> {
   return (await fetchRecords<AirtableEmailEventFields>(TABLE_NAMES.EMAIL_EVENTS)).map(mapEmailEvent)
+}
+
+export async function getEmailEventByKey(eventKey: string): Promise<EmailEvent | null> {
+  const records = await fetchRecords<AirtableEmailEventFields>(TABLE_NAMES.EMAIL_EVENTS, {
+    filterByFormula: `{Event Key} = "${eventKey}"`,
+    maxRecords: 1,
+  })
+  return records[0] ? mapEmailEvent(records[0]) : null
 }
 
 export async function createEmailEvent(input: Omit<EmailEvent, 'id' | 'createdAt'>): Promise<EmailEvent> {

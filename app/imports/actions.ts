@@ -13,6 +13,7 @@ import {
   updateCompany,
 } from '@/lib/airtable'
 import { getNotaryPilotCandidates, type NotaryDirectoryCandidate } from '@/lib/notaries/directory'
+import { isNotaryImportEnabled } from '@/lib/prospecting/safety'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 
 function normalize(value: string | null | undefined): string {
@@ -30,6 +31,9 @@ export async function previewNotaryImportAction(): Promise<{
   error?: string
 }> {
   await getCurrentOwner()
+  if (!isNotaryImportEnabled()) {
+    return { success: false, error: "Import désactivé : l’autorisation de réutilisation commerciale de la source doit être validée." }
+  }
   try {
     const candidates = await getNotaryPilotCandidates({ limit: 25, minNotaries: 3, maxNotaries: 10 })
     if (candidates.length === 0) throw new Error("Aucun office correspondant n'a été trouvé")
@@ -42,6 +46,9 @@ export async function previewNotaryImportAction(): Promise<{
 
 export async function importNotaryPilotAction(candidates: NotaryDirectoryCandidate[]) {
   const owner = await getCurrentOwner()
+  if (!isNotaryImportEnabled()) {
+    return { success: false, error: "Import désactivé : l’autorisation de réutilisation commerciale de la source doit être validée." }
+  }
   if (!Array.isArray(candidates) || candidates.length < 1 || candidates.length > 25) {
     return { success: false, error: 'Le lot doit contenir entre 1 et 25 offices.' }
   }

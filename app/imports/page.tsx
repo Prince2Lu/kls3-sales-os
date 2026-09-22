@@ -1,5 +1,6 @@
 import { getImportBatches } from '@/lib/airtable'
 import { ImportClient } from './import-client'
+import { isNotaryImportEnabled } from '@/lib/prospecting/safety'
 
 export default async function ImportsPage() {
   const [lastImport] = await getImportBatches({ maxRecords: 1 })
@@ -9,7 +10,7 @@ export default async function ImportsPage() {
         <h1 className="text-4xl font-bold font-syne">Ajouter des prospects</h1>
         <p className="mt-2 text-muted-foreground">Import progressif et contrôlé des offices notariaux.</p>
       </div>
-      <ImportClient lastImport={lastImport ?? null} />
+      <ImportClient lastImport={lastImport ?? null} importEnabled={isNotaryImportEnabled()} />
     </div>
   )
 }
