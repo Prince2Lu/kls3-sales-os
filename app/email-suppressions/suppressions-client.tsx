@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ export function SuppressionsClient({ suppressions, companies, contacts }: {
   companies: CompanyOption[]
   contacts: ContactOption[]
 }) {
+  const router = useRouter()
   const [scope, setScope] = useState<'EMAIL' | 'COMPANY' | 'CONTACT'>('EMAIL')
   const [email, setEmail] = useState('')
   const [companyId, setCompanyId] = useState('')
@@ -30,11 +32,13 @@ export function SuppressionsClient({ suppressions, companies, contacts }: {
     if (!result.success) return setMessage(result.error ?? 'Enregistrement impossible')
     setEmail(''); setCompanyId(''); setContactId(''); setDetails('')
     setMessage('Exclusion enregistrée. Elle sera contrôlée avant chaque envoi.')
+    router.refresh()
   })
 
   const reactivate = (id: string) => startTransition(async () => {
     const result = await reactivateSuppressionAction(id)
     setMessage(result.success ? 'Exclusion réactivée.' : result.error ?? 'Modification impossible')
+    if (result.success) router.refresh()
   })
 
   return <div className="space-y-6">

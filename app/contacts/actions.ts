@@ -17,6 +17,7 @@ export interface CreateContactInput {
   jobTitle?: string
   email?: string
   phone?: string
+  decisionMaker?: boolean
   linkedin?: string
   notes?: string
 }
@@ -31,6 +32,7 @@ export async function createContactAction(input: CreateContactInput) {
       jobTitle: input.jobTitle,
       email: input.email,
       phone: input.phone,
+      decisionMaker: input.decisionMaker,
       linkedin: input.linkedin,
       notes: input.notes,
     })
@@ -63,6 +65,7 @@ export async function updateContactAction(
       jobTitle: input.jobTitle,
       email: input.email,
       phone: input.phone,
+      decisionMaker: input.decisionMaker,
       linkedin: input.linkedin,
       notes: input.notes,
     })

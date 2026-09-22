@@ -47,6 +47,7 @@ export function ContactForm({
         jobTitle: (formData.get('jobTitle') as string) || undefined,
         email: (formData.get('email') as string) || undefined,
         phone: (formData.get('phone') as string) || undefined,
+        decisionMaker: formData.get('decisionMaker') === 'on',
         linkedin: (formData.get('linkedin') as string) || undefined,
         notes: (formData.get('notes') as string) || undefined,
       }
@@ -191,6 +192,22 @@ export function ContactForm({
               />
             </div>
           </div>
+
+          {/* Campaign recipient */}
+          <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-4">
+            <input
+              type="checkbox"
+              name="decisionMaker"
+              defaultChecked={contact?.decisionMaker ?? false}
+              className="mt-0.5 h-4 w-4 rounded border-border bg-card text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0"
+            />
+            <span>
+              <span className="block text-sm font-medium">Contact décideur</span>
+              <span className="mt-1 block text-xs text-text-muted">
+                Si une adresse directe est renseignée, elle sera prioritaire pour les campagnes de cette entreprise.
+              </span>
+            </span>
+          </label>
 
           {/* LinkedIn */}
           <div>
