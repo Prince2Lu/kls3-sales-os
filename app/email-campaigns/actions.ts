@@ -2,11 +2,14 @@
 
 import { revalidatePath } from 'next/cache'
 import {
-  createEmailCampaign, createEmailRecipient, getBusinessLineByCode, getCompanies, getContacts,
-  getEmailCampaignById, getEmailRecipients, getEmailSuppressions, updateEmailCampaign, updateEmailRecipient,
+  createActivity, createEmailCampaign, createEmailRecipient, createTask, getActivities, getBusinessLineByCode, getCompanies, getContacts,
+  getEmailCampaignById, getEmailRecipients, getEmailSuppressions, getTasks, updateEmailCampaign, updateEmailRecipient,
 } from '@/lib/airtable'
 import { createBrevoCampaign, createBrevoList, getBrevoTemplate, previewBrevoTemplate, sendBrevoCampaignNow, sendBrevoTemplateTest, upsertBrevoContact } from '@/lib/brevo/client'
 import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
+import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
+import { convertProspectingTargetToOpportunity } from '@/lib/prospecting/opportunity-converter'
+import { emailReplyFollowUpDueParis } from '@/lib/utils/business-day'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 
 async function inBatches<T>(items: T[], size: number, operation: (item: T) => Promise<unknown>): Promise<void> {
@@ -136,6 +139,78 @@ export async function createCampaignDraftAction(input: { name: string; subject: 
   }
   revalidatePath('/email-campaigns')
   return { success: true, campaignId: campaign.id, recipientCount: eligible.length, excluded: eligible.filter((item) => item.blocked).length }
+}
+
+
+export async function markCampaignReplyAction(recipientId: string) {
+  const owner = await getCurrentOwner()
+  const recipients = await getEmailRecipients()
+  const recipient = recipients.find((item) => item.id === recipientId)
+  if (!recipient) return { success: false, error: 'Destinataire introuvable.' }
+  if (recipient.status === 'REPLIED') return { success: true, alreadyProcessed: true }
+
+  const campaign = await getEmailCampaignById(recipient.campaignId)
+  const { target } = await findOrCreateProspectingTarget({
+    companyId: recipient.companyId,
+    contactId: recipient.contactId,
+    businessLineId: campaign.businessLineId,
+    owner: campaign.createdBy,
+    status: 'Email Flow',
+  })
+
+  const marker = `[BREVO_REPLY:${recipient.id}]`
+  const activities = await getActivities({ maxRecords: 5000 })
+  if (!activities.some((activity) => activity.notes?.includes(marker))) {
+    await createActivity({
+      opportunityId: target.opportunityId ?? undefined,
+      contactId: recipient.contactId ?? undefined,
+      coldCallTargetId: target.id,
+      type: 'EMAIL',
+      date: new Date().toISOString(),
+      result: 'EMAIL_REPLY',
+      notes: `${marker} Réponse email reçue — campagne ${campaign.name}`,
+      owner,
+    })
+  }
+
+  const conversion = await convertProspectingTargetToOpportunity({
+    targetId: target.id,
+    initialStage: 'Échange',
+    source: 'Cold Email',
+    owner,
+    activityResult: 'EMAIL_REPLY',
+  })
+  if (!conversion.success) {
+    return { success: false, error: conversion.error ?? "Échec de la conversion en opportunité." }
+  }
+
+  const openTasks = await getTasks({ coldCallTargetId: target.id, status: 'TODO', maxRecords: 1000 })
+  if (!openTasks.some((task) => task.notes?.includes(marker))) {
+    await createTask({
+      opportunityId: conversion.opportunityId,
+      contactId: recipient.contactId ?? undefined,
+      coldCallTargetId: target.id,
+      type: 'FOLLOW_UP',
+      dueAt: emailReplyFollowUpDueParis().toISOString(),
+      priority: 'HIGH',
+      status: 'TODO',
+      notes: `${marker} Réponse email reçue — campagne ${campaign.name}. À traiter.`,
+      owner: campaign.createdBy,
+    })
+  }
+
+  await updateEmailRecipient(recipient.id, {
+    status: 'REPLIED',
+    lastEventAt: new Date().toISOString(),
+    prospectingTargetId: target.id,
+  })
+
+  revalidatePath('/email-campaigns')
+  revalidatePath('/today')
+  revalidatePath('/cold-call')
+  if (conversion.opportunityId) revalidatePath(`/prospects/${conversion.opportunityId}`)
+
+  return { success: true }
 }
 
 export async function sendCampaignAction(campaignId: string) {
