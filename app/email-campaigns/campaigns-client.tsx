@@ -77,6 +77,9 @@ export function CampaignsClient({
   const [pending, startTransition] = useTransition()
 
   const selectedTemplate = templates.find((item) => String(item.id) === templateId) ?? null
+  const selectedCompanies = companies.filter((item) => selected.includes(item.id))
+  const uniqueSelectedEmails = new Set(selectedCompanies.map((item) => item.email.trim().toLowerCase()).filter(Boolean))
+  const duplicateSelectedEmails = Math.max(0, selectedCompanies.length - uniqueSelectedEmails.size)
 
   const filteredCompanies = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -238,7 +241,7 @@ export function CampaignsClient({
           <Button variant="ghost" onClick={showPreview} disabled={pending || !templateId || selected.length === 0}>
             <Eye className="mr-2 h-4 w-4" />Aperçu du mail
           </Button>
-          <Button variant="ghost" onClick={sendTest} disabled={pending || !templateId || !testRecipientEmail}>
+          <Button variant="ghost" onClick={sendTest} disabled={pending || !templateId || !testRecipientEmail || sendMode === 'disabled'}>
             <MailCheck className="mr-2 h-4 w-4" />M’envoyer un test
           </Button>
         </div>
@@ -246,10 +249,13 @@ export function CampaignsClient({
 
       {preview && <div className="mt-5 overflow-hidden rounded-xl border border-border">
         <div className="border-b border-border bg-muted p-3 text-sm">
-          <p className="font-medium">{preview.subject || subject}</p>
+          <p className="font-medium">{subject || preview.subject}</p>
           <p className="text-xs text-muted-foreground">
             De : {preview.fromName ?? selectedTemplate?.senderName ?? '—'} &lt;{preview.fromEmail ?? selectedTemplate?.senderEmail ?? '—'}&gt;
           </p>
+          {preview.subject && preview.subject !== subject && (
+            <p className="mt-1 text-xs text-muted-foreground">Objet du modèle Brevo : {preview.subject}</p>
+          )}
         </div>
         <iframe title="Aperçu de l’email" sandbox="" srcDoc={preview.html} className="h-[520px] w-full bg-white" />
       </div>}
@@ -260,7 +266,9 @@ export function CampaignsClient({
           <p>Campagne : <span className="font-medium">{name || '—'}</span></p>
           <p>Modèle : <span className="font-medium">{selectedTemplate?.name ?? '—'}</span></p>
           <p>Objet : <span className="font-medium">{subject || '—'}</span></p>
-          <p>Destinataires : <span className="font-medium">{selected.length}</span></p>
+          <p>Offices sélectionnés : <span className="font-medium">{selected.length}</span></p>
+          <p>Emails uniques : <span className="font-medium">{uniqueSelectedEmails.size}</span></p>
+          <p>Doublons email : <span className="font-medium">{duplicateSelectedEmails}</span></p>
         </div>
         <div className="mt-4 flex items-center gap-3">
           <Button onClick={createDraft} disabled={pending || selected.length === 0 || !templateId || !subject.trim()}>
@@ -294,6 +302,7 @@ export function CampaignsClient({
                   {' · '}{delivered} délivré(s)
                   {' · '}{opened} ouvert(s)
                   {' · '}{clicked} cliqué(s)
+                  {' · '}{counts.REPLIED ?? 0} réponse(s)
                   {' · '}{counts.UNSUBSCRIBED ?? 0} désabonnement(s)
                   {' · '}{bounced} bounce/erreur
                   {' · '}{counts.EXCLUDED ?? 0} exclu(s)
