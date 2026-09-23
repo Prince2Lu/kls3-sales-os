@@ -56,13 +56,19 @@ export async function previewCampaignEmailAction(input: { templateId: string | n
     if (!company) return { success: false, error: 'Office introuvable.' }
 
     const contact = contacts.find((item) => item.companyId === company.id && item.decisionMaker && !!item.email)
+    const email = contact?.email ?? company.email
+    if (!email) return { success: false, error: 'Cet office n’a aucun email exploitable pour l’aperçu.' }
+
+    await upsertBrevoContact({
+      email,
+      companyName: company.name,
+      firstName: contact?.firstName,
+      lastName: contact?.lastName,
+    })
+
     const preview = await previewBrevoTemplate({
       templateId: template.id,
-      params: {
-        COMPANY: company.name,
-        PRENOM: contact?.firstName ?? '',
-        NOM: contact?.lastName ?? '',
-      },
+      email,
     })
     return { success: true, preview }
   } catch (error) {
