@@ -5,7 +5,7 @@ import {
   createEmailCampaign, createEmailRecipient, getBusinessLineByCode, getCompanies, getContacts,
   getEmailCampaignById, getEmailRecipients, getEmailSuppressions, updateEmailCampaign, updateEmailRecipient,
 } from '@/lib/airtable'
-import { createBrevoCampaign, createBrevoList, getBrevoTemplate, sendBrevoCampaignNow, sendBrevoTemplateTest, upsertBrevoContact } from '@/lib/brevo/client'
+import { createBrevoCampaign, createBrevoList, getBrevoTemplate, previewBrevoTemplate, sendBrevoCampaignNow, sendBrevoTemplateTest, upsertBrevoContact } from '@/lib/brevo/client'
 import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 
@@ -38,6 +38,33 @@ async function requireActiveTemplate(value: string | number) {
   const template = await getBrevoTemplate(templateId)
   if (!template.isActive) throw new Error("Ce modèle Brevo n'est plus actif.")
   return template
+}
+
+
+export async function previewCampaignEmailAction(input: { templateId: string | number; companyId: string }) {
+  await getCurrentOwner()
+  try {
+    const template = await requireActiveTemplate(input.templateId)
+    const [companies, contacts] = await Promise.all([
+      getCompanies({ maxRecords: 2000 }),
+      getContacts({ maxRecords: 5000 }),
+    ])
+    const company = companies.find((item) => item.id === input.companyId)
+    if (!company) return { success: false, error: 'Office introuvable.' }
+
+    const contact = contacts.find((item) => item.companyId === company.id && item.decisionMaker && !!item.email)
+    const preview = await previewBrevoTemplate({
+      templateId: template.id,
+      params: {
+        COMPANY: company.name,
+        PRENOM: contact?.firstName ?? '',
+        NOM: contact?.lastName ?? '',
+      },
+    })
+    return { success: true, preview }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Impossible de générer l'aperçu." }
+  }
 }
 
 export async function sendCampaignTestAction(templateIdInput: string | number) {
