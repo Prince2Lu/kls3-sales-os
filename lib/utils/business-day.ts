@@ -27,3 +27,15 @@ export function nextBusinessDayAtNineParis(from = new Date()): Date {
   }
   return parisLocalToUtc(candidate.getUTCFullYear(), candidate.getUTCMonth() + 1, candidate.getUTCDate(), 9)
 }
+
+export function emailReplyFollowUpDueParis(from = new Date()): Date {
+  const current = parisParts(from)
+  const weekday = new Date(Date.UTC(current.year, current.month - 1, current.day)).getUTCDay()
+  const isBusinessDay = weekday !== 0 && weekday !== 6
+
+  if (isBusinessDay && current.hour < 16) {
+    return from
+  }
+
+  return nextBusinessDayAtNineParis(from)
+}
