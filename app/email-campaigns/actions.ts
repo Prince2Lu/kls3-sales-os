@@ -80,26 +80,38 @@ export async function sendCampaignTestAction(templateIdInput: string | number) {
   }
 }
 
-export async function createCampaignDraftAction(input: { name: string; subject: string; companyIds: string[] }) {
+export async function createCampaignDraftAction(input: { name: string; subject: string; companyIds: string[]; templateId: string | number }) {
   const owner = await getCurrentOwner()
   const name = input.name.trim()
   const subject = input.subject.trim()
   if (!name || !subject) return { success: false, error: 'Nom et objet obligatoires.' }
   if (!Array.isArray(input.companyIds) || input.companyIds.length < 1 || input.companyIds.length > 25) return { success: false, error: 'Sélectionnez entre 1 et 25 offices.' }
+
+  let templateId: number
+  try {
+    templateId = (await requireActiveTemplate(input.templateId)).id
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Modèle Brevo invalide.' }
+  }
+
   const businessLine = await getBusinessLineByCode('KLS3_NOTAIRES')
   if (!businessLine) return { success: false, error: 'Business line KLS3_NOTAIRES introuvable.' }
 
   const [companies, contacts, suppressions] = await Promise.all([getCompanies({ maxRecords: 2000 }), getContacts({ maxRecords: 5000 }), getEmailSuppressions()])
   const selectedIds = new Set(input.companyIds)
+  const seenEmails = new Set<string>()
   const eligible = companies.filter((company) => company.primaryBusinessLineId === businessLine.id && selectedIds.has(company.id)).map((company) => {
     const direct = contacts.find((contact) => contact.companyId === company.id && contact.decisionMaker && !!contact.email)
     const email = direct?.email ?? company.email
-    const blocked = !!email && suppressions.some((item) => item.active && (
-      (item.scope === 'EMAIL' && item.email.toLowerCase() === email.toLowerCase()) ||
+    const normalizedEmail = email?.trim().toLowerCase() ?? ''
+    const suppressed = !!email && suppressions.some((item) => item.active && (
+      (item.scope === 'EMAIL' && item.email.toLowerCase() === normalizedEmail) ||
       (item.scope === 'COMPANY' && item.companyId === company.id) ||
       (item.scope === 'CONTACT' && item.contactId === direct?.id)
     ))
-    return { company, direct, email, blocked }
+    const duplicate = !!normalizedEmail && seenEmails.has(normalizedEmail)
+    if (normalizedEmail && !duplicate) seenEmails.add(normalizedEmail)
+    return { company, direct, email, blocked: suppressed || duplicate, duplicate }
   }).filter((item) => !!item.email).slice(0, 25)
 
   if (!eligible.length) return { success: false, error: 'Aucun destinataire avec un email exploitable.' }
@@ -116,11 +128,11 @@ export async function createCampaignDraftAction(input: { name: string; subject: 
   const replyTo = process.env.BREVO_REPLY_TO ?? senderEmail
   if (!senderEmail) return { success: false, error: "BREVO_SENDER_EMAIL n'est pas configuré." }
 
-  const campaign = await createEmailCampaign({ name, subject, businessLineId: businessLine.id, senderName, senderEmail, replyTo, templateId: process.env.BREVO_TEMPLATE_ID, recipientCount: eligible.length, createdBy: owner })
+  const campaign = await createEmailCampaign({ name, subject, businessLineId: businessLine.id, senderName, senderEmail, replyTo, templateId: String(templateId), recipientCount: eligible.length, createdBy: owner })
   for (const item of eligible) {
     await createEmailRecipient({ name: `${campaign.name} — ${item.company.name}`, campaignId: campaign.id, companyId: item.company.id,
       contactId: item.direct?.id, email: item.email!, recipientType: item.direct ? 'CONTACT' : 'COMPANY',
-      status: item.blocked ? 'EXCLUDED' : 'READY', exclusionReason: item.blocked ? 'Opposition ou désabonnement actif' : undefined })
+      status: item.blocked ? 'EXCLUDED' : 'READY', exclusionReason: item.duplicate ? 'Email déjà présent dans cette campagne' : item.blocked ? 'Opposition ou désabonnement actif' : undefined })
   }
   revalidatePath('/email-campaigns')
   return { success: true, campaignId: campaign.id, recipientCount: eligible.length, excluded: eligible.filter((item) => item.blocked).length }
