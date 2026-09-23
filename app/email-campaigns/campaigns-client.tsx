@@ -125,8 +125,8 @@ export function CampaignsClient({
       return
     }
     const result = await previewCampaignEmailAction({ templateId, companyId: selected[0] })
-    if (!result.success || !result.preview) {
-      setMessage(result.error ?? "Impossible de générer l'aperçu.")
+    if (!result.success || !('preview' in result) || !result.preview) {
+      setMessage('error' in result ? result.error ?? "Impossible de générer l'aperçu." : "Impossible de générer l'aperçu.")
       return
     }
     setPreview(result.preview)
@@ -139,7 +139,11 @@ export function CampaignsClient({
       return
     }
     const result = await sendCampaignTestAction(templateId)
-    setMessage(result.success ? `Mail test envoyé à ${result.email}.` : result.error ?? 'Erreur')
+    setMessage(
+      result.success && 'email' in result
+        ? `Mail test envoyé à ${result.email}.`
+        : ('error' in result ? result.error ?? 'Erreur' : 'Erreur')
+    )
   })
 
   const send = (id: string) => {
