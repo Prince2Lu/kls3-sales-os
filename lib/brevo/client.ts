@@ -79,7 +79,8 @@ export async function getBrevoTemplate(templateId: number): Promise<BrevoTemplat
 
 export async function previewBrevoTemplate(input: {
   templateId: number
-  params: Record<string, string>
+  email?: string
+  params?: Record<string, string>
 }): Promise<BrevoTemplatePreview> {
   const result = await request<{
     html?: string
@@ -89,7 +90,10 @@ export async function previewBrevoTemplate(input: {
     previewText?: string
   }>('/smtp/template/preview', {
     method: 'POST',
-    body: JSON.stringify({ templateId: input.templateId, params: input.params }),
+    body: JSON.stringify({
+      templateId: input.templateId,
+      ...(input.email ? { email: input.email } : { params: input.params ?? {} }),
+    }),
   })
   return {
     html: result.html ?? '',
@@ -114,9 +118,11 @@ export async function createBrevoList(name: string): Promise<number> {
   return result.id
 }
 
-export async function upsertBrevoContact(input: { email: string; listId: number; companyName: string; firstName?: string; lastName?: string }): Promise<void> {
+export async function upsertBrevoContact(input: { email: string; listId?: number; companyName: string; firstName?: string; lastName?: string }): Promise<void> {
   await request('/contacts', { method: 'POST', body: JSON.stringify({
-    email: input.email, updateEnabled: true, listIds: [input.listId],
+    email: input.email,
+    updateEnabled: true,
+    ...(input.listId ? { listIds: [input.listId] } : {}),
     attributes: { COMPANY: input.companyName, PRENOM: input.firstName ?? '', NOM: input.lastName ?? '' },
   }) })
 }
