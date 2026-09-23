@@ -163,7 +163,7 @@ export function CampaignsClient({
     startTransition(async () => {
       const result = await markCampaignReplyAction(recipientId)
       setMessage(result.success
-        ? (result.alreadyProcessed ? 'Cette réponse était déjà enregistrée.' : 'Réponse enregistrée et suivi commercial créé.')
+        ? ('alreadyProcessed' in result && result.alreadyProcessed ? 'Cette réponse était déjà enregistrée.' : 'Réponse enregistrée et suivi commercial créé.')
         : result.error ?? 'Erreur')
     })
   }
