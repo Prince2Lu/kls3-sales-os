@@ -8,6 +8,7 @@ import type { EmailCampaign, EmailRecipient } from '@/types/domain'
 import type { BrevoSendMode } from '@/lib/prospecting/safety'
 import {
   createCampaignDraftAction,
+  markCampaignReplyAction,
   previewCampaignEmailAction,
   sendCampaignAction,
   sendCampaignTestAction,
@@ -145,6 +146,20 @@ export function CampaignsClient({
         : ('error' in result ? result.error ?? 'Erreur' : 'Erreur')
     )
   })
+
+  const markReply = (recipientId: string) => {
+    if (!window.confirm('Confirmer qu’une réponse email réelle a été reçue ? Le CRM va créer le suivi commercial correspondant.')) return
+    startTransition(async () => {
+      const result = await markCampaignReplyAction(recipientId)
+      setMessage(
+        result.success
+          ? ('alreadyProcessed' in result && result.alreadyProcessed
+              ? 'Cette réponse était déjà enregistrée.'
+              : 'Réponse enregistrée : activité, opportunité et tâche de suivi mises à jour.')
+          : ('error' in result ? result.error ?? 'Erreur' : 'Erreur')
+      )
+    })
+  }
 
   const send = (id: string) => {
     if (!window.confirm("Envoyer maintenant cette campagne via Brevo ? Cette action contacte réellement tous les destinataires au statut Prêt.")) return
@@ -297,6 +312,7 @@ export function CampaignsClient({
                       <th className="p-2">Ouvertures</th>
                       <th className="p-2">Clics</th>
                       <th className="p-2">Dernier signal</th>
+                      <th className="p-2">Action</th>
                     </tr>
                   </thead>
                   <tbody>{related.map((item) => <tr key={item.id} className="border-t border-border">
@@ -305,6 +321,11 @@ export function CampaignsClient({
                     <td className="p-2">{item.openCount}</td>
                     <td className="p-2">{item.clickCount}</td>
                     <td className="p-2">{item.lastEventAt ? new Date(item.lastEventAt).toLocaleString('fr-FR') : '—'}</td>
+                    <td className="p-2">
+                      {['SENT', 'DELIVERED', 'OPENED', 'CLICKED'].includes(item.status) &&
+                        <button className="text-accent hover:underline disabled:opacity-50" disabled={pending} onClick={() => markReply(item.id)}>Réponse reçue</button>}
+                      {item.status === 'REPLIED' && <span className="text-muted-foreground">Traitée</span>}
+                    </td>
                   </tr>)}</tbody>
                 </table>
               </div>
