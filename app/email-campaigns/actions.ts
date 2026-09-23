@@ -78,7 +78,7 @@ export async function sendCampaignTestAction(templateIdInput: string | number) {
   }
 }
 
-export async function createCampaignDraftAction(input: { name: string; subject: string; companyIds: string[] }) {
+export async function createCampaignDraftAction(input: { name: string; subject: string; companyIds: string[]; templateId?: string | number }) {
   const owner = await getCurrentOwner()
   const name = input.name.trim()
   const subject = input.subject.trim()
