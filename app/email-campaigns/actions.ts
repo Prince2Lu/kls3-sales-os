@@ -78,6 +78,10 @@ export async function previewCampaignEmailAction(input: { templateId: string | n
 
 export async function sendCampaignTestAction(templateIdInput: string | number) {
   await getCurrentOwner()
+  const sendMode = getBrevoSendMode()
+  if (sendMode === 'disabled') {
+    return { success: false, error: "Envoi Brevo verrouillé par configuration." }
+  }
   const testEmail = getBrevoTestRecipientEmail()
   if (!testEmail) return { success: false, error: "BREVO_TEST_RECIPIENT_EMAIL n'est pas configuré." }
   try {
