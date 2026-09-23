@@ -9,11 +9,102 @@ function getApiKey(): string {
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: { 'api-key': getApiKey(), 'Content-Type': 'application/json', ...(init.headers ?? {}) },
+    headers: {
+      Accept: 'application/json',
+      'api-key': getApiKey(),
+      'Content-Type': 'application/json',
+      ...(init.headers ?? {}),
+    },
+    cache: 'no-store',
   })
   if (!response.ok) throw new Error(`Brevo ${response.status}: ${await response.text()}`)
   if (response.status === 204) return {} as T
   return response.json() as Promise<T>
+}
+
+export interface BrevoTemplate {
+  id: number
+  name: string
+  subject: string
+  isActive: boolean
+  modifiedAt: string | null
+  senderName: string | null
+  senderEmail: string | null
+  replyTo: string | null
+}
+
+interface BrevoTemplateApi {
+  id: number
+  name: string
+  subject: string
+  isActive: boolean
+  modifiedAt?: string
+  replyTo?: string
+  sender?: { name?: string; email?: string }
+}
+
+export interface BrevoTemplatePreview {
+  html: string
+  subject: string
+  fromName: string | null
+  fromEmail: string | null
+  previewText: string | null
+}
+
+function mapTemplate(template: BrevoTemplateApi): BrevoTemplate {
+  return {
+    id: template.id,
+    name: template.name,
+    subject: template.subject,
+    isActive: template.isActive,
+    modifiedAt: template.modifiedAt ?? null,
+    senderName: template.sender?.name ?? null,
+    senderEmail: template.sender?.email ?? null,
+    replyTo: template.replyTo ?? null,
+  }
+}
+
+export async function getBrevoTemplates(): Promise<BrevoTemplate[]> {
+  const result = await request<{ templates?: BrevoTemplateApi[] }>(
+    '/smtp/templates?templateStatus=true&limit=1000&sort=desc',
+    { method: 'GET' }
+  )
+  return (result.templates ?? []).filter((template) => template.isActive).map(mapTemplate)
+}
+
+export async function getBrevoTemplate(templateId: number): Promise<BrevoTemplate> {
+  const result = await request<BrevoTemplateApi>(`/smtp/templates/${templateId}`, { method: 'GET' })
+  return mapTemplate(result)
+}
+
+export async function previewBrevoTemplate(input: {
+  templateId: number
+  params: Record<string, string>
+}): Promise<BrevoTemplatePreview> {
+  const result = await request<{
+    html?: string
+    subject?: string
+    fromName?: string
+    fromEmail?: string
+    previewText?: string
+  }>('/smtp/template/preview', {
+    method: 'POST',
+    body: JSON.stringify({ templateId: input.templateId, params: input.params }),
+  })
+  return {
+    html: result.html ?? '',
+    subject: result.subject ?? '',
+    fromName: result.fromName ?? null,
+    fromEmail: result.fromEmail ?? null,
+    previewText: result.previewText ?? null,
+  }
+}
+
+export async function sendBrevoTemplateTest(templateId: number, email: string): Promise<void> {
+  await request(`/smtp/templates/${templateId}/sendTest`, {
+    method: 'POST',
+    body: JSON.stringify({ emailTo: [email] }),
+  })
 }
 
 export async function createBrevoList(name: string): Promise<number> {
