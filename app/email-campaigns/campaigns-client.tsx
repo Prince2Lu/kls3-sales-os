@@ -319,11 +319,6 @@ export function CampaignsClient({
                     <td className="p-2">{item.openCount}</td>
                     <td className="p-2">{item.clickCount}</td>
                     <td className="p-2">{item.lastEventAt ? new Date(item.lastEventAt).toLocaleString('fr-FR') : '—'}</td>
-                    <td className="p-2">
-                      {['SENT', 'DELIVERED', 'OPENED', 'CLICKED'].includes(item.status) &&
-                        <button className="text-accent hover:underline" disabled={pending} onClick={() => markReply(item.id)}>Réponse reçue</button>}
-                      {item.status === 'REPLIED' && <span className="text-muted-foreground">Traitée</span>}
-                    </td>
                   </tr>)}</tbody>
                 </table>
               </div>
