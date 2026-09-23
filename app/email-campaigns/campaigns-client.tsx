@@ -280,6 +280,9 @@ export function CampaignsClient({
         {campaigns.map((campaign) => {
           const related = recipients.filter((item) => item.campaignId === campaign.id)
           const counts = related.reduce<Record<string, number>>((acc, item) => ({ ...acc, [item.status]: (acc[item.status] ?? 0) + 1 }), {})
+          const delivered = related.filter((item) => ['DELIVERED', 'OPENED', 'CLICKED', 'REPLIED'].includes(item.status)).length
+          const opened = related.filter((item) => item.openCount > 0).length
+          const clicked = related.filter((item) => item.clickCount > 0).length
           const bounced = (counts.HARD_BOUNCE ?? 0) + (counts.SOFT_BOUNCE ?? 0) + (counts.FAILED ?? 0)
           return <div key={campaign.id} className="rounded-lg border border-border p-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -288,9 +291,9 @@ export function CampaignsClient({
                 <p className="text-sm text-muted-foreground">{campaign.subject}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {campaign.status} · {campaign.recipientCount} destinataire(s)
-                  {' · '}{counts.DELIVERED ?? 0} délivré(s)
-                  {' · '}{counts.OPENED ?? 0} ouvert(s)
-                  {' · '}{counts.CLICKED ?? 0} clic(s)
+                  {' · '}{delivered} délivré(s)
+                  {' · '}{opened} ouvert(s)
+                  {' · '}{clicked} cliqué(s)
                   {' · '}{counts.UNSUBSCRIBED ?? 0} désabonnement(s)
                   {' · '}{bounced} bounce/erreur
                   {' · '}{counts.EXCLUDED ?? 0} exclu(s)
