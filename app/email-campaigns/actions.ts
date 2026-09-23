@@ -227,7 +227,14 @@ export async function sendCampaignAction(campaignId: string) {
   await inBatches(newlySuppressed, 10, (recipient) => updateEmailRecipient(recipient.id, {
     status: 'EXCLUDED', exclusionReason: 'Opposition ou désabonnement actif avant envoi',
   }))
-  const recipients = readyRecipients.filter((recipient) => !isSuppressed(recipient, suppressions))
+  const seenEmails = new Set<string>()
+  const recipients = readyRecipients.filter((recipient) => {
+    if (isSuppressed(recipient, suppressions)) return false
+    const email = recipient.email.trim().toLowerCase()
+    if (seenEmails.has(email)) return false
+    seenEmails.add(email)
+    return true
+  })
   if (!recipients.length) return { success: false, error: 'Aucun destinataire autorisé.' }
   if (recipients.length > 25) return { success: false, error: 'Une campagne pilote est limitée à 25 destinataires.' }
   if (sendMode === 'test') {
@@ -237,10 +244,15 @@ export async function sendCampaignAction(campaignId: string) {
       return { success: false, error: `Mode test : la campagne doit contenir uniquement ${testEmail}.` }
     }
   }
-  const templateId = Number(campaign.templateId ?? process.env.BREVO_TEMPLATE_ID)
-  if (!Number.isFinite(templateId)) return { success: false, error: "BREVO_TEMPLATE_ID n'est pas configuré." }
+  const templateId = parseTemplateId(campaign.templateId ?? process.env.BREVO_TEMPLATE_ID ?? '')
+  if (!templateId) return { success: false, error: "Aucun modèle Brevo valide n'est associé à cette campagne." }
+  try {
+    await requireActiveTemplate(templateId)
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Modèle Brevo invalide.' }
+  }
 
-  let submittedToBrevo = false
+  let sendAttempted = false
   try {
     const companies = await getCompanies({ maxRecords: 2000 })
     const contacts = await getContacts({ maxRecords: 5000 })
@@ -253,8 +265,8 @@ export async function sendCampaignAction(campaignId: string) {
     const brevoId = await createBrevoCampaign({ name: campaign.name, subject: campaign.subject, senderName: campaign.senderName, senderEmail: campaign.senderEmail,
       replyTo: campaign.replyTo, templateId, listId })
     await updateEmailCampaign(campaign.id, { brevoCampaignId: String(brevoId), status: 'SCHEDULED' })
+    sendAttempted = true
     await sendBrevoCampaignNow(brevoId)
-    submittedToBrevo = true
     const sentAt = new Date().toISOString()
     await updateEmailCampaign(campaign.id, { status: 'SENT', sentAt })
     await inBatches(recipients, 10, (recipient) => updateEmailRecipient(recipient.id, { status: 'SENT', lastEventAt: sentAt }))
@@ -262,8 +274,11 @@ export async function sendCampaignAction(campaignId: string) {
     return { success: true }
   } catch (error) {
     console.error('Brevo send failed:', error)
-    if (submittedToBrevo) {
-      return { success: true, warning: "Brevo a accepté l’envoi, mais la mise à jour complète du CRM a échoué. Ne pas renvoyer la campagne." }
+    if (sendAttempted) {
+      return {
+        success: true,
+        warning: "L’envoi a été soumis à Brevo mais sa confirmation est ambiguë. La campagne reste verrouillée pour éviter tout double envoi.",
+      }
     }
     await updateEmailCampaign(campaign.id, { status: 'FAILED' })
     return { success: false, error: error instanceof Error ? error.message : "Échec de l'envoi Brevo" }
