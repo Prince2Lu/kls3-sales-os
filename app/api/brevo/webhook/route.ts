@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   }
 
   const interestPattern = process.env.BREVO_INTEREST_URL_PATTERN ?? '/demo'
-  if (incomingStatus === 'CLICKED' && url?.includes(interestPattern)) {
+  if (incomingStatus === 'CLICKED' && nextStatus === 'CLICKED' && url?.includes(interestPattern)) {
     const { target } = await findOrCreateProspectingTarget({ companyId: recipient.companyId, contactId: recipient.contactId, businessLineId: campaign.businessLineId,
       owner: campaign.createdBy, status: 'Email Flow' })
     await updateEmailRecipient(recipient.id, { prospectingTargetId: target.id })
