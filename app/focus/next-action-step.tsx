@@ -68,6 +68,8 @@ export function NextActionStep({
               taskId: task.id,
               opportunityId: task.opportunityId,
               contactId: task.contactId,
+              coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
               nextActionDate,
               nextActionTime,
@@ -76,12 +78,9 @@ export function NextActionStep({
             break
 
           case 'CONVERSATION':
-            if (!nextActionType) {
-              setError('Sélectionnez une prochaine action')
-              return
-            }
-            if (!nextActionDate || !nextActionTime) {
-              setError('Date et heure requises')
+            // Next action is now optional for CONVERSATION
+            if (nextActionType && (!nextActionDate || !nextActionTime)) {
+              setError('Date et heure requises pour la prochaine action')
               return
             }
             await processConversation({
@@ -89,11 +88,12 @@ export function NextActionStep({
               opportunityId: task.opportunityId,
               contactId: task.contactId,
               coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
               currentStage: opportunity?.stage,
-              nextActionType,
-              nextActionDate,
-              nextActionTime,
+              nextActionType: nextActionType || null,
+              nextActionDate: nextActionDate || undefined,
+              nextActionTime: nextActionTime || undefined,
               notes: nextActionNote,
             })
             break
@@ -108,6 +108,7 @@ export function NextActionStep({
               opportunityId: task.opportunityId,
               contactId: task.contactId,
               coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
               currentStage: opportunity?.stage,
               meetingDate: nextActionDate,
@@ -125,6 +126,8 @@ export function NextActionStep({
               taskId: task.id,
               opportunityId: task.opportunityId,
               contactId: task.contactId,
+              coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
               callbackDate: nextActionDate,
               callbackTime: nextActionTime,
@@ -147,6 +150,8 @@ export function NextActionStep({
               taskId: task.id,
               opportunityId: task.opportunityId,
               contactId: task.contactId,
+              coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
               closeLost: lostDecision === 'CLOSE',
               nextActionType: lostDecision === 'KEEP' ? nextActionType || undefined : undefined,
@@ -161,6 +166,8 @@ export function NextActionStep({
               taskId: task.id,
               opportunityId: task.opportunityId,
               contactId: task.contactId,
+              coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
               notes: nextActionNote,
             })
@@ -171,41 +178,49 @@ export function NextActionStep({
               taskId: task.id,
               opportunityId: task.opportunityId,
               contactId: task.contactId,
+              coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
               notes: nextActionNote,
             })
             break
 
           case 'MEETING_DONE':
-            if (!nextActionType || !nextActionDate || !nextActionTime) {
-              setError('Prochaine action requise')
+            // Next action is now optional for MEETING_DONE
+            if (nextActionType && (!nextActionDate || !nextActionTime)) {
+              setError('Date et heure requises pour la prochaine action')
               return
             }
             await processMeetingDone({
               taskId: task.id,
               opportunityId: task.opportunityId,
               contactId: task.contactId,
+              coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
-              nextActionType,
-              nextActionDate,
-              nextActionTime,
+              nextActionType: nextActionType || null,
+              nextActionDate: nextActionDate || undefined,
+              nextActionTime: nextActionTime || undefined,
               notes: nextActionNote,
             })
             break
 
           case 'DEMO_DONE':
-            if (!nextActionType || !nextActionDate || !nextActionTime) {
-              setError('Prochaine action requise')
+            // Next action is now optional for DEMO_DONE
+            if (nextActionType && (!nextActionDate || !nextActionTime)) {
+              setError('Date et heure requises pour la prochaine action')
               return
             }
             await processDemoDone({
               taskId: task.id,
               opportunityId: task.opportunityId,
               contactId: task.contactId,
+              coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
-              nextActionType,
-              nextActionDate,
-              nextActionTime,
+              nextActionType: nextActionType || null,
+              nextActionDate: nextActionDate || undefined,
+              nextActionTime: nextActionTime || undefined,
               notes: nextActionNote,
             })
             break
@@ -215,6 +230,8 @@ export function NextActionStep({
               taskId: task.id,
               opportunityId: task.opportunityId,
               contactId: task.contactId,
+              coldCallTargetId: task.coldCallTargetId,
+              relationshipId: task.relationshipId,
               owner: task.owner,
               notes: nextActionNote,
             })
@@ -313,7 +330,7 @@ export function NextActionStep({
       )
     }
 
-    // CONVERSATION - requires next action type + date
+    // CONVERSATION - next action now optional
     if (result === 'CONVERSATION') {
       return (
         <div className="space-y-4">
@@ -331,6 +348,17 @@ export function NextActionStep({
           <div>
             <h3 className="text-lg font-medium mb-3">Prochaine action ?</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              <Button
+                variant={nextActionType === null ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => {
+                  setNextActionType(null)
+                  setNextActionDate('')
+                  setNextActionTime('')
+                }}
+              >
+                Aucune
+              </Button>
               {(['CALL', 'EMAIL', 'LINKEDIN', 'MEETING', 'FOLLOW_UP'] as const).map(
                 (type) => (
                   <Button
@@ -562,14 +590,14 @@ export function NextActionStep({
       )
     }
 
-    // MEETING_DONE, DEMO_DONE - requires next action
+    // MEETING_DONE, DEMO_DONE - next action now optional
     if (result === 'MEETING_DONE' || result === 'DEMO_DONE') {
       return (
         <div className="space-y-4">
           <div>
             <label className="text-sm text-text-muted mb-2 block">
-              Que retenir de ce{' '}
-              {result === 'MEETING_DONE' ? 'rendez-vous' : 'cette démo'} ? (optionnel)
+              Que retenir de{' '}
+              {result === 'MEETING_DONE' ? 'ce rendez-vous' : 'cette démo'} ? (optionnel)
             </label>
             <Input
               placeholder="Note..."
@@ -579,8 +607,19 @@ export function NextActionStep({
           </div>
 
           <div>
-            <h3 className="text-lg font-medium mb-3">Prochaine action</h3>
+            <h3 className="text-lg font-medium mb-3">Prochaine action ?</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              <Button
+                variant={nextActionType === null ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => {
+                  setNextActionType(null)
+                  setNextActionDate('')
+                  setNextActionTime('')
+                }}
+              >
+                Aucune
+              </Button>
               {(['CALL', 'EMAIL', 'LINKEDIN', 'MEETING', 'FOLLOW_UP'] as const).map(
                 (type) => (
                   <Button

@@ -60,18 +60,22 @@ export async function processNoAnswer(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
   nextActionDate: string
   nextActionTime: string
   notes?: string
 }) {
-  const { taskId, opportunityId, contactId, owner, nextActionDate, nextActionTime, notes } =
+  const { taskId, opportunityId, contactId, coldCallTargetId, relationshipId, owner, nextActionDate, nextActionTime, notes } =
     input
 
   // 1. Create ACTIVITY
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'CALL',
     date: new Date().toISOString(),
     result: 'NO_ANSWER',
@@ -84,6 +88,8 @@ export async function processNoAnswer(input: {
   await createTask({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'CALL',
     dueAt: combineDateTimeToISO(nextActionDate, nextActionTime),
     priority: 'MEDIUM',
@@ -102,6 +108,9 @@ export async function processNoAnswer(input: {
   revalidatePath('/focus')
   revalidatePath('/today')
   revalidatePath('/prospects')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
@@ -115,11 +124,12 @@ export async function processConversation(input: {
   opportunityId: string | null
   contactId: string | null
   coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
   currentStage: Stage | null | undefined
-  nextActionType: TaskType
-  nextActionDate: string
-  nextActionTime: string
+  nextActionType?: TaskType | null
+  nextActionDate?: string
+  nextActionTime?: string
   notes?: string
 }) {
   const {
@@ -127,6 +137,7 @@ export async function processConversation(input: {
     opportunityId: initialOpportunityId,
     contactId,
     coldCallTargetId,
+    relationshipId,
     owner,
     currentStage,
     nextActionType,
@@ -159,6 +170,7 @@ export async function processConversation(input: {
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
     coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'CALL',
     date: new Date().toISOString(),
     result: 'CONVERSATION',
@@ -167,18 +179,21 @@ export async function processConversation(input: {
     durationMinutes: undefined,
   })
 
-  // 2. Create next TASK
-  await createTask({
-    opportunityId: opportunityId || undefined,
-    contactId: contactId || undefined,
-    coldCallTargetId: coldCallTargetId || undefined,
-    type: nextActionType,
-    dueAt: combineDateTimeToISO(nextActionDate, nextActionTime),
-    priority: 'MEDIUM',
-    status: 'TODO',
-    notes: notes || undefined,
-    owner,
-  })
+  // 2. Create next TASK (optional)
+  if (nextActionType && nextActionDate && nextActionTime) {
+    await createTask({
+      opportunityId: opportunityId || undefined,
+      contactId: contactId || undefined,
+      coldCallTargetId: coldCallTargetId || undefined,
+      relationshipId: relationshipId || undefined,
+      type: nextActionType,
+      dueAt: combineDateTimeToISO(nextActionDate, nextActionTime),
+      priority: 'MEDIUM',
+      status: 'TODO',
+      notes: notes || undefined,
+      owner,
+    })
+  }
 
   // 3. Stage transition if appropriate (early stage → Échange)
   // Note: If conversion just happened, stage is already 'Échange', transition will be skipped
@@ -206,6 +221,9 @@ export async function processConversation(input: {
   revalidatePath('/today')
   revalidatePath('/prospects')
   revalidatePath('/pipeline')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
@@ -219,6 +237,7 @@ export async function processMeetingBooked(input: {
   opportunityId: string | null
   contactId: string | null
   coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
   currentStage: Stage | null | undefined
   meetingDate: string
@@ -230,6 +249,7 @@ export async function processMeetingBooked(input: {
     opportunityId: initialOpportunityId,
     contactId,
     coldCallTargetId,
+    relationshipId,
     owner,
     currentStage,
     meetingDate,
@@ -261,6 +281,7 @@ export async function processMeetingBooked(input: {
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
     coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'CALL',
     date: new Date().toISOString(),
     result: 'MEETING_BOOKED',
@@ -274,6 +295,7 @@ export async function processMeetingBooked(input: {
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
     coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'MEETING',
     dueAt: combineDateTimeToISO(meetingDate, meetingTime),
     priority: 'HIGH',
@@ -308,6 +330,9 @@ export async function processMeetingBooked(input: {
   revalidatePath('/today')
   revalidatePath('/prospects')
   revalidatePath('/pipeline')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
@@ -320,18 +345,22 @@ export async function processCallback(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
   callbackDate: string
   callbackTime: string
   notes?: string
 }) {
-  const { taskId, opportunityId, contactId, owner, callbackDate, callbackTime, notes } =
+  const { taskId, opportunityId, contactId, coldCallTargetId, relationshipId, owner, callbackDate, callbackTime, notes } =
     input
 
   // 1. Create ACTIVITY
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'CALL',
     date: new Date().toISOString(),
     result: 'CALLBACK',
@@ -344,6 +373,8 @@ export async function processCallback(input: {
   await createTask({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'FOLLOW_UP',
     dueAt: combineDateTimeToISO(callbackDate, callbackTime),
     priority: 'MEDIUM',
@@ -362,6 +393,9 @@ export async function processCallback(input: {
   revalidatePath('/focus')
   revalidatePath('/today')
   revalidatePath('/prospects')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
@@ -374,6 +408,8 @@ export async function processNotInterested(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
   closeLost: boolean
   nextActionType?: TaskType
@@ -385,6 +421,8 @@ export async function processNotInterested(input: {
     taskId,
     opportunityId,
     contactId,
+    coldCallTargetId,
+    relationshipId,
     owner,
     closeLost,
     nextActionType,
@@ -397,6 +435,8 @@ export async function processNotInterested(input: {
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'CALL',
     date: new Date().toISOString(),
     result: 'NOT_INTERESTED',
@@ -426,6 +466,8 @@ export async function processNotInterested(input: {
     await createTask({
       opportunityId: opportunityId || undefined,
       contactId: contactId || undefined,
+      coldCallTargetId: coldCallTargetId || undefined,
+      relationshipId: relationshipId || undefined,
       type: nextActionType,
       dueAt: combineDateTimeToISO(nextActionDate, nextActionTime),
       priority: 'LOW',
@@ -446,6 +488,9 @@ export async function processNotInterested(input: {
   revalidatePath('/today')
   revalidatePath('/prospects')
   revalidatePath('/pipeline')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
@@ -458,15 +503,19 @@ export async function processEmailSent(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
   notes?: string
 }) {
-  const { taskId, opportunityId, contactId, owner, notes } = input
+  const { taskId, opportunityId, contactId, coldCallTargetId, relationshipId, owner, notes } = input
 
   // 1. Create ACTIVITY
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'EMAIL',
     date: new Date().toISOString(),
     result: undefined, // EMAIL doesn't map to existing ActivityResult
@@ -485,6 +534,9 @@ export async function processEmailSent(input: {
   revalidatePath('/focus')
   revalidatePath('/today')
   revalidatePath('/prospects')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
@@ -497,15 +549,19 @@ export async function processLinkedInDone(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
   notes?: string
 }) {
-  const { taskId, opportunityId, contactId, owner, notes } = input
+  const { taskId, opportunityId, contactId, coldCallTargetId, relationshipId, owner, notes } = input
 
   // 1. Create ACTIVITY
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'LINKEDIN',
     date: new Date().toISOString(),
     result: undefined,
@@ -524,6 +580,9 @@ export async function processLinkedInDone(input: {
   revalidatePath('/focus')
   revalidatePath('/today')
   revalidatePath('/prospects')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
@@ -536,16 +595,20 @@ export async function processMeetingDone(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
-  nextActionType: TaskType
-  nextActionDate: string
-  nextActionTime: string
+  nextActionType?: TaskType | null
+  nextActionDate?: string
+  nextActionTime?: string
   notes?: string
 }) {
   const {
     taskId,
     opportunityId,
     contactId,
+    coldCallTargetId,
+    relationshipId,
     owner,
     nextActionType,
     nextActionDate,
@@ -557,6 +620,8 @@ export async function processMeetingDone(input: {
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'MEETING',
     date: new Date().toISOString(),
     result: undefined,
@@ -565,17 +630,21 @@ export async function processMeetingDone(input: {
     durationMinutes: undefined,
   })
 
-  // 2. Create next TASK
-  await createTask({
-    opportunityId: opportunityId || undefined,
-    contactId: contactId || undefined,
-    type: nextActionType,
-    dueAt: combineDateTimeToISO(nextActionDate, nextActionTime),
-    priority: 'MEDIUM',
-    status: 'TODO',
-    notes: notes || undefined,
-    owner,
-  })
+  // 2. Create next TASK (optional)
+  if (nextActionType && nextActionDate && nextActionTime) {
+    await createTask({
+      opportunityId: opportunityId || undefined,
+      contactId: contactId || undefined,
+      coldCallTargetId: coldCallTargetId || undefined,
+      relationshipId: relationshipId || undefined,
+      type: nextActionType,
+      dueAt: combineDateTimeToISO(nextActionDate, nextActionTime),
+      priority: 'MEDIUM',
+      status: 'TODO',
+      notes: notes || undefined,
+      owner,
+    })
+  }
 
   // 3. Complete current TASK
   await updateTask(taskId, {
@@ -587,6 +656,9 @@ export async function processMeetingDone(input: {
   revalidatePath('/focus')
   revalidatePath('/today')
   revalidatePath('/prospects')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
@@ -599,16 +671,20 @@ export async function processDemoDone(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
-  nextActionType: TaskType
-  nextActionDate: string
-  nextActionTime: string
+  nextActionType?: TaskType | null
+  nextActionDate?: string
+  nextActionTime?: string
   notes?: string
 }) {
   const {
     taskId,
     opportunityId,
     contactId,
+    coldCallTargetId,
+    relationshipId,
     owner,
     nextActionType,
     nextActionDate,
@@ -620,6 +696,8 @@ export async function processDemoDone(input: {
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'DEMO',
     date: new Date().toISOString(),
     result: undefined,
@@ -628,17 +706,21 @@ export async function processDemoDone(input: {
     durationMinutes: undefined,
   })
 
-  // 2. Create next TASK
-  await createTask({
-    opportunityId: opportunityId || undefined,
-    contactId: contactId || undefined,
-    type: nextActionType,
-    dueAt: combineDateTimeToISO(nextActionDate, nextActionTime),
-    priority: 'MEDIUM',
-    status: 'TODO',
-    notes: notes || undefined,
-    owner,
-  })
+  // 2. Create next TASK (optional)
+  if (nextActionType && nextActionDate && nextActionTime) {
+    await createTask({
+      opportunityId: opportunityId || undefined,
+      contactId: contactId || undefined,
+      coldCallTargetId: coldCallTargetId || undefined,
+      relationshipId: relationshipId || undefined,
+      type: nextActionType,
+      dueAt: combineDateTimeToISO(nextActionDate, nextActionTime),
+      priority: 'MEDIUM',
+      status: 'TODO',
+      notes: notes || undefined,
+      owner,
+    })
+  }
 
   // 3. Complete current TASK
   await updateTask(taskId, {
@@ -650,6 +732,9 @@ export async function processDemoDone(input: {
   revalidatePath('/focus')
   revalidatePath('/today')
   revalidatePath('/prospects')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
@@ -662,15 +747,19 @@ export async function processTaskDone(input: {
   taskId: string
   opportunityId: string | null
   contactId: string | null
+  coldCallTargetId?: string | null
+  relationshipId?: string | null
   owner: Owner
   notes?: string
 }) {
-  const { taskId, opportunityId, contactId, owner, notes } = input
+  const { taskId, opportunityId, contactId, coldCallTargetId, relationshipId, owner, notes } = input
 
   // 1. Create ACTIVITY (generic OTHER type)
   await createActivity({
     opportunityId: opportunityId || undefined,
     contactId: contactId || undefined,
+    coldCallTargetId: coldCallTargetId || undefined,
+    relationshipId: relationshipId || undefined,
     type: 'OTHER',
     date: new Date().toISOString(),
     result: undefined,
@@ -689,6 +778,9 @@ export async function processTaskDone(input: {
   revalidatePath('/focus')
   revalidatePath('/today')
   revalidatePath('/prospects')
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`)
+  }
 
   return { success: true }
 }
