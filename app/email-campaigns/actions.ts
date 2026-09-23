@@ -167,6 +167,9 @@ export async function markCampaignReplyAction(recipientId: string) {
   const recipient = recipients.find((item) => item.id === recipientId)
   if (!recipient) return { success: false, error: 'Destinataire introuvable.' }
   if (recipient.status === 'REPLIED') return { success: true, alreadyProcessed: true }
+  if (!['SENT', 'DELIVERED', 'OPENED', 'CLICKED'].includes(recipient.status)) {
+    return { success: false, error: "Une réponse ne peut être enregistrée que pour un email réellement envoyé." }
+  }
 
   const campaign = await getEmailCampaignById(recipient.campaignId)
   const { target } = await findOrCreateProspectingTarget({
