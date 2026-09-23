@@ -12,7 +12,7 @@ import {
 import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
 import { convertProspectingTargetToOpportunity } from '@/lib/prospecting/opportunity-converter'
 import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
-import { nextBusinessDayAtNineParis } from '@/lib/utils/business-day'
+import { emailReplyFollowUpDueParis } from '@/lib/utils/business-day'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 
 async function inBatches<T>(items: T[], size: number, operation: (item: T) => Promise<unknown>): Promise<void> {
@@ -193,7 +193,7 @@ export async function markCampaignReplyAction(recipientId: string) {
       contactId: recipient.contactId ?? undefined,
       coldCallTargetId: target.id,
       type: 'FOLLOW_UP',
-      dueAt: nextBusinessDayAtNineParis(new Date(Date.now() - 24 * 60 * 60 * 1000)).toISOString(),
+      dueAt: emailReplyFollowUpDueParis().toISOString(),
       priority: 'HIGH',
       status: 'TODO',
       notes: `${marker} Réponse email reçue — campagne ${campaign.name}. À traiter.`,
