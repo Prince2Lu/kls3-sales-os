@@ -80,7 +80,7 @@ export async function sendCampaignTestAction(templateIdInput: string | number) {
   }
 }
 
-export async function createCampaignDraftAction(input: { name: string; subject: string; companyIds: string[]; templateId: string | number }) {
+export async function createCampaignDraftAction(input: { name: string; subject: string; companyIds: string[]; templateId?: string | number }) {
   const owner = await getCurrentOwner()
   const name = input.name.trim()
   const subject = input.subject.trim()
@@ -89,7 +89,7 @@ export async function createCampaignDraftAction(input: { name: string; subject: 
 
   let templateId: number
   try {
-    templateId = (await requireActiveTemplate(input.templateId)).id
+    templateId = (await requireActiveTemplate(input.templateId ?? process.env.BREVO_TEMPLATE_ID ?? '')).id
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Modèle Brevo invalide.' }
   }
