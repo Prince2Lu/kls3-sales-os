@@ -22,6 +22,14 @@ const opportunitiesItems = [
   { href: '/prospects', label: 'Vue Liste' },
 ]
 
+// Outils submenu items
+const toolsItems = [
+  { href: '/imports', label: 'Ajouter des prospects' },
+  { href: '/email-campaigns', label: 'Campagnes email' },
+  { href: '/email-suppressions', label: 'Exclusions email' },
+  { href: '/privacy-requests', label: 'Demandes RGPD' },
+]
+
 // Primary navigation items - always visible on desktop
 const primaryNavItems = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -31,10 +39,6 @@ const primaryNavItems = [
 
 // Secondary navigation items - in "Plus" dropdown on medium screens
 const secondaryNavItems = [
-  { href: '/imports', label: 'Ajouter des prospects' },
-  { href: '/email-campaigns', label: 'Campagnes email' },
-  { href: '/email-suppressions', label: 'Exclusions email' },
-  { href: '/privacy-requests', label: 'Demandes RGPD' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
@@ -49,10 +53,6 @@ const compactNavItems = [
 ]
 
 const compactSecondaryItems = [
-  { href: '/imports', label: 'Ajouter des prospects' },
-  { href: '/email-campaigns', label: 'Campagnes email' },
-  { href: '/email-suppressions', label: 'Exclusions email' },
-  { href: '/privacy-requests', label: 'Demandes RGPD' },
   { href: '/today', label: 'Aujourd\'hui' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/companies', label: 'Entreprises' },
@@ -70,6 +70,11 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
 
   // Check if current path is within Opportunités section
   const isOpportunitiesActive = pathname === '/pipeline' || pathname === '/prospects'
+
+  // Check if current path is within Outils section
+  const isToolsActive = toolsItems.some(
+    (item) => pathname === item.href || pathname?.startsWith(`${item.href}/`)
+  )
 
   const NavItem = ({ href, label }: { href: string; label: string }) => {
     const isActive = pathname === href || pathname?.startsWith(`${href}/`)
@@ -107,6 +112,38 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
     return (
       <DropdownMenu trigger={trigger} hoverEnabled={true}>
         {opportunitiesItems.map((item) => (
+          <Link key={item.href} href={item.href}>
+            <DropdownMenuItem
+              className={cn(
+                'cursor-pointer',
+                pathname === item.href && 'bg-accent/10 text-accent font-medium'
+              )}
+            >
+              {item.label}
+            </DropdownMenuItem>
+          </Link>
+        ))}
+      </DropdownMenu>
+    )
+  }
+
+  const ToolsMenu = () => {
+    const trigger = (
+      <Button
+        variant={isToolsActive ? 'primary' : 'nav'}
+        size="sm"
+        className={cn(
+          'transition-all whitespace-nowrap',
+          isToolsActive && 'ring-2 ring-accent/20'
+        )}
+      >
+        Outils
+      </Button>
+    )
+
+    return (
+      <DropdownMenu trigger={trigger} hoverEnabled={true}>
+        {toolsItems.map((item) => (
           <Link key={item.href} href={item.href}>
             <DropdownMenuItem
               className={cn(
@@ -180,6 +217,7 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
               <NavItem key={item.href} {...item} />
             ))}
             <OpportunitesMenu />
+            <ToolsMenu />
             <MoreMenu items={compactSecondaryItems} />
           </div>
 
@@ -189,6 +227,7 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
               <NavItem key={item.href} {...item} />
             ))}
             <OpportunitesMenu />
+            <ToolsMenu />
             <MoreMenu items={secondaryNavItems} />
           </div>
 
@@ -198,6 +237,7 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
               <NavItem key={item.href} {...item} />
             ))}
             <OpportunitesMenu />
+            <ToolsMenu />
             {secondaryNavItems.map((item) => (
               <NavItem key={item.href} {...item} />
             ))}
@@ -206,6 +246,7 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
           {/* Mobile: All items in dropdown */}
           <div className="md:hidden">
             <OpportunitesMenu />
+            <ToolsMenu />
             <MoreMenu items={[...primaryNavItems, ...secondaryNavItems]} />
           </div>
         </div>
