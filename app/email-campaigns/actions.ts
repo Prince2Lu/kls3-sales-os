@@ -48,9 +48,10 @@ export async function previewCampaignEmailAction(input: { templateId: string | n
   await getCurrentOwner()
   try {
     const template = await requireActiveTemplate(input.templateId)
-    const [companies, contacts] = await Promise.all([
+    const [companies, contacts, suppressions] = await Promise.all([
       getCompanies({ maxRecords: 2000 }),
       getContacts({ maxRecords: 5000 }),
+      getEmailSuppressions(),
     ])
     const company = companies.find((item) => item.id === input.companyId)
     if (!company) return { success: false, error: 'Office introuvable.' }
@@ -58,6 +59,14 @@ export async function previewCampaignEmailAction(input: { templateId: string | n
     const contact = contacts.find((item) => item.companyId === company.id && item.decisionMaker && !!item.email)
     const email = contact?.email ?? company.email
     if (!email) return { success: false, error: 'Cet office n’a aucun email exploitable pour l’aperçu.' }
+
+    const normalizedEmail = email.trim().toLowerCase()
+    const blocked = suppressions.some((item) => item.active && (
+      (item.scope === 'EMAIL' && item.email.toLowerCase() === normalizedEmail) ||
+      (item.scope === 'COMPANY' && item.companyId === company.id) ||
+      (item.scope === 'CONTACT' && !!contact?.id && item.contactId === contact.id)
+    ))
+    if (blocked) return { success: false, error: 'Ce destinataire est exclu des envois email.' }
 
     await upsertBrevoContact({
       email,
@@ -238,11 +247,23 @@ export async function sendCampaignAction(campaignId: string) {
     status: 'EXCLUDED', exclusionReason: 'Opposition ou désabonnement actif avant envoi',
   }))
   const seenEmails = new Set<string>()
+  const duplicateRecipients = readyRecipients.filter((recipient) => {
+    if (isSuppressed(recipient, suppressions)) return false
+    const email = recipient.email.trim().toLowerCase()
+    if (seenEmails.has(email)) return true
+    seenEmails.add(email)
+    return false
+  })
+  await inBatches(duplicateRecipients, 10, (recipient) => updateEmailRecipient(recipient.id, {
+    status: 'EXCLUDED', exclusionReason: 'Email déjà présent dans cette campagne',
+  }))
+
+  const allowedEmails = new Set<string>()
   const recipients = readyRecipients.filter((recipient) => {
     if (isSuppressed(recipient, suppressions)) return false
     const email = recipient.email.trim().toLowerCase()
-    if (seenEmails.has(email)) return false
-    seenEmails.add(email)
+    if (allowedEmails.has(email)) return false
+    allowedEmails.add(email)
     return true
   })
   if (!recipients.length) return { success: false, error: 'Aucun destinataire autorisé.' }
