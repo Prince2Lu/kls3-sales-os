@@ -30,8 +30,10 @@ function authorized(request: NextRequest): boolean {
 type TrackedEvent = EmailEvent['eventType']
 const eventMap: Record<string, TrackedEvent> = {
   request: 'SENT', sent: 'SENT', delivered: 'DELIVERED', opened: 'OPENED', unique_opened: 'OPENED',
-  click: 'CLICKED', clicks: 'CLICKED', soft_bounce: 'SOFT_BOUNCE', hard_bounce: 'HARD_BOUNCE',
-  unsubscribe: 'UNSUBSCRIBED', spam: 'SPAM', complaint: 'SPAM', error: 'ERROR', invalid_email: 'ERROR',
+  click: 'CLICKED', clicks: 'CLICKED', soft_bounce: 'SOFT_BOUNCE', softbounce: 'SOFT_BOUNCE',
+  hard_bounce: 'HARD_BOUNCE', hardbounce: 'HARD_BOUNCE',
+  unsubscribe: 'UNSUBSCRIBED', unsubscribed: 'UNSUBSCRIBED',
+  spam: 'SPAM', complaint: 'SPAM', error: 'ERROR', blocked: 'ERROR', invalid: 'ERROR', invalid_email: 'ERROR',
 }
 
 function eventDate(payload: Record<string, unknown>): string {
@@ -42,7 +44,7 @@ function eventDate(payload: Record<string, unknown>): string {
 }
 
 function resolveRecipientStatus(current: EmailRecipientStatus, incoming: EmailRecipientStatus): EmailRecipientStatus {
-  const terminal: EmailRecipientStatus[] = ['UNSUBSCRIBED', 'SPAM', 'HARD_BOUNCE']
+  const terminal: EmailRecipientStatus[] = ['UNSUBSCRIBED', 'SPAM', 'HARD_BOUNCE', 'FAILED']
   if (terminal.includes(incoming)) return incoming
   if (terminal.includes(current)) return current
   const rank: Partial<Record<EmailRecipientStatus, number>> = { READY: 0, SENT: 1, DELIVERED: 2, OPENED: 3, CLICKED: 4, REPLIED: 5 }
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
   const rawEvent = String(payload.event ?? '').toLowerCase()
   const status = eventMap[rawEvent]
   const brevoCampaignId = String(payload.campaignId ?? payload.campaign_id ?? payload['campaign id'] ?? payload.camp_id ?? '')
-  const url = String(payload.link ?? payload.url ?? '') || null
+  const url = String(payload.link ?? payload.url ?? payload.URL ?? '') || null
   const messageId = String(payload['message-id'] ?? payload.messageId ?? '') || null
   if (!email || !status || !brevoCampaignId) {
     logger.warn('brevo.webhook.ignored', { reason: 'missing_required_field', rawEvent, hasEmail: !!email, hasCampaignId: !!brevoCampaignId })
@@ -85,7 +87,8 @@ export async function POST(request: NextRequest) {
   if (await getEmailEventByKey(eventKey)) return NextResponse.json({ duplicate: true })
   await createEmailEvent({ eventKey, recipientId: recipient.id, eventType: status === 'ERROR' ? 'ERROR' : status, occurredAt, email, url, messageId, rawPayload: JSON.stringify(payload).slice(0, 90000) })
 
-  const terminal = ['UNSUBSCRIBED', 'SPAM', 'HARD_BOUNCE'].includes(status) || rawEvent === 'invalid_email'
+  const invalidEmail = rawEvent === 'invalid' || rawEvent === 'invalid_email'
+  const terminal = ['UNSUBSCRIBED', 'SPAM', 'HARD_BOUNCE'].includes(status) || invalidEmail
   const incomingStatus: EmailRecipientStatus = status === 'ERROR' ? 'FAILED' : status
   const nextStatus = resolveRecipientStatus(recipient.status, incomingStatus)
   await updateEmailRecipient(recipient.id, {
@@ -99,7 +102,7 @@ export async function POST(request: NextRequest) {
 
   if (terminal) {
     await createEmailSuppression({ email, companyId: recipient.companyId, contactId: recipient.contactId ?? undefined,
-      scope: 'EMAIL', reason: rawEvent === 'invalid_email' ? 'INVALID_EMAIL' : nextStatus === 'UNSUBSCRIBED' ? 'UNSUBSCRIBED' : nextStatus === 'SPAM' ? 'SPAM_COMPLAINT' : 'HARD_BOUNCE', source: 'BREVO', details: `Webhook ${rawEvent}` })
+      scope: 'EMAIL', reason: invalidEmail ? 'INVALID_EMAIL' : nextStatus === 'UNSUBSCRIBED' ? 'UNSUBSCRIBED' : nextStatus === 'SPAM' ? 'SPAM_COMPLAINT' : 'HARD_BOUNCE', source: 'BREVO', details: `Webhook ${rawEvent}` })
   }
 
   const interestPattern = process.env.BREVO_INTEREST_URL_PATTERN ?? '/demo'
