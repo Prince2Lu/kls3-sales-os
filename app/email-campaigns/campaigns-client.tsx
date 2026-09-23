@@ -8,7 +8,6 @@ import type { EmailCampaign, EmailRecipient } from '@/types/domain'
 import type { BrevoSendMode } from '@/lib/prospecting/safety'
 import {
   createCampaignDraftAction,
-  markCampaignReplyAction,
   previewCampaignEmailAction,
   sendCampaignAction,
   sendCampaignTestAction,
@@ -158,15 +157,7 @@ export function CampaignsClient({
     })
   }
 
-  const markReply = (recipientId: string) => {
-    if (!window.confirm('Confirmer qu’une réponse email réelle a été reçue ? Une opportunité et une tâche de suivi pourront être créées.')) return
-    startTransition(async () => {
-      const result = await markCampaignReplyAction(recipientId)
-      setMessage(result.success
-        ? ('alreadyProcessed' in result && result.alreadyProcessed ? 'Cette réponse était déjà enregistrée.' : 'Réponse enregistrée et suivi commercial créé.')
-        : result.error ?? 'Erreur')
-    })
-  }
+
 
   return <div className="space-y-6">
     <div className="rounded-xl border border-border bg-card p-6">
@@ -319,7 +310,7 @@ export function CampaignsClient({
                       <th className="p-2">Ouvertures</th>
                       <th className="p-2">Clics</th>
                       <th className="p-2">Dernier signal</th>
-                      <th className="p-2">Action</th>
+                      
                     </tr>
                   </thead>
                   <tbody>{related.map((item) => <tr key={item.id} className="border-t border-border">
