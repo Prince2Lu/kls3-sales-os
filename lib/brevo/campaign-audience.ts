@@ -63,14 +63,15 @@ export function buildCampaignAudience(input: {
       return true
     }).map((choice): AudienceOption => {
       const email = choice.email.toLowerCase()
+      const isTestAddress = email === testEmail?.toLowerCase()
       const contactTargets = companyTargets.filter((item) => item.contactId === choice.contactId)
       const latestCall = activities.filter((activity) => activity.type === 'CALL' && (
         (!!activity.coldCallTargetId && contactTargets.some((item) => item.id === activity.coldCallTargetId)) ||
         (!activity.coldCallTargetId && !!choice.contactId && activity.contactId === choice.contactId)
       )).sort((a, b) => b.date.localeCompare(a.date))[0]
-      const declined = companyDeclined ||
+      const declined = !isTestAddress && (companyDeclined ||
         (latestCall?.result === 'NOT_INTERESTED' && !contactTargets.some((item) =>
-          item.callStatus !== 'Pas intéressé' && item.updatedAt > latestCall.date))
+          item.callStatus !== 'Pas intéressé' && item.updatedAt > latestCall.date)))
       const suppressed = suppressions.some((item) => item.active && (
         (item.scope === 'EMAIL' && item.email.trim().toLowerCase() === email) ||
         (item.scope === 'CONTACT' && !!choice.contactId && item.contactId === choice.contactId)

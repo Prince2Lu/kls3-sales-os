@@ -202,15 +202,15 @@ export function CampaignsClient({
 
       <div className="mt-5">
         <p className="mb-2 text-sm font-medium">1. Destinataires</p>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Office, ville, email…" aria-label="Rechercher un destinataire" />
+        <div className="grid min-w-0 gap-2 sm:grid-cols-3">
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Office, ville, email…" aria-label="Rechercher un destinataire" className="min-w-0" />
           <select value={department} onChange={(event) => setDepartment(event.target.value)} aria-label="Département"
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            className="h-10 min-w-0 w-full rounded-md border border-input bg-background px-3 text-sm">
             <option value="">Tous les départements</option>
             {departments.map((value) => <option key={value} value={value}>{value}</option>)}
           </select>
           <select value={audienceFilter} onChange={(event) => setAudienceFilter(event.target.value as typeof audienceFilter)} aria-label="État des destinataires"
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            className="h-10 min-w-0 w-full rounded-md border border-input bg-background px-3 text-sm">
             <option value="ELIGIBLE">Jamais contactés par campagne</option>
             <option value="SENT">Déjà contactés par campagne</option>
             <option value="EXCLUDED">Exclus / sans email</option>
@@ -237,20 +237,22 @@ export function CampaignsClient({
                 disabled={!!company.blockedReason || optionsFor(company).length === 0 || (company.previouslySent && !includePreviouslySent)}
                 onChange={(event) => setSelected((current) => event.target.checked
                   ? [...current, company.id] : current.filter((id) => id !== company.id))} />
-              <span className="min-w-[180px] flex-1"><span className="font-medium">{company.name}</span>
+              <span className="min-w-0 flex-1 basis-48"><span className="font-medium">{company.name}</span>
                 <span className="text-muted-foreground"> · {company.postalCode ?? ''} {company.city ?? ''}</span>
                 {company.previouslySent && <span className="ml-2 text-amber-500">Déjà contacté</span>}
               </span>
-              {company.options.length > 1 ? <select aria-label={`Destinataire pour ${company.name}`}
+              {sendMode === 'test' ? <span className="max-w-full break-all text-xs">
+                Destinataire TEST : {company.options.find((item) => item.email.toLowerCase() === testRecipientEmail?.toLowerCase())?.email ?? 'Adresse test introuvable'}
+              </span> : company.options.length > 1 ? <select aria-label={`Destinataire pour ${company.name}`}
                 value={chosenOption(company) ? chosenOption(company)?.contactId ?? 'office' : ''}
                 onChange={(event) => setChosen((current) => ({ ...current, [company.id]: event.target.value === 'office' ? null : event.target.value }))}
-                className="max-w-full rounded-md border border-input bg-background p-2 text-xs">
+                className="w-full min-w-0 rounded-md border border-input bg-background p-2 text-xs sm:w-auto sm:max-w-[26rem]">
                 <option value="">Choisir un destinataire</option>
-                {company.options.map((option) => <option key={option.contactId ?? 'office'} value={option.contactId ?? 'office'} disabled={!!option.blockedReason || (sendMode === 'test' && option.email.toLowerCase() !== testRecipientEmail?.toLowerCase())}>
+                {company.options.map((option) => <option key={option.contactId ?? 'office'} value={option.contactId ?? 'office'} disabled={!!option.blockedReason}>
                   {option.label} · {option.email}{option.blockedReason ? ` — ${option.blockedReason}` : ''}
                 </option>)}
               </select> : <span className="text-xs text-muted-foreground">{company.options[0] ? `${company.options[0].label} · ${company.options[0].email}` : 'Aucune adresse'}</span>}
-              {company.blockedReason && <span className="text-xs text-destructive">{company.blockedReason}</span>}
+              {company.blockedReason && <span className="basis-full text-xs text-destructive">{company.options.find((item) => item.email.toLowerCase() === testRecipientEmail?.toLowerCase())?.blockedReason ?? company.blockedReason}</span>}
             </div>)}
             {filteredCompanies.length === 0 && <p className="p-4 text-sm text-muted-foreground">Aucun office trouvé.</p>}
           </div>
