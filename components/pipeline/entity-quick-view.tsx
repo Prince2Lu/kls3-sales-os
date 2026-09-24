@@ -65,6 +65,7 @@ export function EntityQuickView({
   // Determine phone to use: contact phone > company phone
   const phoneNumber = contact?.phone || company?.phone
   const phoneType = contact?.phone ? 'Direct' : 'Standard'
+  const email = contact?.email || company?.email
 
   // Sort activities by date (most recent first) if provided
   const sortedActivities = activities
@@ -122,14 +123,14 @@ export function EntityQuickView({
               </div>
             )}
 
-            {contact?.email && (
+            {email && (
               <div className="text-sm">
-                <span className="text-text-muted">Email : </span>
+                <span className="text-text-muted">{contact?.email ? 'Email direct' : 'Email de l’étude'} : </span>
                 <a
-                  href={`mailto:${contact.email}`}
+                  href={`mailto:${email}`}
                   className="text-accent hover:underline"
                 >
-                  {contact.email}
+                  {email}
                 </a>
               </div>
             )}

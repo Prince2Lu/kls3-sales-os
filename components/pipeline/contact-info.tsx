@@ -14,7 +14,8 @@ export function ContactInfo({ contact, company, compact = false }: ContactInfoPr
   if (!contact && !company) return null
 
   const phoneNumber = contact?.phone || company?.phone || null
-  const email = contact?.email || null
+  const email = contact?.email || company?.email || null
+  const emailType = contact?.email ? 'Email direct' : 'Email de l’étude'
   const website = company?.website || null
 
   if (compact) {
@@ -77,10 +78,11 @@ export function ContactInfo({ contact, company, compact = false }: ContactInfoPr
             href={`mailto:${email}`}
             className="text-accent hover:underline inline-flex items-center gap-1 truncate max-w-full"
             onClick={(e) => e.stopPropagation()}
-            title={email}
+            title={`${emailType} : ${email}`}
           >
             ✉️ <span className="truncate">{email}</span>
           </a>
+          {!contact?.email && <span className="text-text-muted ml-1">· Étude</span>}
         </div>
       )}
 

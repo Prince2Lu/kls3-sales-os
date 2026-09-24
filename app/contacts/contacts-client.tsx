@@ -193,6 +193,7 @@ export function ContactsClient({
 
         // Search email
         if (normalizeSearchValue(contact.email).includes(searchLower)) return true
+        if (contact.companyId && normalizeSearchValue(companyMap[contact.companyId]?.email).includes(searchLower)) return true
 
         // Search phone
         if (normalizeSearchValue(contact.phone).includes(searchLower)) return true
@@ -358,7 +359,12 @@ export function ContactsClient({
                     )}
 
                     <div className="space-y-1 text-xs text-text-muted">
-                      {contact.email && <div>{contact.email}</div>}
+                      {(contact.email || company?.email) && (
+                        <div>
+                          {contact.email || company?.email}
+                          {!contact.email && <span className="ml-1">· Étude</span>}
+                        </div>
+                      )}
                       {(contact.phone || company?.phone) && (
                         <div className="flex items-center gap-1.5">
                           <span>{contact.phone || company?.phone}</span>
@@ -438,7 +444,10 @@ export function ContactsClient({
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <div className="text-sm text-text-muted truncate max-w-xs">
-                        {contact.email || '—'}
+                        {contact.email || company?.email || '—'}
+                        {!contact.email && company?.email && (
+                          <span className="text-xs ml-1">· Étude</span>
+                        )}
                       </div>
                     </td>
                   </tr>

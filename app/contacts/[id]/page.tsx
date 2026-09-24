@@ -121,6 +121,18 @@ export default async function ContactPage({ params }: ContactPageProps) {
                 </div>
               )}
 
+              {!contact.email && company?.email && (
+                <div>
+                  <div className="text-text-muted text-xs mb-1">Email de l’étude</div>
+                  <a
+                    href={`mailto:${company.email}`}
+                    className="text-accent hover:underline text-sm break-all"
+                  >
+                    {company.email}
+                  </a>
+                </div>
+              )}
+
               {contact.phone && (
                 <div>
                   <div className="text-text-muted text-xs mb-1">Téléphone direct</div>
