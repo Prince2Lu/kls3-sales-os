@@ -2,10 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import {
-  createActivity, createEmailCampaign, createEmailRecipient, createTask, getActivities, getBusinessLineByCode, getCompanies, getContacts,
+  createActivity, createEmailCampaign, createEmailRecipient, createTask, getActivities, getBusinessLineByCode, getColdCallTargets, getCompanies, getContacts, getEmailCampaigns,
   getEmailCampaignById, getEmailRecipients, getEmailSuppressions, getTasks, updateEmailCampaign, updateEmailRecipient, updateTask,
 } from '@/lib/airtable'
 import { createBrevoCampaign, createBrevoList, getBrevoTemplate, previewBrevoTemplate, sendBrevoCampaignNow, sendBrevoTemplateTest, upsertBrevoContact } from '@/lib/brevo/client'
+import { buildCampaignAudience } from '@/lib/brevo/campaign-audience'
 import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
 import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
 import { emailReplyFollowUpDueParis } from '@/lib/utils/business-day'
@@ -43,7 +44,7 @@ async function requireActiveTemplate(value: string | number) {
 }
 
 
-export async function previewCampaignEmailAction(input: { templateId: string | number; companyId: string }) {
+export async function previewCampaignEmailAction(input: { templateId: string | number; companyId: string; contactId: string | null }) {
   await getCurrentOwner()
   try {
     const template = await requireActiveTemplate(input.templateId)
@@ -55,7 +56,8 @@ export async function previewCampaignEmailAction(input: { templateId: string | n
     const company = companies.find((item) => item.id === input.companyId)
     if (!company) return { success: false, error: 'Office introuvable.' }
 
-    const contact = contacts.find((item) => item.companyId === company.id && item.decisionMaker && !!item.email)
+    const contact = input.contactId ? contacts.find((item) => item.id === input.contactId && item.companyId === company.id && item.decisionMaker && !!item.email) : null
+    if (input.contactId && !contact) return { success: false, error: 'Le destinataire sélectionné a changé. Actualisez la page.' }
     const email = contact?.email ?? company.email
     if (!email) return { success: false, error: 'Cet office n’a aucun email exploitable pour l’aperçu.' }
 
@@ -101,12 +103,18 @@ export async function sendCampaignTestAction(templateIdInput: string | number) {
   }
 }
 
-export async function createCampaignDraftAction(input: { name: string; subject: string; companyIds: string[]; templateId?: string | number }) {
+export async function createCampaignDraftAction(input: { name: string; subject: string; recipients: { companyId: string; contactId: string | null }[]; includePreviouslySent?: boolean; templateId?: string | number }) {
   const owner = await getCurrentOwner()
   const name = input.name.trim()
   const subject = input.subject.trim()
   if (!name || !subject) return { success: false, error: 'Nom et objet obligatoires.' }
-  if (!Array.isArray(input.companyIds) || input.companyIds.length < 1 || input.companyIds.length > 25) return { success: false, error: 'Sélectionnez entre 1 et 25 offices.' }
+  if (!Array.isArray(input.recipients) || input.recipients.length < 1 || input.recipients.length > 25) return { success: false, error: 'Sélectionnez entre 1 et 25 offices.' }
+  if (input.recipients.some((item) => !item || typeof item.companyId !== 'string' || (item.contactId !== null && typeof item.contactId !== 'string'))) {
+    return { success: false, error: 'Sélection de destinataires invalide.' }
+  }
+  if (new Set(input.recipients.map((item) => item.companyId)).size !== input.recipients.length) {
+    return { success: false, error: 'Un seul destinataire par office est autorisé.' }
+  }
 
   let templateId: number
   try {
@@ -118,29 +126,34 @@ export async function createCampaignDraftAction(input: { name: string; subject: 
   const businessLine = await getBusinessLineByCode('KLS3_NOTAIRES')
   if (!businessLine) return { success: false, error: 'Business line KLS3_NOTAIRES introuvable.' }
 
-  const [companies, contacts, suppressions] = await Promise.all([getCompanies({ maxRecords: 2000 }), getContacts({ maxRecords: 5000 }), getEmailSuppressions()])
-  const selectedIds = new Set(input.companyIds)
+  const [companies, contacts, suppressions, targets, activities, recipients, campaigns] = await Promise.all([
+    getCompanies({ maxRecords: 2000 }), getContacts({ maxRecords: 5000 }), getEmailSuppressions(),
+    getColdCallTargets(), getActivities(), getEmailRecipients(), getEmailCampaigns(),
+  ])
+  const audience = buildCampaignAudience({ companies, contacts, suppressions, targets, activities, recipients, campaigns,
+    businessLineId: businessLine.id, testEmail: getBrevoTestRecipientEmail() })
+  const byCompany = new Map(audience.map((item) => [item.id, item]))
   const seenEmails = new Set<string>()
-  const eligible = companies.filter((company) => company.primaryBusinessLineId === businessLine.id && selectedIds.has(company.id)).map((company) => {
-    const direct = contacts.find((contact) => contact.companyId === company.id && contact.decisionMaker && !!contact.email)
-    const email = direct?.email ?? company.email
-    const normalizedEmail = email?.trim().toLowerCase() ?? ''
-    const suppressed = !!email && suppressions.some((item) => item.active && (
-      (item.scope === 'EMAIL' && item.email.toLowerCase() === normalizedEmail) ||
-      (item.scope === 'COMPANY' && item.companyId === company.id) ||
-      (item.scope === 'CONTACT' && item.contactId === direct?.id)
-    ))
-    const duplicate = !!normalizedEmail && seenEmails.has(normalizedEmail)
-    if (normalizedEmail && !duplicate) seenEmails.add(normalizedEmail)
-    return { company, direct, email, blocked: suppressed || duplicate, duplicate }
-  }).filter((item) => !!item.email).slice(0, 25)
-
-  if (!eligible.length) return { success: false, error: 'Aucun destinataire avec un email exploitable.' }
+  const eligible = [] as { company: (typeof audience)[number]; choice: (typeof audience)[number]['options'][number] }[]
+  for (const selected of input.recipients) {
+    const company = byCompany.get(selected.companyId)
+    const choice = company?.options.find((item) => item.contactId === selected.contactId)
+    if (!company || company.blockedReason || !choice || choice.blockedReason) {
+      return { success: false, error: 'Un destinataire est exclu ou a changé. Actualisez la liste.' }
+    }
+    if (company.previouslySent && !input.includePreviouslySent) {
+      return { success: false, error: 'Un office a déjà reçu une campagne. Activez explicitement son inclusion si nécessaire.' }
+    }
+    const email = choice.email.toLowerCase()
+    if (seenEmails.has(email)) return { success: false, error: `Adresse en doublon : ${email}. Choisissez un autre destinataire.` }
+    seenEmails.add(email)
+    eligible.push({ company, choice })
+  }
   const sendMode = getBrevoSendMode()
   if (sendMode === 'test') {
     const testEmail = getBrevoTestRecipientEmail()
     if (!testEmail) return { success: false, error: "BREVO_TEST_RECIPIENT_EMAIL n'est pas configuré." }
-    if (eligible.length !== 1 || eligible[0].email?.toLowerCase() !== testEmail) {
+    if (eligible.length !== 1 || eligible[0].choice.email.toLowerCase() !== testEmail) {
       return { success: false, error: `Mode test : le brouillon doit contenir uniquement ${testEmail}.` }
     }
   }
@@ -152,11 +165,10 @@ export async function createCampaignDraftAction(input: { name: string; subject: 
   const campaign = await createEmailCampaign({ name, subject, businessLineId: businessLine.id, senderName, senderEmail, replyTo, templateId: String(templateId), recipientCount: eligible.length, createdBy: owner })
   for (const item of eligible) {
     await createEmailRecipient({ name: `${campaign.name} — ${item.company.name}`, campaignId: campaign.id, companyId: item.company.id,
-      contactId: item.direct?.id, email: item.email!, recipientType: item.direct ? 'CONTACT' : 'COMPANY',
-      status: item.blocked ? 'EXCLUDED' : 'READY', exclusionReason: item.duplicate ? 'Email déjà présent dans cette campagne' : item.blocked ? 'Opposition ou désabonnement actif' : undefined })
+      contactId: item.choice.contactId ?? undefined, email: item.choice.email, recipientType: item.choice.contactId ? 'CONTACT' : 'COMPANY' })
   }
   revalidatePath('/email-campaigns')
-  return { success: true, campaignId: campaign.id, recipientCount: eligible.length, excluded: eligible.filter((item) => item.blocked).length }
+  return { success: true, campaignId: campaign.id, recipientCount: eligible.length }
 }
 
 
@@ -236,15 +248,31 @@ export async function sendCampaignAction(campaignId: string) {
   }
   const campaign = await getEmailCampaignById(campaignId)
   if (campaign.status !== 'DRAFT') return { success: false, error: "Cette campagne n'est plus en brouillon." }
-  const readyRecipients = (await getEmailRecipients({ campaignId })).filter((item) => item.status === 'READY')
-  const suppressions = await getEmailSuppressions()
-  const newlySuppressed = readyRecipients.filter((recipient) => isSuppressed(recipient, suppressions))
-  await inBatches(newlySuppressed, 10, (recipient) => updateEmailRecipient(recipient.id, {
-    status: 'EXCLUDED', exclusionReason: 'Opposition ou désabonnement actif avant envoi',
+  const allRecipients = await getEmailRecipients()
+  const readyRecipients = allRecipients.filter((item) => item.campaignId === campaignId && item.status === 'READY')
+  const [suppressions, companies, contacts, targets, activities, campaigns] = await Promise.all([
+    getEmailSuppressions(), getCompanies({ maxRecords: 2000 }), getContacts({ maxRecords: 5000 }),
+    getColdCallTargets(), getActivities(), getEmailCampaigns(),
+  ])
+  const audience = buildCampaignAudience({ companies, contacts, suppressions, targets, activities, recipients: allRecipients,
+    campaigns, businessLineId: campaign.businessLineId, testEmail: getBrevoTestRecipientEmail(), excludeCampaignId: campaignId })
+  const byCompany = new Map(audience.map((item) => [item.id, item]))
+  const excluded = readyRecipients.map((recipient) => {
+    const office = byCompany.get(recipient.companyId)
+    const option = office?.options.find((item) => item.email.toLowerCase() === recipient.email.trim().toLowerCase() &&
+      (item.contactId === recipient.contactId || (recipient.contactId === null &&
+        companies.some((company) => company.id === recipient.companyId && company.email?.trim().toLowerCase() === recipient.email.trim().toLowerCase()))))
+    return { recipient, reason: isSuppressed(recipient, suppressions) ? 'Opposition ou désabonnement actif avant envoi'
+      : !office || office.blockedReason || !option || option.blockedReason
+        ? option?.blockedReason ?? office?.blockedReason ?? 'Destinataire devenu inéligible avant envoi' : null }
+  }).filter((item) => !!item.reason)
+  await inBatches(excluded, 10, ({ recipient, reason }) => updateEmailRecipient(recipient.id, {
+    status: 'EXCLUDED', exclusionReason: reason ?? 'Destinataire exclu avant envoi',
   }))
+  const excludedIds = new Set(excluded.map((item) => item.recipient.id))
   const seenEmails = new Set<string>()
   const duplicateRecipients = readyRecipients.filter((recipient) => {
-    if (isSuppressed(recipient, suppressions)) return false
+    if (excludedIds.has(recipient.id)) return false
     const email = recipient.email.trim().toLowerCase()
     if (seenEmails.has(email)) return true
     seenEmails.add(email)
@@ -256,7 +284,7 @@ export async function sendCampaignAction(campaignId: string) {
 
   const allowedEmails = new Set<string>()
   const recipients = readyRecipients.filter((recipient) => {
-    if (isSuppressed(recipient, suppressions)) return false
+    if (excludedIds.has(recipient.id)) return false
     const email = recipient.email.trim().toLowerCase()
     if (allowedEmails.has(email)) return false
     allowedEmails.add(email)
@@ -281,8 +309,6 @@ export async function sendCampaignAction(campaignId: string) {
 
   let sendAttempted = false
   try {
-    const companies = await getCompanies({ maxRecords: 2000 })
-    const contacts = await getContacts({ maxRecords: 5000 })
     const listId = await createBrevoList(`${campaign.name} — ${new Date().toISOString().slice(0, 10)}`)
     await inBatches(recipients, 5, async (recipient) => {
       const company = companies.find((item) => item.id === recipient.companyId)
@@ -298,7 +324,9 @@ export async function sendCampaignAction(campaignId: string) {
     await updateEmailCampaign(campaign.id, { status: 'SENT', sentAt })
     await inBatches(recipients, 10, (recipient) => updateEmailRecipient(recipient.id, { status: 'SENT', lastEventAt: sentAt }))
     revalidatePath('/email-campaigns')
-    return { success: true }
+    return { success: true, warning: excluded.length || duplicateRecipients.length
+      ? `Campagne envoyée à ${recipients.length} destinataire(s). ${excluded.length + duplicateRecipients.length} exclu(s) après la création du brouillon.`
+      : `Campagne envoyée à ${recipients.length} destinataire(s).` }
   } catch (error) {
     console.error('Brevo send failed:', error)
     if (sendAttempted) {

@@ -1,17 +1,19 @@
-import { getBusinessLineByCode, getCompanies, getContacts, getEmailCampaigns, getEmailRecipients, getEmailSuppressions } from '@/lib/airtable'
+import { getActivities, getBusinessLineByCode, getColdCallTargets, getCompanies, getContacts, getEmailCampaigns, getEmailRecipients, getEmailSuppressions } from '@/lib/airtable'
 import { getBrevoTemplates } from '@/lib/brevo/client'
+import { buildCampaignAudience } from '@/lib/brevo/campaign-audience'
 import { CampaignsClient } from './campaigns-client'
 import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
 import Link from 'next/link'
 
 export default async function EmailCampaignsPage() {
-  const [campaigns, recipients, allCompanies, contacts, suppressions, businessLine] = await Promise.all([
-    getEmailCampaigns({ maxRecords: 50 }),
+  const [campaigns, recipients, allCompanies, contacts, suppressions, businessLine, targets, activities] = await Promise.all([
+    getEmailCampaigns(),
     getEmailRecipients(),
     getCompanies({ maxRecords: 2000 }),
     getContacts({ maxRecords: 5000 }),
     getEmailSuppressions(),
     getBusinessLineByCode('KLS3_NOTAIRES'),
+    getColdCallTargets(), getActivities(),
   ])
 
   let templates: Awaited<ReturnType<typeof getBrevoTemplates>> = []
@@ -22,23 +24,9 @@ export default async function EmailCampaignsPage() {
     templateLoadError = error instanceof Error ? error.message : 'Impossible de charger les modèles Brevo.'
   }
 
-  const companies = allCompanies.filter((company) => company.primaryBusinessLineId === businessLine?.id).map((company) => {
-    const direct = contacts.find((contact) => contact.companyId === company.id && contact.decisionMaker && !!contact.email)
-    const email = direct?.email ?? company.email ?? ''
-    const blocked = !email || suppressions.some((item) => item.active && (
-      (item.scope === 'EMAIL' && item.email.toLowerCase() === email.toLowerCase()) ||
-      (item.scope === 'COMPANY' && item.companyId === company.id) ||
-      (item.scope === 'CONTACT' && item.contactId === direct?.id)
-    ))
-    return {
-      id: company.id,
-      name: company.name,
-      city: company.city,
-      email,
-      recipientLabel: direct ? `${direct.firstName} ${direct.lastName} · ${email}` : email || 'Email manquant',
-      blocked,
-    }
-  })
+  const testRecipientEmail = getBrevoTestRecipientEmail()
+  const companies = businessLine ? buildCampaignAudience({ companies: allCompanies, contacts, suppressions, targets, activities,
+    recipients, campaigns, businessLineId: businessLine.id, testEmail: testRecipientEmail }) : []
 
   return <div className="space-y-8">
     <div>
@@ -47,13 +35,13 @@ export default async function EmailCampaignsPage() {
       <Link href="/email-campaigns/follow-up" className="mt-3 inline-block text-sm text-accent hover:underline">Voir le suivi des prospects et planifier les appels →</Link>
     </div>
     <CampaignsClient
-      campaigns={campaigns}
+      campaigns={campaigns.slice(0, 50)}
       recipients={recipients}
       companies={companies}
       templates={templates}
       templateLoadError={templateLoadError}
       sendMode={getBrevoSendMode()}
-      testRecipientEmail={getBrevoTestRecipientEmail()}
+      testRecipientEmail={testRecipientEmail}
     />
   </div>
 }

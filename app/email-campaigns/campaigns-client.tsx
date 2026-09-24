@@ -5,6 +5,7 @@ import { Eye, Loader2, MailCheck, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { EmailCampaign, EmailRecipient } from '@/types/domain'
+import type { AudienceOffice } from '@/lib/brevo/campaign-audience'
 import type { BrevoSendMode } from '@/lib/prospecting/safety'
 import {
   createCampaignDraftAction,
@@ -13,15 +14,6 @@ import {
   sendCampaignAction,
   sendCampaignTestAction,
 } from './actions'
-
-interface SelectableCompany {
-  id: string
-  name: string
-  city: string | null
-  email: string
-  recipientLabel: string
-  blocked: boolean
-}
 
 interface SelectableTemplate {
   id: number
@@ -53,7 +45,7 @@ export function CampaignsClient({
 }: {
   campaigns: EmailCampaign[]
   recipients: EmailRecipient[]
-  companies: SelectableCompany[]
+  companies: AudienceOffice[]
   templates: SelectableTemplate[]
   templateLoadError: string | null
   sendMode: BrevoSendMode
@@ -63,12 +55,16 @@ export function CampaignsClient({
   const [subject, setSubject] = useState('')
   const [templateId, setTemplateId] = useState('')
   const [query, setQuery] = useState('')
+  const [department, setDepartment] = useState('')
+  const [audienceFilter, setAudienceFilter] = useState<'ELIGIBLE' | 'SENT' | 'EXCLUDED' | 'ALL'>('ELIGIBLE')
+  const [includePreviouslySent, setIncludePreviouslySent] = useState(false)
+  const [chosen, setChosen] = useState<Record<string, string | null>>({})
   const [message, setMessage] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewData | null>(null)
   const [selected, setSelected] = useState<string[]>(() => {
     if (sendMode === 'test' && testRecipientEmail) {
       return companies
-        .filter((item) => !item.blocked && item.email.toLowerCase() === testRecipientEmail.toLowerCase())
+        .filter((item) => item.options.some((option) => !option.blockedReason && option.email.toLowerCase() === testRecipientEmail.toLowerCase()))
         .slice(0, 1)
         .map((item) => item.id)
     }
@@ -78,17 +74,34 @@ export function CampaignsClient({
 
   const selectedTemplate = templates.find((item) => String(item.id) === templateId) ?? null
   const selectedCompanies = companies.filter((item) => selected.includes(item.id))
-  const uniqueSelectedEmails = new Set(selectedCompanies.map((item) => item.email.trim().toLowerCase()).filter(Boolean))
-  const duplicateSelectedEmails = Math.max(0, selectedCompanies.length - uniqueSelectedEmails.size)
+  const optionsFor = (company: AudienceOffice) => company.options.filter((item) => !item.blockedReason &&
+    (sendMode !== 'test' || item.email.toLowerCase() === testRecipientEmail?.toLowerCase()))
+  const chosenOption = (company: AudienceOffice) => {
+    const options = optionsFor(company)
+    return company.id in chosen ? options.find((item) => item.contactId === chosen[company.id]) ?? null
+      : options.length === 1 ? options[0] : null
+  }
+  const resolved = selectedCompanies.map((company) => ({ company, option: chosenOption(company) }))
+  const unresolved = resolved.filter((item) => !item.option).length
+  const uniqueSelectedEmails = new Set(resolved.map((item) => item.option?.email.toLowerCase()).filter((email): email is string => !!email))
+  const duplicateSelectedEmails = Math.max(0, selected.length - unresolved - uniqueSelectedEmails.size)
+  const previouslySentCount = selectedCompanies.filter((item) => item.previouslySent).length
+  const departments = [...new Set(companies.map((item) => item.postalCode?.slice(0, 2)).filter((value): value is string => !!value))].sort()
 
   const filteredCompanies = useMemo(() => {
     const normalized = query.trim().toLowerCase()
-    if (!normalized) return companies
-    return companies.filter((company) =>
-      [company.name, company.city ?? '', company.email, company.recipientLabel]
-        .some((value) => value.toLowerCase().includes(normalized))
-    )
-  }, [companies, query])
+    return companies.filter((company) => {
+      if (department && !company.postalCode?.startsWith(department)) return false
+      if (sendMode === 'test' && !company.options.some((item) => item.email.toLowerCase() === testRecipientEmail?.toLowerCase())) return false
+      if (normalized && ![company.name, company.city ?? '', company.postalCode ?? '',
+        ...company.options.flatMap((item) => [item.email, item.label])].some((value) => value.toLowerCase().includes(normalized))) return false
+      if (sendMode === 'test') return true
+      if (audienceFilter === 'ELIGIBLE') return !company.blockedReason && company.options.some((item) => !item.blockedReason) && !company.previouslySent
+      if (audienceFilter === 'SENT') return company.previouslySent
+      if (audienceFilter === 'EXCLUDED') return !!company.blockedReason
+      return true
+    })
+  }, [companies, query, department, audienceFilter, sendMode, testRecipientEmail])
 
   const onTemplateChange = (value: string) => {
     setTemplateId(value)
@@ -98,16 +111,15 @@ export function CampaignsClient({
   }
 
   const selectVisible = () => {
-    if (sendMode === 'test' && testRecipientEmail) {
-      setSelected(
-        companies
-          .filter((item) => !item.blocked && item.email.toLowerCase() === testRecipientEmail.toLowerCase())
-          .slice(0, 1)
-          .map((item) => item.id)
-      )
-      return
-    }
-    setSelected(filteredCompanies.filter((item) => !item.blocked).slice(0, 25).map((item) => item.id))
+    const ids = filteredCompanies.filter((item) => !item.blockedReason && optionsFor(item).length > 0 &&
+      (!item.previouslySent || includePreviouslySent)).map((item) => item.id)
+    setSelected((current) => [...new Set([...current, ...ids])])
+  }
+
+  const selectPilot = () => {
+    const ids = filteredCompanies.filter((item) => !item.blockedReason && optionsFor(item).length > 0 &&
+      (!item.previouslySent || includePreviouslySent)).slice(0, 25).map((item) => item.id)
+    setSelected(ids)
   }
 
   const createDraft = () => startTransition(async () => {
@@ -115,10 +127,11 @@ export function CampaignsClient({
       setMessage('Choisissez un modèle Brevo.')
       return
     }
-    const result = await createCampaignDraftAction({ name, subject, companyIds: selected, templateId })
+    const result = await createCampaignDraftAction({ name, subject, recipients: resolved.map(({ company, option }) =>
+      ({ companyId: company.id, contactId: option!.contactId })), includePreviouslySent, templateId })
     setMessage(
       result.success
-        ? `Brouillon créé avec ${result.recipientCount} destinataire(s), dont ${result.excluded} exclu(s).`
+        ? `Brouillon créé avec ${result.recipientCount} destinataire(s) vérifié(s).`
         : result.error ?? 'Erreur'
     )
   })
@@ -128,7 +141,9 @@ export function CampaignsClient({
       setMessage('Choisissez un modèle et au moins un office.')
       return
     }
-    const result = await previewCampaignEmailAction({ templateId, companyId: selected[0] })
+    const first = resolved.find((item) => item.option)
+    if (!first?.option) { setMessage('Choisissez un destinataire pour l’aperçu.'); return }
+    const result = await previewCampaignEmailAction({ templateId, companyId: first.company.id, contactId: first.option.contactId })
     if (!result.success || !('preview' in result) || !result.preview) {
       setMessage('error' in result ? result.error ?? "Impossible de générer l'aperçu." : "Impossible de générer l'aperçu.")
       return
@@ -176,7 +191,7 @@ export function CampaignsClient({
     <div className="rounded-xl border border-border bg-card p-6">
       <h2 className="text-xl font-semibold">Préparer une campagne</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Sélectionnez les offices, choisissez le message Brevo, vérifiez le rendu puis créez le brouillon. Limite pilote : 25.
+        Filtrez les offices, vérifiez chaque destinataire, puis créez un brouillon. Limite du pilote : 25 adresses par campagne.
       </p>
 
       <p className={`mt-3 rounded-lg border p-3 text-sm ${sendMode === 'disabled' ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : 'border-border bg-muted'}`}>
@@ -187,30 +202,56 @@ export function CampaignsClient({
 
       <div className="mt-5">
         <p className="mb-2 text-sm font-medium">1. Destinataires</p>
-        <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher un office, une ville ou un email…" />
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Office, ville, email…" aria-label="Rechercher un destinataire" />
+          <select value={department} onChange={(event) => setDepartment(event.target.value)} aria-label="Département"
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">Tous les départements</option>
+            {departments.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+          <select value={audienceFilter} onChange={(event) => setAudienceFilter(event.target.value as typeof audienceFilter)} aria-label="État des destinataires"
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="ELIGIBLE">Jamais contactés par campagne</option>
+            <option value="SENT">Déjà contactés par campagne</option>
+            <option value="EXCLUDED">Exclus / sans email</option>
+            <option value="ALL">Tous les offices</option>
+          </select>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">{filteredCompanies.length} office(s) correspondant aux filtres · {companies.filter((item) => !!item.blockedReason).length} exclu(s) ou sans email dans la base.</p>
+        {audienceFilter === 'SENT' || audienceFilter === 'ALL' ? <label className="mt-2 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={includePreviouslySent} onChange={(event) => setIncludePreviouslySent(event.target.checked)} />
+          Inclure explicitement les offices déjà destinataires d’une campagne
+        </label> : null}
         <div className="mt-3 rounded-lg border border-border">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted px-3 py-2 text-sm">
             <span>{selected.length} office(s) sélectionné(s)</span>
-            <button className="text-accent" onClick={selectVisible}>
-              {sendMode === 'test' ? 'Sélectionner le destinataire test' : 'Sélectionner les résultats visibles'}
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button type="button" className="text-accent hover:underline" onClick={selectVisible}>Ajouter tous les résultats éligibles ({filteredCompanies.filter((item) => !item.blockedReason && optionsFor(item).length > 0 && (!item.previouslySent || includePreviouslySent)).length})</button>
+              {sendMode !== 'test' && <button type="button" className="text-accent hover:underline" onClick={selectPilot}>Choisir les 25 premiers pour le pilote</button>}
+              <button type="button" className="text-muted-foreground hover:underline" onClick={() => setSelected([])}>Vider la sélection</button>
+            </div>
           </div>
           <div className="max-h-64 overflow-auto">
-            {filteredCompanies.map((company) => <label key={company.id} className="flex items-center gap-3 border-b border-border px-3 py-2 text-sm last:border-0">
-              <input
-                type="checkbox"
-                checked={selected.includes(company.id)}
-                disabled={company.blocked || (!selected.includes(company.id) && selected.length >= 25)}
-                onChange={(event) => setSelected((current) =>
-                  event.target.checked ? [...current, company.id].slice(0, 25) : current.filter((id) => id !== company.id)
-                )}
-              />
-              <span className="flex-1">
-                <span className="font-medium">{company.name}</span>
-                <span className="text-muted-foreground"> · {company.city ?? 'Ville inconnue'} · {company.recipientLabel}</span>
+            {filteredCompanies.map((company) => <div key={company.id} className="flex flex-wrap items-center gap-3 border-b border-border px-3 py-2 text-sm last:border-0">
+              <input type="checkbox" aria-label={`Sélectionner ${company.name}`} checked={selected.includes(company.id)}
+                disabled={!!company.blockedReason || optionsFor(company).length === 0 || (company.previouslySent && !includePreviouslySent)}
+                onChange={(event) => setSelected((current) => event.target.checked
+                  ? [...current, company.id] : current.filter((id) => id !== company.id))} />
+              <span className="min-w-[180px] flex-1"><span className="font-medium">{company.name}</span>
+                <span className="text-muted-foreground"> · {company.postalCode ?? ''} {company.city ?? ''}</span>
+                {company.previouslySent && <span className="ml-2 text-amber-500">Déjà contacté</span>}
               </span>
-              {company.blocked && <span className="text-xs text-destructive">Exclu</span>}
-            </label>)}
+              {company.options.length > 1 ? <select aria-label={`Destinataire pour ${company.name}`}
+                value={chosenOption(company) ? chosenOption(company)?.contactId ?? 'office' : ''}
+                onChange={(event) => setChosen((current) => ({ ...current, [company.id]: event.target.value === 'office' ? null : event.target.value }))}
+                className="max-w-full rounded-md border border-input bg-background p-2 text-xs">
+                <option value="">Choisir un destinataire</option>
+                {company.options.map((option) => <option key={option.contactId ?? 'office'} value={option.contactId ?? 'office'} disabled={!!option.blockedReason || (sendMode === 'test' && option.email.toLowerCase() !== testRecipientEmail?.toLowerCase())}>
+                  {option.label} · {option.email}{option.blockedReason ? ` — ${option.blockedReason}` : ''}
+                </option>)}
+              </select> : <span className="text-xs text-muted-foreground">{company.options[0] ? `${company.options[0].label} · ${company.options[0].email}` : 'Aucune adresse'}</span>}
+              {company.blockedReason && <span className="text-xs text-destructive">{company.blockedReason}</span>}
+            </div>)}
             {filteredCompanies.length === 0 && <p className="p-4 text-sm text-muted-foreground">Aucun office trouvé.</p>}
           </div>
         </div>
@@ -269,9 +310,25 @@ export function CampaignsClient({
           <p>Offices sélectionnés : <span className="font-medium">{selected.length}</span></p>
           <p>Emails uniques : <span className="font-medium">{uniqueSelectedEmails.size}</span></p>
           <p>Doublons email : <span className="font-medium">{duplicateSelectedEmails}</span></p>
+          <p>Destinataires à choisir : <span className="font-medium">{unresolved}</span></p>
+          <p>Déjà contactés : <span className="font-medium">{previouslySentCount}</span></p>
         </div>
+        {selected.length > 25 && <p className="mt-3 text-sm text-amber-500">{selected.length} offices sélectionnés : le pilote accepte 25 adresses par brouillon. Réduisez la sélection ou utilisez « Choisir les 25 premiers ».</p>}
+        {unresolved > 0 && <p className="mt-2 text-sm text-amber-500">Choisissez un destinataire pour chaque office ayant plusieurs adresses.</p>}
+        {duplicateSelectedEmails > 0 && <p className="mt-2 text-sm text-destructive">Une même adresse est sélectionnée pour plusieurs offices. Retirez les doublons avant de créer le brouillon.</p>}
+        {previouslySentCount > 0 && !includePreviouslySent && <p className="mt-2 text-sm text-amber-500">Certains offices ont déjà reçu une campagne. Pour les inclure, cochez l’option dans la liste « Déjà contactés ».</p>}
+        {resolved.length > 0 && <details className="mt-3" open>
+          <summary className="cursor-pointer text-sm text-accent">Liste exacte des destinataires ({resolved.length})</summary>
+          <div className="mt-2 max-h-52 overflow-auto rounded border border-border text-xs">
+            {resolved.map(({ company, option }) => <div key={company.id} className="flex justify-between gap-3 border-b border-border px-3 py-2 last:border-0">
+              <span>{company.name} · {option ? `${option.label} · ${option.email}` : 'Destinataire à choisir'}
+                {company.previouslySent ? ' · Déjà contacté' : ''}</span>
+              <button type="button" className="shrink-0 text-accent hover:underline" onClick={() => setSelected((current) => current.filter((id) => id !== company.id))}>Retirer</button>
+            </div>)}
+          </div>
+        </details>}
         <div className="mt-4 flex items-center gap-3">
-          <Button onClick={createDraft} disabled={pending || selected.length === 0 || !templateId || !subject.trim()}>
+          <Button onClick={createDraft} disabled={pending || selected.length === 0 || selected.length > 25 || unresolved > 0 || duplicateSelectedEmails > 0 || (previouslySentCount > 0 && !includePreviouslySent) || !templateId || !subject.trim()}>
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Créer le brouillon
           </Button>
