@@ -8,7 +8,7 @@ export interface NotaryDirectoryCandidate {
   phone: string
   email: string
   website: string
-  notaries: Array<{ firstName: string; lastName: string }>
+  notaries: Array<{ firstName: string; lastName: string; sourceUrl: string; email: string }>
 }
 
 const DIRECTORY_ORIGINS = [
@@ -66,11 +66,13 @@ async function fetchCandidate(origin: string, path: string): Promise<NotaryDirec
   const phone = match(contactBlock, /href="tel:([^"]+)"/i)
   const website = match(contactBlock, /<a[^>]+href="(https?:\/\/[^" ]+)"[^>]*>\s*Site Web/i)
   const notaryBlock = html.match(/<ul class="notaires-color2-color">([\s\S]*?)<\/ul>/i)?.[1] ?? ''
-  const labels = Array.from(notaryBlock.matchAll(/<a[^>]+href="[^"]+\/IDN[^"/]+I"[^>]*>([\s\S]*?)<\/a>/gi))
-    .map((item) => decodeHtml(item[1]))
-    .filter(Boolean)
+  const notaries = Array.from(notaryBlock.matchAll(/<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi))
+    .map((item) => ({ url: new URL(item[1], origin), label: decodeHtml(item[2]) }))
+    .filter((item) => item.label && item.url.origin === origin &&
+      item.url.pathname.startsWith(`${path}/IDN`) && /\/IDN[^/]+I$/.test(item.url.pathname))
+    .map((item) => ({ ...splitPersonName(item.label), sourceUrl: item.url.href, email: '' }))
 
-  if (!name || !locationMatch || labels.length === 0) return null
+  if (!name || !locationMatch || notaries.length === 0) return null
   return {
     sourceId: `${new URL(origin).hostname}:${path.split('/').pop() ?? path}`,
     sourceUrl,
@@ -81,8 +83,31 @@ async function fetchCandidate(origin: string, path: string): Promise<NotaryDirec
     phone,
     email,
     website,
-    notaries: labels.map(splitPersonName),
+    notaries,
   }
+}
+
+async function enrichNotaryEmails(candidate: NotaryDirectoryCandidate): Promise<NotaryDirectoryCandidate> {
+  const notaries = await Promise.all(candidate.notaries.map(async (notary) => {
+    try {
+      const html = await fetchHtml(notary.sourceUrl)
+      const email = match(html, /href="mailto:([^"?]+)"/i).toLowerCase()
+      // Some individual pages repeat the office address; it is not a direct email.
+      return { ...notary, email: email && email !== candidate.email ? email : '' }
+    } catch {
+      return notary
+    }
+  }))
+  return { ...candidate, notaries }
+}
+
+export async function getNotaryCandidateBySourceUrl(sourceUrl: string): Promise<NotaryDirectoryCandidate | null> {
+  const url = new URL(sourceUrl)
+  if (!DIRECTORY_ORIGINS.includes(url.origin) || !/^\/annuaire-notaires\/IDN\d+_00$/.test(url.pathname)) {
+    return null
+  }
+  const candidate = await fetchCandidate(url.origin, url.pathname)
+  return candidate ? enrichNotaryEmails(candidate) : null
 }
 
 export async function getNotaryPilotCandidates(input?: {
@@ -116,5 +141,9 @@ export async function getNotaryPilotCandidates(input?: {
     }
   }
 
-  return candidates
+  const enriched: NotaryDirectoryCandidate[] = []
+  for (let index = 0; index < candidates.length; index += 5) {
+    enriched.push(...await Promise.all(candidates.slice(index, index + 5).map(enrichNotaryEmails)))
+  }
+  return enriched
 }

@@ -10,9 +10,11 @@ import {
   getCompanies,
   getContacts,
   getEmailSuppressions,
+  getImportBatches,
+  updateContact,
   updateCompany,
 } from '@/lib/airtable'
-import { getNotaryPilotCandidates, type NotaryDirectoryCandidate } from '@/lib/notaries/directory'
+import { getNotaryCandidateBySourceUrl, getNotaryPilotCandidates, type NotaryDirectoryCandidate } from '@/lib/notaries/directory'
 import { isNotaryImportEnabled } from '@/lib/prospecting/safety'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 
@@ -140,6 +142,16 @@ export async function importNotaryPilotAction(candidates: NotaryDirectoryCandida
             normalize(item.firstName) === normalize(notary.firstName) && normalize(item.lastName) === normalize(notary.lastName))
           if (duplicate) {
             stats.duplicatesSkipped += 1
+            if (notary.email && (!duplicate.email || duplicate.email.toLowerCase() === company.email?.toLowerCase())) {
+              const updated = await updateContact(duplicate.id, {
+                email: notary.email,
+                notes: duplicate.notes?.includes(notary.sourceUrl)
+                  ? duplicate.notes
+                  : `${duplicate.notes ? `${duplicate.notes}\n` : ''}Source email direct : ${notary.sourceUrl}`,
+              })
+              const index = contacts.findIndex((item) => item.id === duplicate.id)
+              contacts[index] = updated
+            }
             continue
           }
           const contact = await createContact({
@@ -148,8 +160,9 @@ export async function importNotaryPilotAction(candidates: NotaryDirectoryCandida
             companyId: company.id,
             businessLineIds: [businessLine.id],
             jobTitle: 'Notaire',
+            email: notary.email || undefined,
             decisionMaker: false,
-            notes: `Source : ${candidate.sourceUrl}`,
+            notes: `Source : ${candidate.sourceUrl}${notary.email ? `\nSource email direct : ${notary.sourceUrl}` : ''}`,
           })
           contacts.push(contact)
           stats.contactsCreated += 1
@@ -169,4 +182,53 @@ export async function importNotaryPilotAction(candidates: NotaryDirectoryCandida
   revalidatePath('/companies')
   revalidatePath('/contacts')
   return { success: stats.errors === 0, batchId: batch.id, stats, error: stats.errors ? `${stats.errors} office(s) n'ont pas pu être traités.` : undefined }
+}
+
+export async function enrichLastNotaryImportAction() {
+  await getCurrentOwner()
+  if (!isNotaryImportEnabled()) {
+    return { success: false, error: "Enrichissement désactivé : l’autorisation de réutilisation commerciale de la source doit être validée." }
+  }
+
+  const [lastImport] = await getImportBatches({ maxRecords: 1 })
+  if (!lastImport) return { success: false, error: 'Aucun lot à compléter.' }
+
+  const [companies, contacts] = await Promise.all([
+    getCompanies({ maxRecords: 2000 }),
+    getContacts({ maxRecords: 5000 }),
+  ])
+  const importedOffices = companies.filter((company) => company.importBatchId === lastImport.id)
+  let updated = 0
+  let unavailable = 0
+
+  for (let index = 0; index < importedOffices.length; index += 5) {
+    await Promise.all(importedOffices.slice(index, index + 5).map(async (company) => {
+      const sourceUrl = company.notes?.match(/Source : (https:\/\/chambre-[^\s]+)/)?.[1]
+      if (!sourceUrl) { unavailable += 1; return }
+      try {
+        const candidate = await getNotaryCandidateBySourceUrl(sourceUrl)
+        if (!candidate) { unavailable += 1; return }
+        for (const notary of candidate.notaries) {
+          if (!notary.email) continue
+          const contact = contacts.find((item) => item.companyId === company.id &&
+            normalize(item.firstName) === normalize(notary.firstName) && normalize(item.lastName) === normalize(notary.lastName))
+          if (!contact || (contact.email && contact.email.toLowerCase() !== company.email?.toLowerCase())) continue
+          await updateContact(contact.id, {
+            email: notary.email,
+            notes: contact.notes?.includes(notary.sourceUrl)
+              ? contact.notes
+              : `${contact.notes ? `${contact.notes}\n` : ''}Source email direct : ${notary.sourceUrl}`,
+          })
+          updated += 1
+        }
+      } catch (error) {
+        console.error(`Email enrichment failed for ${company.id}:`, error)
+        unavailable += 1
+      }
+    }))
+  }
+
+  revalidatePath('/contacts')
+  revalidatePath('/companies')
+  return { success: true, updated, unavailable, examined: importedOffices.length }
 }
