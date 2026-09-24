@@ -3,8 +3,9 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { FollowUpRow, SignalPriority } from '@/lib/brevo/follow-up-queue'
+import type { Owner } from '@/types/domain'
 import { Button } from '@/components/ui/button'
-import { planEmailFollowUpAction } from './actions'
+import { cancelTestFollowUpAction, createTestFollowUpAction, planEmailFollowUpAction } from './actions'
 
 type DisplayRow = FollowUpRow & { companyName: string; contactName: string | null }
 const priorityLabels: Record<SignalPriority, string> = {
@@ -15,7 +16,7 @@ const statusLabels: Record<FollowUpRow['state'], string> = {
   REPLIED: 'Réponse à traiter', EXCLUDED: 'Exclu', TEST: 'Test — aucun appel créé',
 }
 
-export function FollowUpClient({ rows }: { rows: DisplayRow[] }) {
+export function FollowUpClient({ rows, currentOwner }: { rows: DisplayRow[]; currentOwner: Owner }) {
   const [selected, setSelected] = useState<string[]>([])
   const [filter, setFilter] = useState(() => rows.some((row) => row.state === 'AVAILABLE' && row.priority !== 'NONE') ? 'AVAILABLE'
     : rows.some((row) => row.state === 'TEST') ? 'TEST' : 'AVAILABLE')
@@ -30,6 +31,21 @@ export function FollowUpClient({ rows }: { rows: DisplayRow[] }) {
       const result = await planEmailFollowUpAction(keys)
       setMessage(result.success ? `${result.created} tâche(s) créée(s), ${result.updated} priorité(s) mise(s) à jour.` : result.error ?? 'Erreur')
       if (result.success) { setSelected([]); router.refresh() }
+    })
+  }
+  const runTest = (row: DisplayRow) => {
+    const cancelling = !!row.testTaskId
+    if (!window.confirm(cancelling
+      ? 'Annuler la tâche de test ? Elle restera dans l’historique avec le statut Annulée.'
+      : 'Créer une vraie tâche marquée TEST dans Airtable ? Elle sera visible dans le suivi jusqu’à son annulation.')) return
+    startTransition(async () => {
+      const result = cancelling ? await cancelTestFollowUpAction(row.key) : await createTestFollowUpAction(row.key)
+      setMessage(result.success
+        ? cancelling ? 'Tâche de test annulée.' : 'alreadyExists' in result && result.alreadyExists
+          ? 'Une tâche de test est déjà ouverte pour ce destinataire.'
+          : 'Tâche de test créée. Vérifiez-la, puis annulez-la ici.'
+        : result.error ?? 'Erreur')
+      if (result.success) router.refresh()
     })
   }
 
@@ -52,7 +68,7 @@ export function FollowUpClient({ rows }: { rows: DisplayRow[] }) {
         <Button disabled={pending || selected.length === 0} onClick={() => plan(selected)}>Planifier {selected.length || ''} appel(s)</Button>
       </div>
     </div>
-    <p className="mt-3 text-xs text-muted-foreground">Sélectionnez jusqu’à 10 prospects par lot. Une tâche existante est réutilisée ; sa priorité monte si un signal plus fort arrive. Les tests sont visibles séparément, sans créer de tâche commerciale.</p>
+    <p className="mt-3 text-xs text-muted-foreground">Sélectionnez jusqu’à 10 prospects par lot. Une tâche existante est réutilisée. Dans « Tests », vous pouvez créer une tâche marquée TEST puis l’annuler, sans créer d’opportunité.</p>
     {message && <p role="status" className="mt-3 rounded-md bg-muted p-3 text-sm">{message}</p>}
     <div className="mt-4 overflow-x-auto">
       <table className="w-full min-w-[900px] text-left text-sm">
@@ -69,7 +85,12 @@ export function FollowUpClient({ rows }: { rows: DisplayRow[] }) {
           <td className="p-2 font-medium">{priorityLabels[row.priority]}</td>
           <td className="p-2">{row.reason}<div className="text-xs text-muted-foreground">{row.opens} ouverture(s) · {row.totalClicks} clic(s) total · {row.clicks} sur le CTA</div></td>
           <td className="p-2">{row.lastSignalAt ? new Date(row.lastSignalAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) : '—'}</td>
-          <td className="p-2">{statusLabels[row.state]}</td>
+          <td className="p-2">{row.state === 'TEST' ? <div className="space-y-1">
+            <div>{row.testTaskId ? `Tâche TEST ouverte par ${row.testTaskOwner}` : statusLabels.TEST}</div>
+            {!row.testTaskId || row.testTaskOwner === currentOwner ?
+              <button type="button" className="text-accent hover:underline disabled:opacity-50" disabled={pending || (!row.testTaskId && row.priority === 'NONE')}
+                onClick={() => runTest(row)}>{row.testTaskId ? 'Annuler la tâche TEST' : 'Créer une tâche TEST'}</button> : null}
+          </div> : statusLabels[row.state]}</td>
         </tr>)}</tbody>
       </table>
       {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">Aucun prospect dans cette vue.</p>}

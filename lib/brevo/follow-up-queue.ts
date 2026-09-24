@@ -18,6 +18,8 @@ export interface FollowUpRow {
   reason: string
   state: 'AVAILABLE' | 'TASK_OPEN' | 'CALLED' | 'REPLIED' | 'EXCLUDED' | 'TEST'
   taskId: string | null
+  testTaskId: string | null
+  testTaskOwner: string | null
 }
 
 const rank: Record<SignalPriority, number> = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3, URGENT: 4 }
@@ -70,14 +72,18 @@ export function buildFollowUpQueue(input: {
     if (clicks.length) { priority = 'HIGH'; reason = `${clicks.length} clic(s) sur le CTA` }
     if (clickDays.size > 1) { priority = 'URGENT'; reason = `Retour sur le CTA sur ${clickDays.size} jours distincts` }
     const businessLineId = campaignById.get(latest.campaignId)!.businessLineId
+    const keyMarker = `[BREVO_TEST_CALL:${key}]`
+    const testTask = tasks.find((task) => task.status === 'TODO' && task.notes?.includes(keyMarker))
     const relatedTargetIds = new Set(targets.filter((item) => !item.archived && item.businessLineId === businessLineId && group.some((r) => r.companyId === item.companyId && r.contactId === item.contactId)).map((item) => item.id))
     const inPipeline = targets.some((item) => relatedTargetIds.has(item.id) && !!item.opportunityId)
-    const activeTask = tasks.find((task) => task.status === 'TODO' && ['CALL', 'FOLLOW_UP'].includes(task.type) && ((!!task.coldCallTargetId && relatedTargetIds.has(task.coldCallTargetId)) || (!!latest.contactId && task.contactId === latest.contactId)))
+    const activeTask = tasks.find((task) => task.status === 'TODO' && !task.notes?.includes('[BREVO_TEST_CALL:') &&
+      ['CALL', 'FOLLOW_UP'].includes(task.type) && ((!!task.coldCallTargetId && relatedTargetIds.has(task.coldCallTargetId)) || (!!latest.contactId && task.contactId === latest.contactId)))
       ?? tasks.find((task) => task.status === 'TODO' && task.notes?.includes(`[EMAIL_QUEUE:${key}]`))
     const lastSignalAt = group.map((item) => item.lastEventAt).filter((value): value is string => !!value).sort().at(-1) ?? null
     const alreadyCalled = !!lastSignalAt && (activities.some((activity) => activity.type === 'CALL' && activity.date >= lastSignalAt && (
       (!!latest.contactId && activity.contactId === latest.contactId) || (!!activity.coldCallTargetId && relatedTargetIds.has(activity.coldCallTargetId))
-    )) || tasks.some((task) => task.status === 'DONE' && task.type === 'CALL' && !!task.completedAt && task.completedAt >= lastSignalAt && (
+    )) || tasks.some((task) => task.status === 'DONE' && task.type === 'CALL' && !task.notes?.includes('[BREVO_TEST_CALL:') &&
+      !!task.completedAt && task.completedAt >= lastSignalAt && (
       (!!latest.contactId && task.contactId === latest.contactId) || (!!task.coldCallTargetId && relatedTargetIds.has(task.coldCallTargetId))
     )))
     const suppressed = suppressions.some((item) => item.active && ((item.scope === 'EMAIL' && item.email.toLowerCase() === email) ||
@@ -89,7 +95,8 @@ export function buildFollowUpQueue(input: {
       : inPipeline || alreadyCalled ? 'CALLED' : activeTask ? 'TASK_OPEN' : 'AVAILABLE'
     rows.push({ key, email, companyId: latest.companyId, contactId: latest.contactId, recipientId: latest.id, businessLineId,
       campaignNames: [...new Set(group.map((item) => campaignById.get(item.campaignId)!.name))], opens, clicks: clicks.length, totalClicks,
-      lastSignalAt, priority, reason, state, taskId: activeTask?.id ?? null })
+      lastSignalAt, priority, reason, state, taskId: activeTask?.id ?? null,
+      testTaskId: testTask?.id ?? null, testTaskOwner: testTask?.owner ?? null })
   }
   return rows.sort((a, b) => {
     const availableA = a.state === 'AVAILABLE' ? 1 : 0

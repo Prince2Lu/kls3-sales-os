@@ -11,5 +11,5 @@ export async function loadEmailFollowUp() {
   ])
   const rows = buildFollowUpQueue({ campaigns, recipients, events, tasks, targets, activities, suppressions,
     interestUrlPattern: process.env.BREVO_INTEREST_URL_PATTERN ?? '/demo', testEmail: getBrevoTestRecipientEmail() })
-  return { rows, tasks, campaigns }
+  return { rows, tasks, campaigns, targets }
 }

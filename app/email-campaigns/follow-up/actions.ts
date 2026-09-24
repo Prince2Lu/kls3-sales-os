@@ -3,12 +3,58 @@
 import { revalidatePath } from 'next/cache'
 import { createTask, updateTask } from '@/lib/airtable'
 import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
+import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
 import { nextBusinessDayAtNineParis } from '@/lib/utils/business-day'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import type { Priority } from '@/types/domain'
 import { loadEmailFollowUp } from './data'
 
 const rank: Record<Priority, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, URGENT: 4 }
+
+function testMarker(key: string) {
+  return `[BREVO_TEST_CALL:${key}]`
+}
+
+export async function createTestFollowUpAction(key: string) {
+  const owner = await getCurrentOwner()
+  if (getBrevoSendMode() !== 'test') return { success: false, error: 'Le parcours de test exige BREVO_SEND_MODE=test.' }
+  const testEmail = getBrevoTestRecipientEmail()
+  const { rows, tasks, targets } = await loadEmailFollowUp()
+  const row = rows.find((item) => item.key === key)
+  if (!row || !testEmail || row.email !== testEmail || row.state !== 'TEST' || row.priority === 'NONE') {
+    return { success: false, error: 'Aucun signal de test éligible. Actualisez la liste.' }
+  }
+  if (tasks.some((task) => task.status === 'TODO' && task.notes?.includes(testMarker(key)))) {
+    return { success: true, alreadyExists: true }
+  }
+  // Reuse an existing prospecting target if present; never create one for a test mailbox.
+  const target = targets.find((item) => !item.archived && item.companyId === row.companyId &&
+    item.contactId === row.contactId && item.businessLineId === row.businessLineId)
+  if (!row.contactId && !target) return { success: false, error: 'Le test exige un contact ou une cible de prospection liée.' }
+  await createTask({ coldCallTargetId: target?.id, contactId: row.contactId ?? undefined,
+    type: 'CALL', dueAt: new Date(Date.now() + 30 * 60_000).toISOString(), priority: row.priority,
+    status: 'TODO', owner,
+    notes: `${testMarker(key)} TEST UNIQUEMENT — appel après campagne. ${row.reason}. Annuler depuis « Tests » après vérification.` })
+  revalidatePath('/email-campaigns/follow-up')
+  revalidatePath('/today')
+  return { success: true, created: true }
+}
+
+export async function cancelTestFollowUpAction(key: string) {
+  const owner = await getCurrentOwner()
+  const testEmail = getBrevoTestRecipientEmail()
+  const { rows, tasks } = await loadEmailFollowUp()
+  const row = rows.find((item) => item.key === key)
+  if (!row || !testEmail || row.email !== testEmail || row.state !== 'TEST') {
+    return { success: false, error: 'Destinataire de test introuvable.' }
+  }
+  const task = tasks.find((item) => item.status === 'TODO' && item.owner === owner && item.notes?.includes(testMarker(key)))
+  if (!task) return { success: false, error: 'Aucune tâche de test ouverte pour votre compte.' }
+  await updateTask(task.id, { status: 'CANCELLED' })
+  revalidatePath('/email-campaigns/follow-up')
+  revalidatePath('/today')
+  return { success: true }
+}
 
 export async function planEmailFollowUpAction(keys: string[]) {
   const owner = await getCurrentOwner()

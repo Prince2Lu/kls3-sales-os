@@ -5,7 +5,7 @@ import { loadEmailFollowUp } from './data'
 import { FollowUpClient } from './follow-up-client'
 
 export default async function EmailFollowUpPage() {
-  await getCurrentOwner()
+  const currentOwner = await getCurrentOwner()
   const [{ rows }, companies, contacts] = await Promise.all([
     loadEmailFollowUp(), getCompanies({ maxRecords: 2000 }), getContacts({ maxRecords: 5000 }),
   ])
@@ -18,7 +18,7 @@ export default async function EmailFollowUpPage() {
       <h1 className="mt-2 text-4xl font-bold font-syne">Suivi des prospects</h1>
       <p className="mt-2 text-muted-foreground">Une ligne par adresse et activité commerciale. Sélectionnez les appels à planifier ; les signaux seuls ne créent aucune tâche.</p>
     </div>
-    <FollowUpClient rows={rows.map((row) => ({ ...row, companyName: companyNames.get(row.companyId) ?? row.email,
+    <FollowUpClient currentOwner={currentOwner} rows={rows.map((row) => ({ ...row, companyName: companyNames.get(row.companyId) ?? row.email,
       contactName: row.contactId ? contactNames.get(row.contactId) ?? null : null }))} />
   </div>
 }
