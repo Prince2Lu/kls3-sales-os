@@ -27,6 +27,9 @@ export async function createTestFollowUpAction(key: string) {
   if (tasks.some((task) => task.status === 'TODO' && task.notes?.includes(testMarker(key)))) {
     return { success: true, alreadyExists: true }
   }
+  if (row.testTaskCompletedAt) {
+    return { success: false, error: 'La tâche TEST a déjà été effectuée pour ce signal.' }
+  }
   // Reuse an existing prospecting target if present; never create one for a test mailbox.
   const target = targets.find((item) => !item.archived && item.companyId === row.companyId &&
     item.contactId === row.contactId && item.businessLineId === row.businessLineId)

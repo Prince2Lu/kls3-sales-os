@@ -20,6 +20,7 @@ export interface FollowUpRow {
   taskId: string | null
   testTaskId: string | null
   testTaskOwner: string | null
+  testTaskCompletedAt: string | null
 }
 
 const rank: Record<SignalPriority, number> = { NONE: 0, LOW: 1, MEDIUM: 2, HIGH: 3, URGENT: 4 }
@@ -80,6 +81,9 @@ export function buildFollowUpQueue(input: {
       ['CALL', 'FOLLOW_UP'].includes(task.type) && ((!!task.coldCallTargetId && relatedTargetIds.has(task.coldCallTargetId)) || (!!latest.contactId && task.contactId === latest.contactId)))
       ?? tasks.find((task) => task.status === 'TODO' && task.notes?.includes(`[EMAIL_QUEUE:${key}]`))
     const lastSignalAt = group.map((item) => item.lastEventAt).filter((value): value is string => !!value).sort().at(-1) ?? null
+    const completedTestTask = tasks.filter((task) => task.status === 'DONE' && task.notes?.includes(keyMarker) &&
+      !!task.completedAt && !!lastSignalAt && task.completedAt >= lastSignalAt)
+      .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))[0]
     const alreadyCalled = !!lastSignalAt && (activities.some((activity) => activity.type === 'CALL' && activity.date >= lastSignalAt && (
       (!!latest.contactId && activity.contactId === latest.contactId) || (!!activity.coldCallTargetId && relatedTargetIds.has(activity.coldCallTargetId))
     )) || tasks.some((task) => task.status === 'DONE' && task.type === 'CALL' && !task.notes?.includes('[BREVO_TEST_CALL:') &&
@@ -96,7 +100,8 @@ export function buildFollowUpQueue(input: {
     rows.push({ key, email, companyId: latest.companyId, contactId: latest.contactId, recipientId: latest.id, businessLineId,
       campaignNames: [...new Set(group.map((item) => campaignById.get(item.campaignId)!.name))], opens, clicks: clicks.length, totalClicks,
       lastSignalAt, priority, reason, state, taskId: activeTask?.id ?? null,
-      testTaskId: testTask?.id ?? null, testTaskOwner: testTask?.owner ?? null })
+      testTaskId: testTask?.id ?? null, testTaskOwner: testTask?.owner ?? null,
+      testTaskCompletedAt: completedTestTask?.completedAt ?? null })
   }
   return rows.sort((a, b) => {
     const availableA = a.state === 'AVAILABLE' ? 1 : 0
