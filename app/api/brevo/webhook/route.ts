@@ -53,7 +53,9 @@ function resolveRecipientStatus(current: EmailRecipientStatus, incoming: EmailRe
 
 export async function POST(request: NextRequest) {
   if (!authorized(request)) {
-    logger.warn('brevo.webhook.unauthorized')
+    const reason = !process.env.BREVO_WEBHOOK_SECRET ? 'server_secret_missing' :
+      !request.headers.has('x-kls3-webhook-secret') ? 'header_missing' : 'secret_mismatch'
+    logger.warn('brevo.webhook.unauthorized', { reason })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   let payload: Record<string, unknown>
