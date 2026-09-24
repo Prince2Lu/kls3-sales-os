@@ -1,5 +1,5 @@
 // Proxy for route protection (Next.js 16+ convention)
-// Phase 8: Protect all Sales OS routes, allow only /login public
+// Phase 8: Protect Sales OS routes; the Brevo webhook authenticates with its own secret header.
 
 import { auth } from '@/auth'
 import { NextResponse } from 'next/server'
@@ -8,8 +8,8 @@ export default auth((req) => {
   const { pathname } = req.nextUrl
   const isLoggedIn = !!req.auth
 
-  // Public routes (login + auth endpoints)
-  const isPublicRoute = pathname === '/login' || pathname.startsWith('/api/auth')
+  // The webhook must be reachable without a CRM session; its handler checks the shared secret.
+  const isPublicRoute = pathname === '/login' || pathname.startsWith('/api/auth') || pathname === '/api/brevo/webhook'
 
   // If not logged in and trying to access protected route
   if (!isLoggedIn && !isPublicRoute) {
