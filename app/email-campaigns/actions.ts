@@ -3,12 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import {
   createActivity, createEmailCampaign, createEmailRecipient, createTask, getActivities, getBusinessLineByCode, getCompanies, getContacts,
-  getEmailCampaignById, getEmailRecipients, getEmailSuppressions, getTasks, updateEmailCampaign, updateEmailRecipient,
+  getEmailCampaignById, getEmailRecipients, getEmailSuppressions, getTasks, updateEmailCampaign, updateEmailRecipient, updateTask,
 } from '@/lib/airtable'
 import { createBrevoCampaign, createBrevoList, getBrevoTemplate, previewBrevoTemplate, sendBrevoCampaignNow, sendBrevoTemplateTest, upsertBrevoContact } from '@/lib/brevo/client'
 import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
 import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
-import { convertProspectingTargetToOpportunity } from '@/lib/prospecting/opportunity-converter'
 import { emailReplyFollowUpDueParis } from '@/lib/utils/business-day'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 
@@ -195,28 +194,22 @@ export async function markCampaignReplyAction(recipientId: string) {
     })
   }
 
-  const conversion = await convertProspectingTargetToOpportunity({
-    targetId: target.id,
-    initialStage: 'Échange',
-    source: 'Cold Email',
-    owner,
-    activityResult: 'EMAIL_REPLY',
-  })
-  if (!conversion.success) {
-    return { success: false, error: conversion.error ?? "Échec de la conversion en opportunité." }
-  }
-
-  const openTasks = await getTasks({ coldCallTargetId: target.id, status: 'TODO', maxRecords: 1000 })
-  if (!openTasks.some((task) => task.notes?.includes(marker))) {
+  const openTasks = await getTasks({ status: 'TODO' })
+  const existingTask = openTasks.find((task) => ['CALL', 'FOLLOW_UP'].includes(task.type) &&
+    (task.coldCallTargetId === target.id || (!!recipient.contactId && task.contactId === recipient.contactId)))
+  if (existingTask) {
+    await updateTask(existingTask.id, { priority: 'URGENT', dueAt: emailReplyFollowUpDueParis().toISOString(),
+      notes: `${existingTask.notes ?? ''}\n${marker} Réponse reçue à qualifier — campagne ${campaign.name}.`.trim() })
+  } else {
     await createTask({
-      opportunityId: conversion.opportunityId,
+      opportunityId: target.opportunityId ?? undefined,
       contactId: recipient.contactId ?? undefined,
       coldCallTargetId: target.id,
       type: 'FOLLOW_UP',
       dueAt: emailReplyFollowUpDueParis().toISOString(),
-      priority: 'HIGH',
+      priority: 'URGENT',
       status: 'TODO',
-      notes: `${marker} Réponse email reçue — campagne ${campaign.name}. À traiter.`,
+      notes: `${marker} Réponse email reçue — campagne ${campaign.name}. Lire et qualifier avant de créer une opportunité.`,
       owner: campaign.createdBy,
     })
   }
@@ -228,9 +221,9 @@ export async function markCampaignReplyAction(recipientId: string) {
   })
 
   revalidatePath('/email-campaigns')
+  revalidatePath('/email-campaigns/follow-up')
   revalidatePath('/today')
   revalidatePath('/cold-call')
-  if (conversion.opportunityId) revalidatePath(`/prospects/${conversion.opportunityId}`)
 
   return { success: true }
 }

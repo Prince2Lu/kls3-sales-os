@@ -26,6 +26,7 @@ const opportunitiesItems = [
 const toolsItems = [
   { href: '/imports', label: 'Ajouter des prospects' },
   { href: '/email-campaigns', label: 'Campagnes email' },
+  { href: '/email-campaigns/follow-up', label: 'Appels après campagne' },
   { href: '/email-suppressions', label: 'Exclusions email' },
   { href: '/privacy-requests', label: 'Demandes RGPD' },
 ]

@@ -1,12 +1,11 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
+import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  createEmailEvent, createEmailSuppression, createTask, getEmailCampaigns, getEmailEventByKey, getEmailRecipients, getTasks,
+  createEmailEvent, createEmailSuppression, getEmailCampaigns, getEmailEventByKey, getEmailRecipients,
   updateEmailRecipient,
 } from '@/lib/airtable'
-import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
 import { logger } from '@/lib/observability/logger'
-import { nextBusinessDayAtNineParis } from '@/lib/utils/business-day'
 import type { EmailEvent, EmailRecipientStatus } from '@/types/domain'
 
 export const runtime = 'nodejs'
@@ -107,19 +106,9 @@ export async function POST(request: NextRequest) {
       scope: 'EMAIL', reason: invalidEmail ? 'INVALID_EMAIL' : nextStatus === 'UNSUBSCRIBED' ? 'UNSUBSCRIBED' : nextStatus === 'SPAM' ? 'SPAM_COMPLAINT' : 'HARD_BOUNCE', source: 'BREVO', details: `Webhook ${rawEvent}` })
   }
 
-  const interestPattern = process.env.BREVO_INTEREST_URL_PATTERN ?? '/demo'
-  if (incomingStatus === 'CLICKED' && nextStatus === 'CLICKED' && url?.includes(interestPattern)) {
-    const { target } = await findOrCreateProspectingTarget({ companyId: recipient.companyId, contactId: recipient.contactId, businessLineId: campaign.businessLineId,
-      owner: campaign.createdBy, status: 'Email Flow' })
-    await updateEmailRecipient(recipient.id, { prospectingTargetId: target.id })
-    const openTasks = await getTasks({ coldCallTargetId: target.id, status: 'TODO', maxRecords: 1000 })
-    const taskMarker = `[BREVO_INTEREST:${recipient.id}]`
-    if (!openTasks.some((task) => task.notes?.includes(taskMarker))) {
-      const due = nextBusinessDayAtNineParis()
-      await createTask({ coldCallTargetId: target.id, contactId: recipient.contactId ?? undefined, type: 'FOLLOW_UP', dueAt: due.toISOString(), priority: 'HIGH', status: 'TODO',
-        notes: `${taskMarker} Signal d’intérêt : clic sur ${url}. Relancer cet office.`, owner: campaign.createdBy })
-    }
-  }
+  // Signals are queued for human review; a click alone never schedules an unbounded number of tasks.
+  revalidatePath('/email-campaigns')
+  revalidatePath('/email-campaigns/follow-up')
   logger.info('brevo.webhook.processed', { campaignId: campaign.id, recipientId: recipient.id, eventType: status })
   return NextResponse.json({ received: true })
 }

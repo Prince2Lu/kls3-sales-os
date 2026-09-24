@@ -2,6 +2,7 @@ import { getBusinessLineByCode, getCompanies, getContacts, getEmailCampaigns, ge
 import { getBrevoTemplates } from '@/lib/brevo/client'
 import { CampaignsClient } from './campaigns-client'
 import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
+import Link from 'next/link'
 
 export default async function EmailCampaignsPage() {
   const [campaigns, recipients, allCompanies, contacts, suppressions, businessLine] = await Promise.all([
@@ -43,6 +44,7 @@ export default async function EmailCampaignsPage() {
     <div>
       <h1 className="text-4xl font-bold font-syne">Campagnes email</h1>
       <p className="mt-2 text-muted-foreground">Sélection, aperçu, envoi Brevo et suivi des signaux.</p>
+      <Link href="/email-campaigns/follow-up" className="mt-3 inline-block text-sm text-accent hover:underline">Voir le suivi des prospects et planifier les appels →</Link>
     </div>
     <CampaignsClient
       campaigns={campaigns}

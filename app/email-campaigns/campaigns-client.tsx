@@ -151,14 +151,14 @@ export function CampaignsClient({
   })
 
   const markReply = (recipientId: string) => {
-    if (!window.confirm('Confirmer qu’une réponse email réelle a été reçue ? Le CRM va créer le suivi commercial correspondant.')) return
+    if (!window.confirm('Confirmer une réponse réelle (hors message automatique) ? Le CRM créera une tâche de qualification, sans créer d’opportunité.')) return
     startTransition(async () => {
       const result = await markCampaignReplyAction(recipientId)
       setMessage(
         result.success
           ? ('alreadyProcessed' in result && result.alreadyProcessed
               ? 'Cette réponse était déjà enregistrée.'
-              : 'Réponse enregistrée : activité, opportunité et tâche de suivi mises à jour.')
+              : 'Réponse enregistrée : activité et tâche de qualification mises à jour.')
           : ('error' in result ? result.error ?? 'Erreur' : 'Erreur')
       )
     })
