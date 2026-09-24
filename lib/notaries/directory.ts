@@ -92,22 +92,18 @@ async function enrichNotaryEmails(candidate: NotaryDirectoryCandidate): Promise<
     try {
       const html = await fetchHtml(notary.sourceUrl)
       const email = match(html, /href="mailto:([^"?]+)"/i).toLowerCase()
-      // Some individual pages repeat the office address; it is not a direct email.
-      return { ...notary, email: email && email !== candidate.email ? email : '' }
+      const localPart = email.split('@')[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const lastName = notary.lastName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const firstName = notary.firstName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      // A named office address can also be the notary's direct address.
+      const namedAddress = lastName.length >= 4 && !!firstName && localPart.includes(lastName) &&
+        (localPart.includes(firstName) || localPart.startsWith(firstName[0] + lastName) || localPart.startsWith(lastName + firstName[0]))
+      return { ...notary, email: email && (email !== candidate.email || namedAddress) ? email : '' }
     } catch {
       return notary
     }
   }))
   return { ...candidate, notaries }
-}
-
-export async function getNotaryCandidateBySourceUrl(sourceUrl: string): Promise<NotaryDirectoryCandidate | null> {
-  const url = new URL(sourceUrl)
-  if (!DIRECTORY_ORIGINS.includes(url.origin) || !/^\/annuaire-notaires\/IDN\d+_00$/.test(url.pathname)) {
-    return null
-  }
-  const candidate = await fetchCandidate(url.origin, url.pathname)
-  return candidate ? enrichNotaryEmails(candidate) : null
 }
 
 export async function getNotaryPilotCandidates(input?: {

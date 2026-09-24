@@ -5,7 +5,7 @@ import { CheckCircle2, Database, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ImportBatch } from '@/types/domain'
 import type { NotaryDirectoryCandidate } from '@/lib/notaries/directory'
-import { enrichLastNotaryImportAction, importNotaryPilotAction, previewNotaryImportAction } from './actions'
+import { importNotaryPilotAction, previewNotaryImportAction } from './actions'
 
 export function ImportClient({ lastImport, importEnabled }: { lastImport: ImportBatch | null; importEnabled: boolean }) {
   const [candidates, setCandidates] = useState<NotaryDirectoryCandidate[]>([])
@@ -25,13 +25,6 @@ export function ImportClient({ lastImport, importEnabled }: { lastImport: Import
     if (!result.success) return setMessage(result.error ?? "L'import a échoué")
     setMessage(`Import terminé : ${result.stats?.companiesCreated ?? 0} entreprise(s), ${result.stats?.contactsCreated ?? 0} contact(s).`)
     setCandidates([])
-  })
-
-  const enrichLastImport = () => startTransition(async () => {
-    setMessage(null)
-    const result = await enrichLastNotaryImportAction()
-    if (!result.success) return setMessage(result.error ?? 'Enrichissement impossible')
-    setMessage(`${result.updated ?? 0} email(s) nominatif(s) ajouté(s) sur ${result.examined ?? 0} offices examinés.${result.unavailable ? ` ${result.unavailable} source(s) indisponible(s).` : ''}`)
   })
 
   return (
@@ -109,11 +102,6 @@ export function ImportClient({ lastImport, importEnabled }: { lastImport: Import
             <div><span className="text-muted-foreground">Contacts</span><p className="font-medium">{lastImport.contactsCreated}</p></div>
             <div><span className="text-muted-foreground">Doublons</span><p className="font-medium">{lastImport.duplicatesSkipped}</p></div>
           </div>
-        )}
-        {lastImport && importEnabled && (
-          <Button className="mt-4" variant="ghost" onClick={enrichLastImport} disabled={isPending}>
-            Compléter les emails nominatifs du dernier lot
-          </Button>
         )}
       </div>
     </div>
