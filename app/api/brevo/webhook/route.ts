@@ -29,7 +29,7 @@ function authorized(request: NextRequest): boolean {
 
 type TrackedEvent = EmailEvent['eventType']
 const eventMap: Record<string, TrackedEvent> = {
-  request: 'SENT', sent: 'SENT', delivered: 'DELIVERED', opened: 'OPENED', unique_opened: 'OPENED',
+  request: 'SENT', sent: 'SENT', delivered: 'DELIVERED', opened: 'OPENED', unique_opened: 'OPENED', proxy_open: 'OPENED',
   click: 'CLICKED', clicks: 'CLICKED', soft_bounce: 'SOFT_BOUNCE', softbounce: 'SOFT_BOUNCE',
   hard_bounce: 'HARD_BOUNCE', hardbounce: 'HARD_BOUNCE',
   unsubscribe: 'UNSUBSCRIBED', unsubscribed: 'UNSUBSCRIBED',
