@@ -12,10 +12,11 @@ export interface FollowUpRow {
   campaignNames: string[]
   opens: number
   clicks: number
+  totalClicks: number
   lastSignalAt: string | null
   priority: SignalPriority
   reason: string
-  state: 'AVAILABLE' | 'TASK_OPEN' | 'CALLED' | 'REPLIED' | 'EXCLUDED'
+  state: 'AVAILABLE' | 'TASK_OPEN' | 'CALLED' | 'REPLIED' | 'EXCLUDED' | 'TEST'
   taskId: string | null
 }
 
@@ -48,8 +49,6 @@ export function buildFollowUpQueue(input: {
   const groups = new Map<string, EmailRecipient[]>()
   for (const recipient of recipients) {
     if (!campaignById.has(recipient.campaignId)) continue
-    // The test mailbox is never actionable in the commercial queue.
-    if (recipient.email.toLowerCase() === testEmail?.toLowerCase()) continue
     const campaign = campaignById.get(recipient.campaignId)!
     const key = `${campaign.businessLineId}:${recipient.email.trim().toLowerCase()}`
     groups.set(key, [...(groups.get(key) ?? []), recipient])
@@ -62,6 +61,7 @@ export function buildFollowUpQueue(input: {
     const groupEvents = group.flatMap((item) => eventsByRecipient.get(item.id) ?? [])
     const clicks = groupEvents.filter((event) => event.eventType === 'CLICKED' && !!event.url && event.url.includes(interestUrlPattern))
     const opens = group.reduce((total, item) => total + item.openCount, 0)
+    const totalClicks = group.reduce((total, item) => total + item.clickCount, 0)
     const lastClick = clicks.map((event) => Date.parse(event.occurredAt)).filter(Number.isFinite).sort((a, b) => b - a)[0]
     const clickDays = new Set(clicks.filter((event) => lastClick - Date.parse(event.occurredAt) <= 14 * 86_400_000).map((event) => parisDay(event.occurredAt)))
     let priority: SignalPriority = 'NONE'
@@ -83,11 +83,12 @@ export function buildFollowUpQueue(input: {
     const suppressed = suppressions.some((item) => item.active && ((item.scope === 'EMAIL' && item.email.toLowerCase() === email) ||
       (item.scope === 'COMPANY' && group.some((recipient) => recipient.companyId === item.companyId)) ||
       (item.scope === 'CONTACT' && group.some((recipient) => recipient.contactId && recipient.contactId === item.contactId))))
-    const state: FollowUpRow['state'] = suppressed || group.some((item) => terminalStatuses.has(item.status)) || ['SOFT_BOUNCE', 'FAILED', 'EXCLUDED'].includes(latest.status) ? 'EXCLUDED'
+    const state: FollowUpRow['state'] = email === testEmail?.toLowerCase() ? 'TEST'
+      : suppressed || group.some((item) => terminalStatuses.has(item.status)) || ['SOFT_BOUNCE', 'FAILED', 'EXCLUDED'].includes(latest.status) ? 'EXCLUDED'
       : group.some((item) => item.status === 'REPLIED') ? 'REPLIED'
       : inPipeline || alreadyCalled ? 'CALLED' : activeTask ? 'TASK_OPEN' : 'AVAILABLE'
     rows.push({ key, email, companyId: latest.companyId, contactId: latest.contactId, recipientId: latest.id, businessLineId,
-      campaignNames: [...new Set(group.map((item) => campaignById.get(item.campaignId)!.name))], opens, clicks: clicks.length,
+      campaignNames: [...new Set(group.map((item) => campaignById.get(item.campaignId)!.name))], opens, clicks: clicks.length, totalClicks,
       lastSignalAt, priority, reason, state, taskId: activeTask?.id ?? null })
   }
   return rows.sort((a, b) => {

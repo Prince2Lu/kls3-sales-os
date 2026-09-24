@@ -12,12 +12,13 @@ const priorityLabels: Record<SignalPriority, string> = {
 }
 const statusLabels: Record<FollowUpRow['state'], string> = {
   AVAILABLE: 'À examiner', TASK_OPEN: 'Tâche ouverte', CALLED: 'Déjà appelé ou suivi dans le pipeline',
-  REPLIED: 'Réponse à traiter', EXCLUDED: 'Exclu',
+  REPLIED: 'Réponse à traiter', EXCLUDED: 'Exclu', TEST: 'Test — aucun appel créé',
 }
 
 export function FollowUpClient({ rows }: { rows: DisplayRow[] }) {
   const [selected, setSelected] = useState<string[]>([])
-  const [filter, setFilter] = useState('AVAILABLE')
+  const [filter, setFilter] = useState(() => rows.some((row) => row.state === 'AVAILABLE' && row.priority !== 'NONE') ? 'AVAILABLE'
+    : rows.some((row) => row.state === 'TEST') ? 'TEST' : 'AVAILABLE')
   const [message, setMessage] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const router = useRouter()
@@ -45,12 +46,13 @@ export function FollowUpClient({ rows }: { rows: DisplayRow[] }) {
           <option value="CALLED">Déjà appelés</option>
           <option value="REPLIED">Réponses</option>
           <option value="EXCLUDED">Exclus</option>
+          <option value="TEST">Tests ({rows.filter((row) => row.state === 'TEST').length})</option>
           <option value="ALL">Tous</option>
         </select>
         <Button disabled={pending || selected.length === 0} onClick={() => plan(selected)}>Planifier {selected.length || ''} appel(s)</Button>
       </div>
     </div>
-    <p className="mt-3 text-xs text-muted-foreground">Sélectionnez jusqu’à 10 prospects par lot. Une tâche existante est réutilisée ; sa priorité monte si un signal plus fort arrive. Les adresses de test sont masquées.</p>
+    <p className="mt-3 text-xs text-muted-foreground">Sélectionnez jusqu’à 10 prospects par lot. Une tâche existante est réutilisée ; sa priorité monte si un signal plus fort arrive. Les tests sont visibles séparément, sans créer de tâche commerciale.</p>
     {message && <p role="status" className="mt-3 rounded-md bg-muted p-3 text-sm">{message}</p>}
     <div className="mt-4 overflow-x-auto">
       <table className="w-full min-w-[900px] text-left text-sm">
@@ -65,7 +67,7 @@ export function FollowUpClient({ rows }: { rows: DisplayRow[] }) {
           <td className="p-2"><span className="font-medium">{row.companyName}</span><br />{row.contactName && <>{row.contactName} · </>}{row.email}
             <div className="text-xs text-muted-foreground">{row.campaignNames.join(' · ')}</div></td>
           <td className="p-2 font-medium">{priorityLabels[row.priority]}</td>
-          <td className="p-2">{row.reason}<div className="text-xs text-muted-foreground">{row.opens} ouverture(s) · {row.clicks} clic(s) sur le CTA</div></td>
+          <td className="p-2">{row.reason}<div className="text-xs text-muted-foreground">{row.opens} ouverture(s) · {row.totalClicks} clic(s) total · {row.clicks} sur le CTA</div></td>
           <td className="p-2">{row.lastSignalAt ? new Date(row.lastSignalAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) : '—'}</td>
           <td className="p-2">{statusLabels[row.state]}</td>
         </tr>)}</tbody>
