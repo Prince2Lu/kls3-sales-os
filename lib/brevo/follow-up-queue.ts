@@ -16,7 +16,7 @@ export interface FollowUpRow {
   lastSignalAt: string | null
   priority: SignalPriority
   reason: string
-  state: 'AVAILABLE' | 'TASK_OPEN' | 'CALLED' | 'REPLIED' | 'EXCLUDED' | 'TEST'
+  state: 'AVAILABLE' | 'TASK_OPEN' | 'CALLED' | 'DECLINED' | 'REPLIED' | 'EXCLUDED' | 'TEST'
   taskId: string | null
   testTaskId: string | null
   testTaskOwner: string | null
@@ -75,8 +75,16 @@ export function buildFollowUpQueue(input: {
     const businessLineId = campaignById.get(latest.campaignId)!.businessLineId
     const keyMarker = `[BREVO_TEST_CALL:${key}]`
     const testTask = tasks.find((task) => task.status === 'TODO' && task.notes?.includes(keyMarker))
-    const relatedTargetIds = new Set(targets.filter((item) => !item.archived && item.businessLineId === businessLineId && group.some((r) => r.companyId === item.companyId && r.contactId === item.contactId)).map((item) => item.id))
-    const inPipeline = targets.some((item) => relatedTargetIds.has(item.id) && !!item.opportunityId)
+    const relatedTargets = targets.filter((item) => !item.archived && item.businessLineId === businessLineId && group.some((r) => r.companyId === item.companyId && r.contactId === item.contactId))
+    const relatedTargetIds = new Set(relatedTargets.map((item) => item.id))
+    const inPipeline = relatedTargets.some((item) => !!item.opportunityId)
+    const latestCall = activities.filter((activity) => activity.type === 'CALL' && (
+      (!!activity.coldCallTargetId && relatedTargetIds.has(activity.coldCallTargetId)) ||
+      (!activity.coldCallTargetId && !!latest.contactId && activity.contactId === latest.contactId)
+    )).sort((a, b) => b.date.localeCompare(a.date))[0]
+    const declined = relatedTargets.some((item) => item.callStatus === 'Pas intéressé') ||
+      (latestCall?.result === 'NOT_INTERESTED' && !relatedTargets.some((item) =>
+        item.callStatus !== 'Pas intéressé' && item.updatedAt > latestCall.date))
     const activeTask = tasks.find((task) => task.status === 'TODO' && !task.notes?.includes('[BREVO_TEST_CALL:') &&
       ['CALL', 'FOLLOW_UP'].includes(task.type) && ((!!task.coldCallTargetId && relatedTargetIds.has(task.coldCallTargetId)) || (!!latest.contactId && task.contactId === latest.contactId)))
       ?? tasks.find((task) => task.status === 'TODO' && task.notes?.includes(`[EMAIL_QUEUE:${key}]`))
@@ -96,6 +104,7 @@ export function buildFollowUpQueue(input: {
     const state: FollowUpRow['state'] = email === testEmail?.toLowerCase() ? 'TEST'
       : suppressed || group.some((item) => terminalStatuses.has(item.status)) || ['SOFT_BOUNCE', 'FAILED', 'EXCLUDED'].includes(latest.status) ? 'EXCLUDED'
       : group.some((item) => item.status === 'REPLIED') ? 'REPLIED'
+      : declined ? 'DECLINED'
       : inPipeline || alreadyCalled ? 'CALLED' : activeTask ? 'TASK_OPEN' : 'AVAILABLE'
     rows.push({ key, email, companyId: latest.companyId, contactId: latest.contactId, recipientId: latest.id, businessLineId,
       campaignNames: [...new Set(group.map((item) => campaignById.get(item.campaignId)!.name))], opens, clicks: clicks.length, totalClicks,

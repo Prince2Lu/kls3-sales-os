@@ -13,7 +13,7 @@ const priorityLabels: Record<SignalPriority, string> = {
 }
 const statusLabels: Record<FollowUpRow['state'], string> = {
   AVAILABLE: 'À examiner', TASK_OPEN: 'Tâche ouverte', CALLED: 'Déjà appelé ou suivi dans le pipeline',
-  REPLIED: 'Réponse à traiter', EXCLUDED: 'Exclu', TEST: 'Test — aucun appel créé',
+  DECLINED: 'Pas intéressé — aucun rappel à planifier', REPLIED: 'Réponse à traiter', EXCLUDED: 'Exclu', TEST: 'Test — aucun appel créé',
 }
 
 export function FollowUpClient({ rows, currentOwner }: { rows: DisplayRow[]; currentOwner: Owner }) {
@@ -61,6 +61,7 @@ export function FollowUpClient({ rows, currentOwner }: { rows: DisplayRow[]; cur
           <option value="AVAILABLE">À examiner</option>
           <option value="TASK_OPEN">Tâche ouverte</option>
           <option value="CALLED">Déjà appelés</option>
+          <option value="DECLINED">Pas intéressés ({rows.filter((row) => row.state === 'DECLINED').length})</option>
           <option value="REPLIED">Réponses</option>
           <option value="EXCLUDED">Exclus</option>
           <option value="TEST">Tests ({rows.filter((row) => row.state === 'TEST').length})</option>
