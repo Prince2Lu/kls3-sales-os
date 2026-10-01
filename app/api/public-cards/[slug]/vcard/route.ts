@@ -6,14 +6,19 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-async function loadPhoto(url: string): Promise<EmbeddedVCardPhoto | undefined> {
+async function loadPhoto(
+  url: string,
+  declaredMimeType = ''
+): Promise<EmbeddedVCardPhoto | undefined> {
   if (!url) return undefined
 
   try {
     const response = await fetch(url, { cache: 'no-store' })
     if (!response.ok) return undefined
 
-    const contentType = (response.headers.get('content-type') || '').toLowerCase()
+    const contentType = (
+      declaredMimeType || response.headers.get('content-type') || ''
+    ).toLowerCase()
     const type: EmbeddedVCardPhoto['type'] =
       contentType.includes('png')
         ? 'PNG'
@@ -47,7 +52,10 @@ export async function GET(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 
-  const photo = await loadPhoto(card.photoUrl)
+  const photo = await loadPhoto(
+    card.photoVCardUrl || card.photoUrl,
+    card.photoMimeType
+  )
 
   return new Response(buildVCard(card, photo), {
     status: 200,
