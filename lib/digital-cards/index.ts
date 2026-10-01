@@ -278,6 +278,14 @@ export function buildVCard(card: DigitalCard, photo?: EmbeddedVCardPhoto): strin
       .replace(/,/g, '\\,')
       .replace(/;/g, '\\;')
 
+  const projectLines = card.projects.flatMap((project, index) => {
+    const item = index + 2
+    return [
+      `item${item}.URL:${esc(project.url)}`,
+      `item${item}.X-ABLabel:${esc(project.label)}`,
+    ]
+  })
+
   const lines = [
     'BEGIN:VCARD',
     'VERSION:3.0',
@@ -292,6 +300,7 @@ export function buildVCard(card: DigitalCard, photo?: EmbeddedVCardPhoto): strin
     card.linkedin ? `item1.URL:${esc(card.linkedin)}` : '',
     card.linkedin ? 'item1.X-ABLabel:LinkedIn' : '',
     card.linkedin ? `X-SOCIALPROFILE;TYPE=linkedin:${esc(card.linkedin)}` : '',
+    ...projectLines,
     card.bio ? `NOTE:${esc(card.bio)}` : '',
     'END:VCARD',
   ]
