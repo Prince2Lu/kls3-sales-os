@@ -18,6 +18,8 @@ export type DigitalCard = {
   linkedin: string
   website: string
   photoUrl: string
+  photoVCardUrl: string
+  photoMimeType: string
   logoUrl: string
   bio: string
   projects: DigitalCardProject[]
@@ -38,12 +40,36 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
-function firstAttachmentUrl(value: unknown): string {
-  if (!Array.isArray(value) || value.length === 0) return ''
+type AttachmentInfo = {
+  url: string
+  mimeType: string
+  largeThumbnailUrl: string
+}
+
+function firstAttachment(value: unknown): AttachmentInfo {
+  if (!Array.isArray(value) || value.length === 0) {
+    return { url: '', mimeType: '', largeThumbnailUrl: '' }
+  }
+
   const first = value[0]
-  if (!first || typeof first !== 'object') return ''
-  const url = (first as { url?: unknown }).url
-  return typeof url === 'string' ? url : ''
+  if (!first || typeof first !== 'object') {
+    return { url: '', mimeType: '', largeThumbnailUrl: '' }
+  }
+
+  const attachment = first as {
+    url?: unknown
+    type?: unknown
+    thumbnails?: { large?: { url?: unknown } }
+  }
+
+  return {
+    url: typeof attachment.url === 'string' ? attachment.url : '',
+    mimeType: typeof attachment.type === 'string' ? attachment.type : '',
+    largeThumbnailUrl:
+      typeof attachment.thumbnails?.large?.url === 'string'
+        ? attachment.thumbnails.large.url
+        : '',
+  }
 }
 
 function parseProjects(value: unknown): DigitalCardProject[] {
@@ -61,6 +87,9 @@ function parseProjects(value: unknown): DigitalCardProject[] {
 
 function mapRecord(record: AirtableRecord): DigitalCard {
   const f = record.fields
+  const photo = firstAttachment(f['Photo'])
+  const logo = firstAttachment(f['Logo'])
+
   return {
     id: record.id,
     slug: text(f['Slug']),
@@ -73,8 +102,10 @@ function mapRecord(record: AirtableRecord): DigitalCard {
     phone: text(f['Phone']),
     linkedin: text(f['LinkedIn']),
     website: text(f['Website']),
-    photoUrl: firstAttachmentUrl(f['Photo']) || text(f['Photo URL']),
-    logoUrl: firstAttachmentUrl(f['Logo']),
+    photoUrl: photo.url || text(f['Photo URL']),
+    photoVCardUrl: photo.largeThumbnailUrl || photo.url || text(f['Photo URL']),
+    photoMimeType: photo.mimeType,
+    logoUrl: logo.url,
     bio: text(f['Bio']),
     projects: parseProjects(f['Projects JSON']),
     active: f['Active'] === true,
