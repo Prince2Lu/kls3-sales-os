@@ -220,7 +220,26 @@ export async function uploadDigitalCardMedia(
   return mapRecord(updated)
 }
 
-export function buildVCard(card: DigitalCard): string {
+export type EmbeddedVCardPhoto = {
+  base64: string
+  type: 'JPEG' | 'PNG' | 'WEBP'
+}
+
+function foldVCardLine(line: string): string {
+  const limit = 72
+  if (line.length <= limit) return line
+
+  const chunks: string[] = []
+  let rest = line
+  while (rest.length > limit) {
+    chunks.push(rest.slice(0, limit))
+    rest = rest.slice(limit)
+  }
+  chunks.push(rest)
+  return chunks.join('\r\n ')
+}
+
+export function buildVCard(card: DigitalCard, photo?: EmbeddedVCardPhoto): string {
   const esc = (value: string) =>
     value
       .replace(/\\/g, '\\\\')
@@ -237,6 +256,7 @@ export function buildVCard(card: DigitalCard): string {
     card.title ? `TITLE:${esc(card.title)}` : '',
     card.phone ? `TEL;TYPE=CELL:${esc(card.phone)}` : '',
     card.email ? `EMAIL;TYPE=INTERNET:${esc(card.email)}` : '',
+    photo ? `PHOTO;ENCODING=b;TYPE=${photo.type}:${photo.base64}` : '',
     card.website ? `URL:${esc(card.website)}` : '',
     card.linkedin ? `item1.URL:${esc(card.linkedin)}` : '',
     card.linkedin ? 'item1.X-ABLabel:LinkedIn' : '',
@@ -245,5 +265,5 @@ export function buildVCard(card: DigitalCard): string {
     'END:VCARD',
   ]
 
-  return lines.filter(Boolean).join('\r\n')
+  return lines.filter(Boolean).map(foldVCardLine).join('\r\n')
 }
