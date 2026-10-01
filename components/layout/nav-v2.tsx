@@ -29,6 +29,7 @@ const toolsItems = [
   { href: '/email-campaigns/follow-up', label: 'Appels après campagne' },
   { href: '/email-suppressions', label: 'Exclusions email' },
   { href: '/privacy-requests', label: 'Demandes RGPD' },
+  { href: '/digital-cards', label: 'Cartes de visite' },
 ]
 
 // Primary navigation items - always visible on desktop
