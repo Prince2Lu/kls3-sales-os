@@ -9,7 +9,7 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth
 
   // The webhook must be reachable without a CRM session; its handler checks the shared secret.
-  const isPublicRoute = pathname === '/login' || pathname.startsWith('/api/auth') || pathname === '/api/brevo/webhook'
+  const isPublicRoute = pathname === '/login' || pathname.startsWith('/api/auth') || pathname === '/api/brevo/webhook' || pathname.startsWith('/api/public-cards/')
 
   // If not logged in and trying to access protected route
   if (!isLoggedIn && !isPublicRoute) {
