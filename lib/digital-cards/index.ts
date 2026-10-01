@@ -104,16 +104,19 @@ export async function getDigitalCardBySlug(
   const normalized = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
   if (!normalized) return null
 
-  const formula = options.includeInactive
-    ? `LOWER({Slug})='${normalized}'`
-    : `AND(LOWER({Slug})='${normalized}',{Active}=1)`
+  const data = await request<AirtableListResponse>(
+    getTableUrl(TABLE_NAMES.DIGITAL_CARDS)
+  )
 
-  const url = new URL(getTableUrl(TABLE_NAMES.DIGITAL_CARDS))
-  url.searchParams.set('filterByFormula', formula)
-  url.searchParams.set('maxRecords', '1')
+  const card = data.records
+    .map(mapRecord)
+    .find((item) => {
+      const sameSlug = item.slug.trim().toLowerCase() === normalized
+      const allowed = options.includeInactive || item.active
+      return sameSlug && allowed
+    })
 
-  const data = await request<AirtableListResponse>(url.toString())
-  return data.records[0] ? mapRecord(data.records[0]) : null
+  return card ?? null
 }
 
 export async function updateDigitalCard(
