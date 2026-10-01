@@ -1,6 +1,35 @@
-import { getDigitalCardBySlug, buildVCard } from '@/lib/digital-cards'
+import {
+  getDigitalCardBySlug,
+  buildVCard,
+  type EmbeddedVCardPhoto,
+} from '@/lib/digital-cards'
 
 export const dynamic = 'force-dynamic'
+
+async function loadPhoto(url: string): Promise<EmbeddedVCardPhoto | undefined> {
+  if (!url) return undefined
+
+  try {
+    const response = await fetch(url, { cache: 'no-store' })
+    if (!response.ok) return undefined
+
+    const contentType = (response.headers.get('content-type') || '').toLowerCase()
+    const type: EmbeddedVCardPhoto['type'] =
+      contentType.includes('png')
+        ? 'PNG'
+        : contentType.includes('webp')
+          ? 'WEBP'
+          : 'JPEG'
+
+    const bytes = new Uint8Array(await response.arrayBuffer())
+    return {
+      type,
+      base64: Buffer.from(bytes).toString('base64'),
+    }
+  } catch {
+    return undefined
+  }
+}
 
 export async function GET(
   _request: Request,
@@ -18,7 +47,9 @@ export async function GET(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 
-  return new Response(buildVCard(card), {
+  const photo = await loadPhoto(card.photoUrl)
+
+  return new Response(buildVCard(card, photo), {
     status: 200,
     headers: {
       'Content-Type': 'text/vcard; charset=utf-8',
