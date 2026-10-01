@@ -26,6 +26,7 @@ export function DigitalCardEditor({ initialCard }: { initialCard: DigitalCard })
   const [card, setCard] = useState(initialCard)
   const [projectsText, setProjectsText] = useState(projectsToText(initialCard.projects))
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState<'photo' | 'logo' | null>(null)
   const [message, setMessage] = useState('')
 
   const publicUrl = `${PUBLIC_BASE_URL}/${card.slug}`
@@ -55,6 +56,35 @@ export function DigitalCardEditor({ initialCard }: { initialCard: DigitalCard })
     }
   }
 
+  async function uploadMedia(kind: 'photo' | 'logo', file: File | null) {
+    if (!file) return
+    setUploading(kind)
+    setMessage('')
+    try {
+      const formData = new FormData()
+      formData.append('kind', kind)
+      formData.append('file', file)
+
+      const response = await fetch(`/api/digital-cards/${card.slug}/media`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Erreur de téléversement')
+      }
+
+      setCard(payload)
+      setProjectsText(projectsToText(payload.projects))
+      setMessage(kind === 'photo' ? 'Photo mise à jour' : 'Logo mis à jour')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Échec du téléversement')
+    } finally {
+      setUploading(null)
+    }
+  }
+
   const field = (label: string, key: keyof DigitalCard, type = 'text') => (
     <label className="space-y-1">
       <span className="text-sm font-medium">{label}</span>
@@ -80,7 +110,48 @@ export function DigitalCardEditor({ initialCard }: { initialCard: DigitalCard })
           {field('Téléphone', 'phone', 'tel')}
           {field('LinkedIn', 'linkedin', 'url')}
           {field('Site web', 'website', 'url')}
-          {field('URL photo', 'photoUrl', 'url')}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="space-y-2 rounded-lg border border-border p-4">
+            <span className="block text-sm font-medium">Photo de profil</span>
+            {card.photoUrl && (
+              <img
+                src={card.photoUrl}
+                alt={card.displayName}
+                className="h-24 w-24 rounded-xl object-cover"
+              />
+            )}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={uploading !== null}
+              onChange={(e) => void uploadMedia('photo', e.target.files?.[0] ?? null)}
+              className="block w-full text-sm"
+            />
+            <span className="block text-xs text-muted-foreground">JPG, PNG ou WebP · 5 Mo maximum</span>
+            {uploading === 'photo' && <span className="block text-xs text-muted-foreground">Téléversement…</span>}
+          </label>
+
+          <label className="space-y-2 rounded-lg border border-border p-4">
+            <span className="block text-sm font-medium">Logo</span>
+            {card.logoUrl && (
+              <img
+                src={card.logoUrl}
+                alt="Logo"
+                className="h-20 w-20 rounded-lg bg-white object-contain p-2"
+              />
+            )}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={uploading !== null}
+              onChange={(e) => void uploadMedia('logo', e.target.files?.[0] ?? null)}
+              className="block w-full text-sm"
+            />
+            <span className="block text-xs text-muted-foreground">JPG, PNG ou WebP · 5 Mo maximum</span>
+            {uploading === 'logo' && <span className="block text-xs text-muted-foreground">Téléversement…</span>}
+          </label>
         </div>
 
         <label className="space-y-1 block">
