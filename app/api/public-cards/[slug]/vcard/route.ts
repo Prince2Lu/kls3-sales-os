@@ -62,6 +62,7 @@ export async function GET(
   const source = url.searchParams.get('src') || 'direct'
   const campaign = url.searchParams.get('campaign') || ''
   const visitorId = url.searchParams.get('visitor') || ''
+  const cardRef = url.searchParams.get('ref') || ''
 
   // Analytics must never block the contact download.
   void recordCardEvent({
@@ -71,6 +72,7 @@ export async function GET(
     source,
     campaign,
     pageReferrer: request.headers.get('referer') || '',
+    cardRef,
   }).catch(() => undefined)
 
   return new Response(buildVCard(card, photo), {
