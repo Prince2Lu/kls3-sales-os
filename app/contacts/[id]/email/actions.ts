@@ -3,13 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { createActivity, getCompanyById, getContactById } from '@/lib/airtable'
 import { createDirectEmail, updateDirectEmail } from '@/lib/direct-email/data'
-import { sendDirectMail } from '@/lib/direct-email/mailer'
+import { buildDirectMailto } from '@/lib/direct-email/mailer'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 
-export type SendDirectEmailResult = {
+export type PrepareDirectEmailResult = {
   success: boolean
   error?: string
-  warning?: string
+  mailto?: string
+  recordId?: string
   cardUrl?: string
 }
 
@@ -17,11 +18,11 @@ function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
-export async function sendDirectEmailAction(input: {
+export async function prepareDirectEmailAction(input: {
   contactId: string
   subject: string
   body: string
-}): Promise<SendDirectEmailResult> {
+}): Promise<PrepareDirectEmailResult> {
   const owner = await getCurrentOwner()
   const subject = input.subject.trim()
   const body = input.body.trim()
@@ -55,54 +56,46 @@ export async function sendDirectEmailAction(input: {
     cardUrl,
   })
 
-  try {
-    const sent = await sendDirectMail({
-      owner,
-      toEmail: contact.email,
-      subject,
-      body,
-      cardUrl,
-    })
+  const mailto = buildDirectMailto({
+    owner,
+    toEmail: contact.email,
+    subject,
+    body,
+    cardUrl,
+  })
 
-    const sentAt = new Date().toISOString()
-    await updateDirectEmail(record.id, {
-      status: 'SENT',
-      messageId: sent.messageId,
-      sentAt,
-    })
-
-    let crmWarning = ''
-    try {
-      await createActivity({
-        contactId: contact.id,
-        type: 'EMAIL',
-        date: sentAt,
-        result: 'EMAIL_SENT',
-        notes: `Email direct envoyé depuis Sales OS — ${subject} — carte personnalisée ${cardRef}`,
-        owner,
-      })
-    } catch (error) {
-      crmWarning = error instanceof Error ? error.message : 'journalisation CRM impossible'
-    }
-
-    revalidatePath(`/contacts/${contact.id}`)
-    revalidatePath('/digital-cards/stats')
-
-    const warnings = [
-      !sent.imapArchived ? `Le mail a bien été envoyé mais n’a pas pu être copié dans Envoyés : ${sent.archiveWarning}` : '',
-      crmWarning ? `Activité CRM non créée : ${crmWarning}` : '',
-    ].filter(Boolean)
-
-    return {
-      success: true,
-      cardUrl,
-      warning: warnings.length ? warnings.join(' ') : undefined,
-    }
-  } catch (error) {
-    await updateDirectEmail(record.id, { status: 'FAILED' }).catch(() => undefined)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Échec de l’envoi du mail.',
-    }
+  return {
+    success: true,
+    mailto,
+    recordId: record.id,
+    cardUrl,
   }
+}
+
+export async function confirmDirectEmailSentAction(input: {
+  recordId: string
+  contactId: string
+  subject: string
+}) {
+  const owner = await getCurrentOwner()
+  const sentAt = new Date().toISOString()
+
+  await updateDirectEmail(input.recordId, {
+    status: 'SENT',
+    sentAt,
+  })
+
+  await createActivity({
+    contactId: input.contactId,
+    type: 'EMAIL',
+    date: sentAt,
+    result: 'EMAIL_SENT',
+    notes: `Email direct envoyé via Thunderbird — ${input.subject.trim()}`,
+    owner,
+  })
+
+  revalidatePath(`/contacts/${input.contactId}`)
+  revalidatePath('/digital-cards/stats')
+
+  return { success: true }
 }
