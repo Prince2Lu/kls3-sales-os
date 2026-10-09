@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { listDigitalCards } from '@/lib/digital-cards'
+import { getCompanies, getContacts, getEmailRecipients } from '@/lib/airtable'
 import { listCardEvents, summarizeCardEvents } from '@/lib/card-analytics'
 
 export const dynamic = 'force-dynamic'
@@ -72,10 +73,37 @@ export default async function CardStatsPage({
   const selectedCard = params.card || 'all'
   const start = startForPeriod(period)
 
-  const [cards, allEvents] = await Promise.all([
+  const [cards, allEvents, recipients, contacts, companies] = await Promise.all([
     listDigitalCards(),
     listCardEvents(),
+    getEmailRecipients(),
+    getContacts({ maxRecords: 5000 }),
+    getCompanies({ maxRecords: 2000 }),
   ])
+
+  const recipientByRef = new Map(
+    recipients
+      .filter((recipient) => !!recipient.cardRef)
+      .map((recipient) => [recipient.cardRef as string, recipient])
+  )
+  const contactById = new Map(contacts.map((contact) => [contact.id, contact]))
+  const companyById = new Map(companies.map((company) => [company.id, company]))
+
+  const identityFor = (cardRef: string) => {
+    if (!cardRef) return null
+    const recipient = recipientByRef.get(cardRef)
+    if (!recipient) return null
+    const contact = recipient.contactId ? contactById.get(recipient.contactId) : null
+    const company = companyById.get(recipient.companyId)
+    const name = contact
+      ? [contact.firstName, contact.lastName].filter(Boolean).join(' ')
+      : recipient.email
+    return {
+      name: name || recipient.email,
+      company: company?.name || '',
+      email: recipient.email,
+    }
+  }
 
   const events = allEvents.filter((event) => {
     const cardOk = selectedCard === 'all' || event.cardSlug === selectedCard
@@ -84,6 +112,11 @@ export default async function CardStatsPage({
   })
 
   const stats = summarizeCardEvents(events)
+  const identifiedContacts = new Set(
+    events
+      .map((event) => event.cardRef)
+      .filter((ref) => !!ref && recipientByRef.has(ref))
+  ).size
   const actionTotal =
     stats.vcardDownloads +
     stats.phoneClicks +
@@ -152,12 +185,13 @@ export default async function CardStatsPage({
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <Stat label="Vues" value={stats.views} />
         <Stat label="Visiteurs uniques" value={stats.uniqueVisitors} />
         <Stat label="Actions" value={actionTotal} helper="Tous clics et téléchargements" />
         <Stat label="Taux d'engagement" value={pct(stats.engagementRate)} helper="Visiteurs ayant réalisé une action" />
         <Stat label="Taux d'enregistrement" value={pct(stats.saveRate)} helper="Téléchargements vCard / vues" />
+        <Stat label="Contacts identifiés" value={identifiedContacts} helper="Via un lien personnalisé CRM / Brevo" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -254,24 +288,38 @@ export default async function CardStatsPage({
               <tr className="border-b border-border">
                 <th className="pb-3 font-medium">Date</th>
                 <th className="pb-3 font-medium">Carte</th>
+                <th className="pb-3 font-medium">Contact</th>
                 <th className="pb-3 font-medium">Événement</th>
                 <th className="pb-3 font-medium">Source</th>
                 <th className="pb-3 font-medium">Campagne</th>
               </tr>
             </thead>
             <tbody>
-              {stats.recent.map((event) => (
+              {stats.recent.map((event) => {
+                const identity = identityFor(event.cardRef)
+                return (
                 <tr key={event.id} className="border-b border-border/60">
                   <td className="py-3">{fmtDate(event.occurredAt)}</td>
                   <td className="py-3">{event.cardSlug}</td>
+                  <td className="py-3">
+                    {identity ? (
+                      <div>
+                        <div className="font-medium">{identity.name}</div>
+                        <div className="text-xs text-muted-foreground">{identity.company || identity.email}</div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">Anonyme</span>
+                    )}
+                  </td>
                   <td className="py-3">{event.eventType}</td>
                   <td className="py-3">{event.source || 'direct'}</td>
                   <td className="py-3">{event.campaign || '—'}</td>
                 </tr>
-              ))}
+                )
+              })}
               {stats.recent.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                  <td colSpan={6} className="py-6 text-center text-muted-foreground">
                     Aucune interaction enregistrée.
                   </td>
                 </tr>
