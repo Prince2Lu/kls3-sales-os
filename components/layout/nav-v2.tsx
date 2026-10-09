@@ -32,6 +32,7 @@ const toolsItems = [
   { href: '/digital-cards', label: 'Cartes de visite' },
   { href: '/digital-cards/vcards', label: 'vCards' },
   { href: '/digital-cards/stats', label: 'Statistiques cartes' },
+  { href: '/settings/email', label: 'Paramètres messagerie' },
 ]
 
 // Primary navigation items - always visible on desktop
