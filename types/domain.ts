@@ -258,6 +258,7 @@ export interface EmailRecipient {
   lastEventAt: string | null
   lastClickUrl: string | null
   exclusionReason: string | null
+  cardRef: string | null
   createdAt: string
   updatedAt: string
 }
