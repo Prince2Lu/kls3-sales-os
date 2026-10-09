@@ -167,9 +167,21 @@ export async function sendDirectMail(input: DirectMailSendInput) {
     raw,
   })
 
-  await appendToSent(account, raw)
+  let imapArchived = true
+  let archiveWarning = ''
+  try {
+    await appendToSent(account, raw)
+  } catch (error) {
+    imapArchived = false
+    archiveWarning = error instanceof Error ? error.message : 'Archivage IMAP impossible'
+  }
 
-  return { messageId: info.messageId || messageId, fromEmail: account.fromEmail }
+  return {
+    messageId: info.messageId || messageId,
+    fromEmail: account.fromEmail,
+    imapArchived,
+    archiveWarning,
+  }
 }
 
 export function directMailConfigured(owner: Owner) {
