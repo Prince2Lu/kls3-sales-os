@@ -76,10 +76,56 @@ function escapeHtml(value: string) {
   }[char] || char))
 }
 
+function encodeHeader(value: string) {
+  return `=?UTF-8?B?${Buffer.from(value, 'utf8').toString('base64')}?=`
+}
+
+function wrapBase64(value: string) {
+  const encoded = Buffer.from(value, 'utf8').toString('base64')
+  return encoded.match(/.{1,76}/g)?.join('\r\n') || ''
+}
+
 function displayIdentity(owner: Owner) {
   return owner === 'Eric'
     ? { name: 'Eric Scarpino', title: 'Directeur de missions' }
     : { name: 'Lilian Scarpino', title: 'Directeur commercial' }
+}
+
+function buildRawMessage(input: DirectMailSendInput, account: MailAccount, messageId: string) {
+  const identity = displayIdentity(input.owner)
+  const boundary = `kls3-${crypto.randomUUID()}`
+  const text = [
+    input.body.trim(),
+    '',
+    'Cordialement,',
+    identity.name,
+    `${identity.title} — KLS3`,
+    `Ma carte digitale : ${input.cardUrl}`,
+  ].join('\n')
+  const html = `<div style="font-family:Arial,sans-serif;line-height:1.55;color:#111">${escapeHtml(input.body.trim()).replace(/\n/g, '<br>')}<br><br>Cordialement,<br><strong>${identity.name}</strong><br>${identity.title} — KLS3<br><a href="${escapeHtml(input.cardUrl)}">Ma carte digitale</a></div>`
+
+  return Buffer.from([
+    `Message-ID: ${messageId}`,
+    `Date: ${new Date().toUTCString()}`,
+    `From: ${encodeHeader(account.fromName)} <${account.fromEmail}>`,
+    `To: <${input.toEmail}>`,
+    `Subject: ${encodeHeader(input.subject)}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrapBase64(text),
+    `--${boundary}`,
+    'Content-Type: text/html; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrapBase64(html),
+    `--${boundary}--`,
+    '',
+  ].join('\r\n'), 'utf8')
 }
 
 async function appendToSent(account: MailAccount, raw: Buffer) {
@@ -106,19 +152,8 @@ async function appendToSent(account: MailAccount, raw: Buffer) {
 
 export async function sendDirectMail(input: DirectMailSendInput) {
   const account = getAccount(input.owner)
-  const identity = displayIdentity(input.owner)
   const messageId = `<${crypto.randomUUID()}@kls3-dev.com>`
-
-  const text = [
-    input.body.trim(),
-    '',
-    'Cordialement,',
-    identity.name,
-    `${identity.title} — KLS3`,
-    `Ma carte digitale : ${input.cardUrl}`,
-  ].join('\n')
-
-  const html = `<div style="font-family:Arial,sans-serif;line-height:1.55;color:#111">${escapeHtml(input.body.trim()).replace(/\n/g, '<br>')}<br><br>Cordialement,<br><strong>${identity.name}</strong><br>${identity.title} — KLS3<br><a href="${escapeHtml(input.cardUrl)}">Ma carte digitale</a></div>`
+  const raw = buildRawMessage(input, account, messageId)
 
   const transporter = nodemailer.createTransport({
     host: account.smtpHost,
@@ -128,27 +163,9 @@ export async function sendDirectMail(input: DirectMailSendInput) {
   })
 
   const info = await transporter.sendMail({
-    from: { name: account.fromName, address: account.fromEmail },
-    to: input.toEmail,
-    subject: input.subject,
-    text,
-    html,
-    messageId,
+    envelope: { from: account.fromEmail, to: [input.toEmail] },
+    raw,
   })
-
-  const raw = await nodemailer.createTestAccount
-    ? Buffer.from([
-        `Message-ID: ${messageId}`,
-        `Date: ${new Date().toUTCString()}`,
-        `From: ${account.fromName} <${account.fromEmail}>`,
-        `To: <${input.toEmail}>`,
-        `Subject: ${input.subject}`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=utf-8',
-        '',
-        text,
-      ].join('\r\n'), 'utf8')
-    : Buffer.from(text, 'utf8')
 
   await appendToSent(account, raw)
 
