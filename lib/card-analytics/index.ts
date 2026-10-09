@@ -23,6 +23,7 @@ export type CardEvent = {
   campaign: string
   projectLabel: string
   pageReferrer: string
+  cardRef: string
 }
 
 type AirtableRecord = {
@@ -65,6 +66,7 @@ function mapRecord(record: AirtableRecord): CardEvent | null {
     campaign: text(f['Campaign']),
     projectLabel: text(f['Project Label']),
     pageReferrer: text(f['Page Referrer']),
+    cardRef: text(f['Card Ref']),
   }
 }
 
@@ -80,6 +82,7 @@ export async function recordCardEvent(input: {
   campaign?: string
   projectLabel?: string
   pageReferrer?: string
+  cardRef?: string
 }) {
   const now = new Date().toISOString()
   const eventId = crypto.randomUUID()
@@ -100,6 +103,7 @@ export async function recordCardEvent(input: {
             Campaign: sanitize(input.campaign || '', 100),
             'Project Label': sanitize(input.projectLabel || '', 160),
             'Page Referrer': sanitize(input.pageReferrer || '', 500),
+            'Card Ref': sanitize(input.cardRef || '', 100),
           },
         },
       ],
