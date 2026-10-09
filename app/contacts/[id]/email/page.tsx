@@ -45,7 +45,7 @@ export default async function ContactEmailPage({
         contactId={id}
         contactName={name}
         email={contact.email}
-        configured={directMailConfigured(owner)}
+        configured={await directMailConfigured(owner)}
       />
     </div>
   )
