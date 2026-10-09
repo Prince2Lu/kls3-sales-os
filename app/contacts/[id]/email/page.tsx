@@ -1,8 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getContactById } from '@/lib/airtable'
-import { getCurrentOwner } from '@/lib/utils/current-owner'
-import { directMailConfigured } from '@/lib/direct-email/mailer'
 import { DirectEmailComposer } from './direct-email-composer'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +14,6 @@ export default async function ContactEmailPage({
   const contact = await getContactById(id).catch(() => null)
   if (!contact) notFound()
 
-  const owner = await getCurrentOwner()
   const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ')
 
   if (!contact.email) {
@@ -37,7 +34,7 @@ export default async function ContactEmailPage({
         <Link href={`/contacts/${id}`} className="text-sm text-accent hover:underline">← Retour au contact</Link>
         <h1 className="mt-3 text-4xl font-bold font-syne">Envoyer un mail</h1>
         <p className="mt-2 text-muted-foreground">
-          Envoi direct depuis votre boîte KLS3, avec copie dans Envoyés et lien de carte personnalisé.
+          Préparez le mail dans Sales OS puis envoyez-le depuis Thunderbird avec un lien de carte personnalisé.
         </p>
       </div>
 
@@ -45,7 +42,6 @@ export default async function ContactEmailPage({
         contactId={id}
         contactName={name}
         email={contact.email}
-        configured={directMailConfigured(owner)}
       />
     </div>
   )
