@@ -118,12 +118,44 @@ export async function createBrevoList(name: string): Promise<number> {
   return result.id
 }
 
-export async function upsertBrevoContact(input: { email: string; listId?: number; companyName: string; firstName?: string; lastName?: string }): Promise<void> {
+export async function ensureBrevoCardUrlAttribute(): Promise<void> {
+  const result = await request<{ attributes?: Array<{ category?: string; name?: string }> }>(
+    '/contacts/attributes',
+    { method: 'GET' }
+  )
+
+  const exists = (result.attributes ?? []).some(
+    (attribute) =>
+      attribute.category === 'normal' &&
+      attribute.name?.toUpperCase() === 'CARD_URL'
+  )
+
+  if (exists) return
+
+  await request('/contacts/attributes/normal/CARD_URL', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'text' }),
+  })
+}
+
+export async function upsertBrevoContact(input: {
+  email: string
+  listId?: number
+  companyName: string
+  firstName?: string
+  lastName?: string
+  cardUrl?: string
+}): Promise<void> {
   await request('/contacts', { method: 'POST', body: JSON.stringify({
     email: input.email,
     updateEnabled: true,
     ...(input.listId ? { listIds: [input.listId] } : {}),
-    attributes: { COMPANY: input.companyName, PRENOM: input.firstName ?? '', NOM: input.lastName ?? '' },
+    attributes: {
+      COMPANY: input.companyName,
+      PRENOM: input.firstName ?? '',
+      NOM: input.lastName ?? '',
+      ...(input.cardUrl ? { CARD_URL: input.cardUrl } : {}),
+    },
   }) })
 }
 
