@@ -253,6 +253,7 @@ export interface AirtableEmailRecipientFields {
   'Last Event At'?: string
   'Last Click URL'?: string
   'Exclusion Reason'?: string
+  'Card Ref'?: string
   'Created At': string
   'Updated At': string
 }
