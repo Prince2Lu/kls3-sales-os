@@ -1895,12 +1895,12 @@ export async function createEmailRecipient(input: {
   return mapEmailRecipient(await createRecord<AirtableEmailRecipientFields>(TABLE_NAMES.EMAIL_RECIPIENTS, {
     Name: input.name, Campaign: [input.campaignId], Company: [input.companyId], Contact: input.contactId ? [input.contactId] : undefined,
     Email: input.email.toLowerCase(), 'Recipient Type': input.recipientType, Status: input.status ?? 'READY', 'Open Count': 0, 'Click Count': 0,
-    'Exclusion Reason': input.exclusionReason, 'Created At': now, 'Updated At': now,
+    'Exclusion Reason': input.exclusionReason, 'Card Ref': crypto.randomUUID().replace(/-/g, '').slice(0, 20), 'Created At': now, 'Updated At': now,
   }))
 }
 
 export async function updateEmailRecipient(id: string, input: {
-  prospectingTargetId?: string; status?: EmailRecipientStatus; openCount?: number; clickCount?: number; lastEventAt?: string; lastClickUrl?: string; exclusionReason?: string
+  prospectingTargetId?: string; status?: EmailRecipientStatus; openCount?: number; clickCount?: number; lastEventAt?: string; lastClickUrl?: string; exclusionReason?: string; cardRef?: string
 }): Promise<EmailRecipient> {
   const fields: Partial<AirtableEmailRecipientFields> = { 'Updated At': new Date().toISOString() }
   if (input.prospectingTargetId !== undefined) fields['Prospecting Target'] = input.prospectingTargetId ? [input.prospectingTargetId] : []
@@ -1910,6 +1910,7 @@ export async function updateEmailRecipient(id: string, input: {
   if (input.lastEventAt !== undefined) fields['Last Event At'] = input.lastEventAt
   if (input.lastClickUrl !== undefined) fields['Last Click URL'] = input.lastClickUrl
   if (input.exclusionReason !== undefined) fields['Exclusion Reason'] = input.exclusionReason
+  if (input.cardRef !== undefined) fields['Card Ref'] = input.cardRef
   return mapEmailRecipient(await updateRecord<AirtableEmailRecipientFields>(TABLE_NAMES.EMAIL_RECIPIENTS, id, fields))
 }
 
