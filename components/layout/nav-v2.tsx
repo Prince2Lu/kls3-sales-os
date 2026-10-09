@@ -31,6 +31,7 @@ const toolsItems = [
   { href: '/privacy-requests', label: 'Demandes RGPD' },
   { href: '/digital-cards', label: 'Cartes de visite' },
   { href: '/digital-cards/vcards', label: 'vCards' },
+  { href: '/digital-cards/stats', label: 'Statistiques cartes' },
 ]
 
 // Primary navigation items - always visible on desktop
