@@ -3,14 +3,32 @@
 import { revalidatePath } from 'next/cache'
 import { createActivity, getCompanyById, getContactById } from '@/lib/airtable'
 import { createDirectEmail, updateDirectEmail } from '@/lib/direct-email/data'
-import { buildDirectMailto } from '@/lib/direct-email/mailer'
+import { sendDirectMail } from '@/lib/direct-email/mailer'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 
-export type PrepareDirectEmailResult = {
+const MAX_ATTACHMENTS = 5
+const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024
+const MAX_TOTAL_ATTACHMENT_SIZE = 3 * 1024 * 1024
+
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+  'text/csv',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+])
+
+export type SendDirectEmailResult = {
   success: boolean
   error?: string
-  mailto?: string
-  recordId?: string
+  warning?: string
   cardUrl?: string
 }
 
@@ -18,22 +36,89 @@ function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
-export async function prepareDirectEmailAction(input: {
-  contactId: string
-  subject: string
-  body: string
-}): Promise<PrepareDirectEmailResult> {
+function sanitizeHtml(input: string) {
+  return input
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<object[\s\S]*?>[\s\S]*?<\/object>/gi, '')
+    .replace(/\son\w+\s*=\s*(["']).*?\1/gi, '')
+    .replace(/javascript\s*:/gi, '')
+}
+
+function cleanText(value: FormDataEntryValue | null) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+export async function sendDirectEmailAction(
+  formData: FormData
+): Promise<SendDirectEmailResult> {
   const owner = await getCurrentOwner()
-  const subject = input.subject.trim()
-  const body = input.body.trim()
 
+  const contactId = cleanText(formData.get('contactId'))
+  const subject = cleanText(formData.get('subject'))
+  const bodyText = cleanText(formData.get('bodyText'))
+  const bodyHtml = sanitizeHtml(cleanText(formData.get('bodyHtml')))
+
+  if (!contactId) return { success: false, error: 'Contact manquant.' }
   if (!subject) return { success: false, error: 'L’objet du mail est obligatoire.' }
-  if (!body) return { success: false, error: 'Le message est obligatoire.' }
-
-  const contact = await getContactById(input.contactId)
-  if (!contact.email || !validEmail(contact.email)) {
-    return { success: false, error: 'Ce contact ne possède pas d’adresse email directe valide.' }
+  if (!bodyText || !bodyHtml) {
+    return { success: false, error: 'Le message est obligatoire.' }
   }
+
+  const contact = await getContactById(contactId)
+  if (!contact.email || !validEmail(contact.email)) {
+    return {
+      success: false,
+      error: 'Ce contact ne possède pas d’adresse email directe valide.',
+    }
+  }
+
+  const files = formData
+    .getAll('attachments')
+    .filter((item): item is File => item instanceof File && item.size > 0)
+
+  if (files.length > MAX_ATTACHMENTS) {
+    return {
+      success: false,
+      error: `Maximum ${MAX_ATTACHMENTS} pièces jointes par mail.`,
+    }
+  }
+
+  let totalSize = 0
+  for (const file of files) {
+    totalSize += file.size
+
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      return {
+        success: false,
+        error: `${file.name} dépasse 2 Mo.`,
+      }
+    }
+
+    if (file.type && !ALLOWED_ATTACHMENT_TYPES.has(file.type)) {
+      return {
+        success: false,
+        error: `Type de fichier non autorisé : ${file.name}.`,
+      }
+    }
+  }
+
+  if (totalSize > MAX_TOTAL_ATTACHMENT_SIZE) {
+    return {
+      success: false,
+      error: 'Le total des pièces jointes ne peut pas dépasser 3 Mo.',
+    }
+  }
+
+  const attachments = await Promise.all(
+    files.map(async (file) => ({
+      filename: file.name.replace(/[\r\n]/g, '').slice(0, 180),
+      contentType: file.type || 'application/octet-stream',
+      content: Buffer.from(await file.arrayBuffer()),
+      size: file.size,
+    }))
+  )
 
   const company = contact.companyId
     ? await getCompanyById(contact.companyId).catch(() => null)
@@ -51,51 +136,76 @@ export async function prepareDirectEmailAction(input: {
     owner,
     toEmail: contact.email,
     subject,
-    body,
+    body: bodyText,
+    bodyHtml,
+    attachmentsJson: JSON.stringify(
+      attachments.map((attachment) => ({
+        filename: attachment.filename,
+        contentType: attachment.contentType,
+        size: attachment.size,
+      }))
+    ),
     cardRef,
     cardUrl,
   })
 
-  const mailto = buildDirectMailto({
-    owner,
-    toEmail: contact.email,
-    subject,
-    body,
-    cardUrl,
-  })
+  try {
+    const sent = await sendDirectMail({
+      owner,
+      toEmail: contact.email,
+      subject,
+      text: bodyText,
+      html: bodyHtml,
+      cardUrl,
+      attachments: attachments.map(({ filename, contentType, content }) => ({
+        filename,
+        contentType,
+        content,
+      })),
+    })
 
-  return {
-    success: true,
-    mailto,
-    recordId: record.id,
-    cardUrl,
+    const sentAt = new Date().toISOString()
+    await updateDirectEmail(record.id, {
+      status: 'SENT',
+      messageId: sent.messageId,
+      sentAt,
+    })
+
+    let crmWarning = ''
+    try {
+      await createActivity({
+        contactId: contact.id,
+        type: 'EMAIL',
+        date: sentAt,
+        result: 'EMAIL_SENT',
+        notes: `Email direct envoyé depuis Sales OS — ${subject} — carte personnalisée ${cardRef}`,
+        owner,
+      })
+    } catch (error) {
+      crmWarning =
+        error instanceof Error ? error.message : 'journalisation CRM impossible'
+    }
+
+    revalidatePath(`/contacts/${contact.id}`)
+    revalidatePath('/digital-cards/stats')
+
+    const warnings = [
+      !sent.imapArchived
+        ? `Mail envoyé, mais copie dans Envoyés impossible : ${sent.archiveWarning}`
+        : '',
+      crmWarning ? `Activité CRM non créée : ${crmWarning}` : '',
+    ].filter(Boolean)
+
+    return {
+      success: true,
+      cardUrl,
+      warning: warnings.length ? warnings.join(' ') : undefined,
+    }
+  } catch (error) {
+    await updateDirectEmail(record.id, { status: 'FAILED' }).catch(() => undefined)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Échec de l’envoi du mail.',
+    }
   }
-}
-
-export async function confirmDirectEmailSentAction(input: {
-  recordId: string
-  contactId: string
-  subject: string
-}) {
-  const owner = await getCurrentOwner()
-  const sentAt = new Date().toISOString()
-
-  await updateDirectEmail(input.recordId, {
-    status: 'SENT',
-    sentAt,
-  })
-
-  await createActivity({
-    contactId: input.contactId,
-    type: 'EMAIL',
-    date: sentAt,
-    result: 'EMAIL_SENT',
-    notes: `Email direct envoyé via Thunderbird — ${input.subject.trim()}`,
-    owner,
-  })
-
-  revalidatePath(`/contacts/${input.contactId}`)
-  revalidatePath('/digital-cards/stats')
-
-  return { success: true }
 }
