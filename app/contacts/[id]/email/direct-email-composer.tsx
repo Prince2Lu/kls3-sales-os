@@ -160,22 +160,22 @@ export function DirectEmailComposer({
             <div className="mb-2 text-sm font-medium">Message</div>
             <div className="overflow-hidden rounded-xl border border-input bg-background">
               <div className="flex flex-wrap gap-1 border-b border-border bg-muted/40 p-2">
-                <button type="button" onClick={() => apply('bold')} aria-label="Gras" className="rounded p-2 hover:bg-white/10">
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => apply('bold')} aria-label="Gras" className="rounded p-2 hover:bg-white/10">
                   <Bold className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => apply('italic')} aria-label="Italique" className="rounded p-2 hover:bg-white/10">
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => apply('italic')} aria-label="Italique" className="rounded p-2 hover:bg-white/10">
                   <Italic className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => apply('underline')} aria-label="Souligné" className="rounded p-2 hover:bg-white/10">
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => apply('underline')} aria-label="Souligné" className="rounded p-2 hover:bg-white/10">
                   <Underline className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => apply('insertUnorderedList')} aria-label="Liste" className="rounded p-2 hover:bg-white/10">
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => apply('insertUnorderedList')} aria-label="Liste" className="rounded p-2 hover:bg-white/10">
                   <List className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => apply('insertOrderedList')} aria-label="Liste numérotée" className="rounded p-2 hover:bg-white/10">
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => apply('insertOrderedList')} aria-label="Liste numérotée" className="rounded p-2 hover:bg-white/10">
                   <ListOrdered className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={addLink} aria-label="Ajouter un lien" className="rounded p-2 hover:bg-white/10">
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={addLink} aria-label="Ajouter un lien" className="rounded p-2 hover:bg-white/10">
                   <Link2 className="h-4 w-4" />
                 </button>
               </div>
@@ -184,7 +184,7 @@ export function DirectEmailComposer({
                 ref={editorRef}
                 contentEditable={!pending && !success}
                 suppressContentEditableWarning
-                className="min-h-[280px] px-4 py-4 text-sm leading-6 outline-none [&_a]:text-accent [&_a]:underline"
+                className="min-h-[280px] px-4 py-4 text-sm leading-6 outline-none [&_a]:text-accent [&_a]:underline [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1"
                 data-placeholder="Rédigez votre message…"
               />
             </div>
