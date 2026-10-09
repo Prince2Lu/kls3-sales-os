@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { listDigitalCards } from '@/lib/digital-cards'
 import { getCompanies, getContacts, getEmailRecipients } from '@/lib/airtable'
+import { listDirectEmails } from '@/lib/direct-email/data'
 import { listCardEvents, summarizeCardEvents } from '@/lib/card-analytics'
 
 export const dynamic = 'force-dynamic'
@@ -73,10 +74,11 @@ export default async function CardStatsPage({
   const selectedCard = params.card || 'all'
   const start = startForPeriod(period)
 
-  const [cards, allEvents, recipients, contacts, companies] = await Promise.all([
+  const [cards, allEvents, recipients, directEmails, contacts, companies] = await Promise.all([
     listDigitalCards(),
     listCardEvents(),
     getEmailRecipients(),
+    listDirectEmails(),
     getContacts({ maxRecords: 5000 }),
     getCompanies({ maxRecords: 2000 }),
   ])
@@ -86,11 +88,31 @@ export default async function CardStatsPage({
       .filter((recipient) => !!recipient.cardRef)
       .map((recipient) => [recipient.cardRef as string, recipient])
   )
+  const directEmailByRef = new Map(
+    directEmails
+      .filter((item) => !!item.cardRef)
+      .map((item) => [item.cardRef, item])
+  )
   const contactById = new Map(contacts.map((contact) => [contact.id, contact]))
   const companyById = new Map(companies.map((company) => [company.id, company]))
 
   const identityFor = (cardRef: string) => {
     if (!cardRef) return null
+
+    const directEmail = directEmailByRef.get(cardRef)
+    if (directEmail) {
+      const contact = directEmail.contactId ? contactById.get(directEmail.contactId) : null
+      const company = directEmail.companyId ? companyById.get(directEmail.companyId) : null
+      const name = contact
+        ? [contact.firstName, contact.lastName].filter(Boolean).join(' ')
+        : directEmail.toEmail
+      return {
+        name: name || directEmail.toEmail,
+        company: company?.name || '',
+        email: directEmail.toEmail,
+      }
+    }
+
     const recipient = recipientByRef.get(cardRef)
     if (!recipient) return null
     const contact = recipient.contactId ? contactById.get(recipient.contactId) : null
@@ -115,7 +137,7 @@ export default async function CardStatsPage({
   const identifiedContacts = new Set(
     events
       .map((event) => event.cardRef)
-      .filter((ref) => !!ref && recipientByRef.has(ref))
+      .filter((ref) => !!ref && (recipientByRef.has(ref) || directEmailByRef.has(ref)))
   ).size
   const actionTotal =
     stats.vcardDownloads +
