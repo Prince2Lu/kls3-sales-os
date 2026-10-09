@@ -177,7 +177,6 @@ export async function sendDirectEmailAction(
         contactId: contact.id,
         type: 'EMAIL',
         date: sentAt,
-        result: 'EMAIL_SENT',
         notes: `Email direct envoyé depuis Sales OS — ${subject} — carte personnalisée ${cardRef}`,
         owner,
       })
