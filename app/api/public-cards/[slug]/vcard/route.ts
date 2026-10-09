@@ -3,6 +3,7 @@ import {
   buildVCard,
   type EmbeddedVCardPhoto,
 } from '@/lib/digital-cards'
+import { recordCardEvent } from '@/lib/card-analytics'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +38,7 @@ async function loadPhoto(
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params
@@ -56,6 +57,21 @@ export async function GET(
     card.photoVCardUrl || card.photoUrl,
     card.photoMimeType
   )
+
+  const url = new URL(request.url)
+  const source = url.searchParams.get('src') || 'direct'
+  const campaign = url.searchParams.get('campaign') || ''
+  const visitorId = url.searchParams.get('visitor') || ''
+
+  // Analytics must never block the contact download.
+  void recordCardEvent({
+    cardSlug: card.slug,
+    eventType: 'vcard_download',
+    visitorId,
+    source,
+    campaign,
+    pageReferrer: request.headers.get('referer') || '',
+  }).catch(() => undefined)
 
   return new Response(buildVCard(card, photo), {
     status: 200,
