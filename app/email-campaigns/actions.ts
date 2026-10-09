@@ -5,7 +5,7 @@ import {
   createActivity, createEmailCampaign, createEmailRecipient, createTask, getActivities, getBusinessLineByCode, getColdCallTargets, getCompanies, getContacts, getEmailCampaigns,
   getEmailCampaignById, getEmailRecipients, getEmailSuppressions, getTasks, updateEmailCampaign, updateEmailRecipient, updateTask,
 } from '@/lib/airtable'
-import { createBrevoCampaign, createBrevoList, getBrevoTemplate, previewBrevoTemplate, sendBrevoCampaignNow, sendBrevoTemplateTest, upsertBrevoContact } from '@/lib/brevo/client'
+import { createBrevoCampaign, createBrevoList, ensureBrevoCardUrlAttribute, getBrevoTemplate, previewBrevoTemplate, sendBrevoCampaignNow, sendBrevoTemplateTest, upsertBrevoContact } from '@/lib/brevo/client'
 import { buildCampaignAudience } from '@/lib/brevo/campaign-audience'
 import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
 import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
@@ -283,7 +283,7 @@ export async function sendCampaignAction(campaignId: string) {
   }))
 
   const allowedEmails = new Set<string>()
-  const recipients = readyRecipients.filter((recipient) => {
+  let recipients = readyRecipients.filter((recipient) => {
     if (excludedIds.has(recipient.id)) return false
     const email = recipient.email.trim().toLowerCase()
     if (allowedEmails.has(email)) return false
@@ -291,6 +291,17 @@ export async function sendCampaignAction(campaignId: string) {
     return true
   })
   if (!recipients.length) return { success: false, error: 'Aucun destinataire autorisé.' }
+
+  // Existing drafts created before card attribution may not have a reference yet.
+  recipients = await Promise.all(
+    recipients.map((recipient) =>
+      recipient.cardRef
+        ? Promise.resolve(recipient)
+        : updateEmailRecipient(recipient.id, {
+            cardRef: crypto.randomUUID().replace(/-/g, '').slice(0, 20),
+          })
+    )
+  )
   if (recipients.length > 25) return { success: false, error: 'Une campagne pilote est limitée à 25 destinataires.' }
   if (sendMode === 'test') {
     const testEmail = getBrevoTestRecipientEmail()
@@ -309,11 +320,25 @@ export async function sendCampaignAction(campaignId: string) {
 
   let sendAttempted = false
   try {
+    await ensureBrevoCardUrlAttribute()
+
     const listId = await createBrevoList(`${campaign.name} — ${new Date().toISOString().slice(0, 10)}`)
+    const cardSlug = campaign.createdBy.toLowerCase()
     await inBatches(recipients, 5, async (recipient) => {
       const company = companies.find((item) => item.id === recipient.companyId)
       const contact = contacts.find((item) => item.id === recipient.contactId)
-      await upsertBrevoContact({ email: recipient.email, listId, companyName: company?.name ?? '', firstName: contact?.firstName, lastName: contact?.lastName })
+      const cardUrl =
+        `https://www.kls3-dev.com/carte/${encodeURIComponent(cardSlug)}` +
+        `?src=brevo&campaign=${encodeURIComponent(campaign.id)}&ref=${encodeURIComponent(recipient.cardRef ?? '')}`
+
+      await upsertBrevoContact({
+        email: recipient.email,
+        listId,
+        companyName: company?.name ?? '',
+        firstName: contact?.firstName,
+        lastName: contact?.lastName,
+        cardUrl,
+      })
     })
     const brevoId = await createBrevoCampaign({ name: campaign.name, subject: campaign.subject, senderName: campaign.senderName, senderEmail: campaign.senderEmail,
       replyTo: campaign.replyTo, templateId, listId })
