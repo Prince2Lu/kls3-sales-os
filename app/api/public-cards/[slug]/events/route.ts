@@ -30,6 +30,7 @@ export async function POST(
       campaign?: string
       projectLabel?: string
       pageReferrer?: string
+      cardRef?: string
     }
 
     if (!body.eventType || !CARD_EVENT_TYPES.includes(body.eventType as CardEventType)) {
@@ -44,6 +45,7 @@ export async function POST(
       campaign: body.campaign,
       projectLabel: body.projectLabel,
       pageReferrer: body.pageReferrer,
+      cardRef: body.cardRef,
     })
 
     return NextResponse.json({ ok: true }, { status: 201, headers: corsHeaders })
