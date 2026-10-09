@@ -417,3 +417,94 @@ export async function directMailConfigured(owner: Owner) {
     return false
   }
 }
+
+
+export async function testDirectMailConnection(owner: Owner) {
+  const account = await accountFor(owner)
+
+  let smtpOk = false
+  let imapOk = false
+  let smtpMessage = ''
+  let imapMessage = ''
+
+  try {
+    let socket: AnySocket
+    let readLine: () => Promise<string>
+
+    if (account.smtpSecure) {
+      socket = await connectTls(account.smtpHost, account.smtpPort)
+      readLine = createLineReader(socket)
+      await waitForSmtpResponse(readLine, [220])
+    } else {
+      const plain = await connectPlain(account.smtpHost, account.smtpPort)
+      const plainReader = createLineReader(plain)
+      await waitForSmtpResponse(plainReader, [220])
+      writeLine(plain, 'EHLO kls3-dev.com')
+      await waitForSmtpResponse(plainReader, [250])
+      writeLine(plain, 'STARTTLS')
+      await waitForSmtpResponse(plainReader, [220])
+      socket = tls.connect({ socket: plain, servername: account.smtpHost })
+      await new Promise<void>((resolve, reject) => {
+        ;(socket as tls.TLSSocket).once('secureConnect', resolve)
+        socket.once('error', reject)
+      })
+      readLine = createLineReader(socket)
+    }
+
+    try {
+      writeLine(socket, 'EHLO kls3-dev.com')
+      await waitForSmtpResponse(readLine, [250])
+      writeLine(socket, 'AUTH LOGIN')
+      await waitForSmtpResponse(readLine, [334])
+      writeLine(socket, Buffer.from(account.smtpUser, 'utf8').toString('base64'))
+      await waitForSmtpResponse(readLine, [334])
+      writeLine(socket, Buffer.from(account.smtpPassword, 'utf8').toString('base64'))
+      await waitForSmtpResponse(readLine, [235])
+      smtpOk = true
+      smtpMessage = 'Connexion SMTP validée.'
+      writeLine(socket, 'QUIT')
+    } finally {
+      socket.end()
+    }
+  } catch (error) {
+    smtpMessage = error instanceof Error ? error.message : 'Échec SMTP.'
+  }
+
+  try {
+    if (!account.imapSecure) {
+      throw new Error('IMAP doit être configuré en TLS implicite.')
+    }
+
+    const socket = await connectTls(account.imapHost, account.imapPort)
+    const readLine = createLineReader(socket)
+
+    const waitForTag = async (tag: string) => {
+      while (true) {
+        const line = await readLine()
+        if (line.startsWith(`${tag} OK`)) return
+        if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
+          throw new Error(line)
+        }
+      }
+    }
+
+    try {
+      const greeting = await readLine()
+      if (!greeting.startsWith('* OK')) throw new Error(greeting)
+      writeLine(
+        socket,
+        `T001 LOGIN ${imapQuote(account.imapUser)} ${imapQuote(account.imapPassword)}`
+      )
+      await waitForTag('T001')
+      imapOk = true
+      imapMessage = 'Connexion IMAP validée.'
+      writeLine(socket, 'T002 LOGOUT')
+    } finally {
+      socket.end()
+    }
+  } catch (error) {
+    imapMessage = error instanceof Error ? error.message : 'Échec IMAP.'
+  }
+
+  return { smtpOk, imapOk, smtpMessage, imapMessage }
+}
