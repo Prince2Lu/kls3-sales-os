@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer'
-import { ImapFlow } from 'imapflow'
+import tls from 'node:tls'
 import type { Owner } from '@/types/domain'
 
 export type DirectMailAttachment = {
@@ -145,31 +145,99 @@ async function buildRawMessage(
 }
 
 async function appendToSent(account: MailAccount, raw: Buffer) {
-  const client = new ImapFlow({
+  if (!account.imapSecure) {
+    throw new Error('IMAP doit être configuré en TLS implicite (port 993).')
+  }
+
+  const socket = tls.connect({
     host: account.imapHost,
     port: account.imapPort,
-    secure: account.imapSecure,
-    auth: {
-      user: account.imapUser,
-      pass: account.imapPassword,
-    },
-    logger: false,
+    servername: account.imapHost,
   })
 
-  await client.connect()
+  socket.setEncoding('utf8')
+
+  let buffer = ''
+  const queue: string[] = []
+  let resolveLine: ((line: string) => void) | null = null
+
+  socket.on('data', (chunk: string) => {
+    buffer += chunk
+    while (true) {
+      const index = buffer.indexOf('\r\n')
+      if (index < 0) break
+      const line = buffer.slice(0, index)
+      buffer = buffer.slice(index + 2)
+
+      if (resolveLine) {
+        const resolve = resolveLine
+        resolveLine = null
+        resolve(line)
+      } else {
+        queue.push(line)
+      }
+    }
+  })
+
+  const readLine = async (): Promise<string> => {
+    if (queue.length) return queue.shift() as string
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        resolveLine = null
+        reject(new Error('Délai IMAP dépassé.'))
+      }, 15000)
+
+      resolveLine = (line) => {
+        clearTimeout(timeout)
+        resolve(line)
+      }
+    })
+  }
+
+  const waitForTag = async (tag: string) => {
+    while (true) {
+      const line = await readLine()
+      if (line.startsWith(`${tag} OK`)) return
+      if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
+        throw new Error(line)
+      }
+    }
+  }
+
+  const quote = (value: string) =>
+    `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+
+  await new Promise<void>((resolve, reject) => {
+    socket.once('secureConnect', () => resolve())
+    socket.once('error', reject)
+  })
 
   try {
-    let sentMailbox = account.sentMailbox
-    if (!sentMailbox) {
-      const mailboxes = await client.list()
-      sentMailbox =
-        mailboxes.find((mailbox) => mailbox.specialUse === '\\Sent')?.path ||
-        'Sent'
+    const greeting = await readLine()
+    if (!greeting.startsWith('* OK')) throw new Error(greeting)
+
+    socket.write(
+      `A001 LOGIN ${quote(account.imapUser)} ${quote(account.imapPassword)}\r\n`
+    )
+    await waitForTag('A001')
+
+    socket.write(
+      `A002 APPEND ${quote(account.sentMailbox || 'Sent')} (\\Seen) {${raw.length}}\r\n`
+    )
+
+    const continuation = await readLine()
+    if (!continuation.startsWith('+')) {
+      throw new Error(continuation)
     }
 
-    await client.append(sentMailbox, raw, ['\\Seen'], new Date())
+    socket.write(raw)
+    socket.write('\r\n')
+    await waitForTag('A002')
+
+    socket.write('A003 LOGOUT\r\n')
   } finally {
-    await client.logout().catch(() => undefined)
+    socket.end()
   }
 }
 
