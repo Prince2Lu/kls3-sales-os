@@ -21,15 +21,10 @@ export function buildDirectMailto(input: DirectMailDraftInput) {
     '',
     'Cordialement,',
     sender.name,
-    `${sender.title} — KLS3`,
+    `${sender.title} - KLS3`,
     '',
-    `Ma carte digitale : ${input.cardUrl}`,
-  ].join('\n')
+    `Ma carte de contact digitale → ${input.cardUrl}`,
+  ].join('\r\n')
 
-  const params = new URLSearchParams({
-    subject: input.subject,
-    body: fullBody,
-  })
-
-  return `mailto:${encodeURIComponent(input.toEmail)}?${params.toString()}`
+  return `mailto:${encodeURIComponent(input.toEmail)}?subject=${encodeURIComponent(input.subject)}&body=${encodeURIComponent(fullBody)}`
 }
