@@ -1,6 +1,7 @@
 import * as net from 'node:net'
 import * as tls from 'node:tls'
 import type { Owner } from '@/types/domain'
+import { getMailSettings } from '@/lib/mail-settings'
 
 export type DirectMailAttachment = {
   filename: string
@@ -36,52 +37,35 @@ type MailAccount = {
 
 type AnySocket = net.Socket | tls.TLSSocket
 
-function env(owner: Owner, key: string) {
-  return (
-    process.env[`MAIL_${owner.toUpperCase()}_${key}`] ||
-    process.env[`MAIL_${key}`] ||
-    ''
-  )
-}
+async function accountFor(owner: Owner): Promise<MailAccount> {
+  const settings = await getMailSettings(owner)
 
-function bool(value: string, fallback: boolean) {
-  if (!value) return fallback
-  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase())
-}
-
-function accountFor(owner: Owner): MailAccount {
-  const fromEmail = env(owner, 'FROM_EMAIL')
-  const smtpHost = env(owner, 'SMTP_HOST')
-  const smtpPassword = env(owner, 'SMTP_PASSWORD')
-  const imapHost = env(owner, 'IMAP_HOST')
-  const imapPassword = env(owner, 'IMAP_PASSWORD') || smtpPassword
-
-  if (!fromEmail || !smtpHost || !smtpPassword) {
+  if (!settings.fromEmail || !settings.smtpHost || !settings.smtpPassword) {
     throw new Error(
-      `Messagerie ${owner} non configurée : FROM_EMAIL, SMTP_HOST et SMTP_PASSWORD sont requis.`
+      `Messagerie ${owner} non configurée : adresse d’envoi, serveur SMTP et mot de passe requis.`
     )
   }
 
-  if (!imapHost || !imapPassword) {
+  if (!settings.imapHost || !settings.imapPassword) {
     throw new Error(
-      `Messagerie ${owner} non configurée : IMAP_HOST et IMAP_PASSWORD sont requis pour enregistrer le message dans Envoyés.`
+      `Messagerie ${owner} non configurée : serveur IMAP et mot de passe requis pour enregistrer le message dans Envoyés.`
     )
   }
 
   return {
-    fromName: env(owner, 'FROM_NAME') || `${owner} — KLS3`,
-    fromEmail,
-    smtpHost,
-    smtpPort: Number(env(owner, 'SMTP_PORT') || '465'),
-    smtpSecure: bool(env(owner, 'SMTP_SECURE'), true),
-    smtpUser: env(owner, 'SMTP_USER') || fromEmail,
-    smtpPassword,
-    imapHost,
-    imapPort: Number(env(owner, 'IMAP_PORT') || '993'),
-    imapSecure: bool(env(owner, 'IMAP_SECURE'), true),
-    imapUser: env(owner, 'IMAP_USER') || fromEmail,
-    imapPassword,
-    sentMailbox: env(owner, 'IMAP_SENT_MAILBOX') || 'Sent',
+    fromName: settings.fromName || `${owner} — KLS3`,
+    fromEmail: settings.fromEmail,
+    smtpHost: settings.smtpHost,
+    smtpPort: settings.smtpPort || 465,
+    smtpSecure: settings.smtpSecure,
+    smtpUser: settings.smtpUser || settings.fromEmail,
+    smtpPassword: settings.smtpPassword,
+    imapHost: settings.imapHost,
+    imapPort: settings.imapPort || 993,
+    imapSecure: settings.imapSecure,
+    imapUser: settings.imapUser || settings.fromEmail,
+    imapPassword: settings.imapPassword,
+    sentMailbox: settings.sentMailbox || 'Sent',
   }
 }
 
@@ -400,7 +384,7 @@ async function appendToSent(account: MailAccount, raw: Buffer) {
 }
 
 export async function sendDirectMail(input: DirectMailSendInput) {
-  const account = accountFor(input.owner)
+  const account = await accountFor(input.owner)
   const messageId = `<${crypto.randomUUID()}@kls3-dev.com>`
   const raw = buildRawMessage(account, input, messageId)
 
@@ -425,9 +409,9 @@ export async function sendDirectMail(input: DirectMailSendInput) {
   }
 }
 
-export function directMailConfigured(owner: Owner) {
+export async function directMailConfigured(owner: Owner) {
   try {
-    accountFor(owner)
+    await accountFor(owner)
     return true
   } catch {
     return false
