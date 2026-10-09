@@ -200,7 +200,7 @@ export function mapEmailRecipient(record: AirtableRecord<AirtableEmailRecipientF
     prospectingTargetId: fields['Prospecting Target']?.[0] ?? null, email: fields.Email, recipientType: fields['Recipient Type'] as EmailRecipient['recipientType'],
     status: fields.Status as EmailRecipientStatus, openCount: fields['Open Count'] ?? 0, clickCount: fields['Click Count'] ?? 0,
     lastEventAt: fields['Last Event At'] ?? null, lastClickUrl: fields['Last Click URL'] ?? null, exclusionReason: fields['Exclusion Reason'] ?? null,
-    createdAt: fields['Created At'], updatedAt: fields['Updated At'] }
+    cardRef: fields['Card Ref'] ?? null, createdAt: fields['Created At'], updatedAt: fields['Updated At'] }
 }
 
 export function mapEmailEvent(record: AirtableRecord<AirtableEmailEventFields>): EmailEvent {
