@@ -80,6 +80,11 @@ export default async function ContactPage({ params }: ContactPageProps) {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {contact.email && (
+              <Link href={`/contacts/${id}/email`}>
+                <Button>Envoyer un mail</Button>
+              </Link>
+            )}
             {company && (
               <AddToProspectingButton
                 companyId={company.id}
