@@ -12,6 +12,8 @@ export type DirectEmailRecord = {
   toEmail: string
   subject: string
   body: string
+  bodyHtml: string
+  attachmentsJson: string
   cardRef: string
   cardUrl: string
   status: DirectEmailStatus
@@ -38,6 +40,8 @@ function mapRecord(record: AirtableRecord): DirectEmailRecord {
     toEmail: text(f['To Email']),
     subject: text(f.Subject),
     body: text(f.Body),
+    bodyHtml: text(f['Body HTML']),
+    attachmentsJson: text(f['Attachments JSON']),
     cardRef: text(f['Card Ref']),
     cardUrl: text(f['Card URL']),
     status: text(f.Status) as DirectEmailStatus,
@@ -54,6 +58,8 @@ export async function createDirectEmail(input: {
   toEmail: string
   subject: string
   body: string
+  bodyHtml: string
+  attachmentsJson?: string
   cardRef: string
   cardUrl: string
 }) {
@@ -71,6 +77,8 @@ export async function createDirectEmail(input: {
           'To Email': input.toEmail,
           Subject: input.subject,
           Body: input.body,
+          'Body HTML': input.bodyHtml,
+          'Attachments JSON': input.attachmentsJson || '',
           'Card Ref': input.cardRef,
           'Card URL': input.cardUrl,
           Status: 'DRAFT',
