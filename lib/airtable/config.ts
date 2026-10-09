@@ -58,6 +58,7 @@ export const TABLE_NAMES = {
   DIGITAL_CARDS: 'DIGITAL_CARDS',
   CARD_EVENTS: 'CARD_EVENTS',
   DIRECT_EMAILS: 'DIRECT_EMAILS',
+  MAIL_SETTINGS: 'MAIL_SETTINGS',
 
   // NOTE: Table names kept as COLD_CALL_TARGETS and CALL_STATUS_HISTORY for Airtable backward compatibility
   // These tables now handle multi-channel prospecting (not just cold calls)
