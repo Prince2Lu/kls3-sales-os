@@ -1,5 +1,5 @@
-import nodemailer from 'nodemailer'
-import tls from 'node:tls'
+import * as net from 'node:net'
+import * as tls from 'node:tls'
 import type { Owner } from '@/types/domain'
 
 export type DirectMailAttachment = {
@@ -33,6 +33,8 @@ type MailAccount = {
   imapPassword: string
   sentMailbox: string
 }
+
+type AnySocket = net.Socket | tls.TLSSocket
 
 function env(owner: Owner, key: string) {
   return (
@@ -79,7 +81,7 @@ function accountFor(owner: Owner): MailAccount {
     imapSecure: bool(env(owner, 'IMAP_SECURE'), true),
     imapUser: env(owner, 'IMAP_USER') || fromEmail,
     imapPassword,
-    sentMailbox: env(owner, 'IMAP_SENT_MAILBOX'),
+    sentMailbox: env(owner, 'IMAP_SENT_MAILBOX') || 'Sent',
   }
 }
 
@@ -112,130 +114,286 @@ function signatureText(owner: Owner, cardUrl: string) {
   ].join('\n')
 }
 
-async function buildRawMessage(
+function encodeHeader(value: string) {
+  return `=?UTF-8?B?${Buffer.from(value, 'utf8').toString('base64')}?=`
+}
+
+function wrapBase64(buffer: Buffer) {
+  const encoded = buffer.toString('base64')
+  return encoded.match(/.{1,76}/g)?.join('\r\n') || ''
+}
+
+function safeHeaderValue(value: string) {
+  return value.replace(/[\r\n"]/g, '').slice(0, 180)
+}
+
+function buildRawMessage(
   account: MailAccount,
   input: DirectMailSendInput,
   messageId: string
-): Promise<Buffer> {
-  const builder = nodemailer.createTransport({
-    streamTransport: true,
-    buffer: true,
-    newline: 'windows',
-  })
+) {
+  const outer = `kls3-mixed-${crypto.randomUUID()}`
+  const alternative = `kls3-alt-${crypto.randomUUID()}`
+  const text = `${input.text.trim()}\n\n${signatureText(input.owner, input.cardUrl)}`
+  const html = `${input.html}${signatureHtml(input.owner, input.cardUrl)}`
 
-  const result = await builder.sendMail({
-    from: { name: account.fromName, address: account.fromEmail },
-    to: input.toEmail,
-    subject: input.subject,
-    messageId,
-    text: `${input.text.trim()}\n\n${signatureText(input.owner, input.cardUrl)}`,
-    html: `${input.html}${signatureHtml(input.owner, input.cardUrl)}`,
-    attachments: input.attachments.map((attachment) => ({
-      filename: attachment.filename,
-      contentType: attachment.contentType || 'application/octet-stream',
-      content: attachment.content,
-    })),
-  })
+  const lines = [
+    `Message-ID: ${messageId}`,
+    `Date: ${new Date().toUTCString()}`,
+    `From: ${encodeHeader(account.fromName)} <${account.fromEmail}>`,
+    `To: <${input.toEmail}>`,
+    `Subject: ${encodeHeader(input.subject)}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${outer}"`,
+    '',
+    `--${outer}`,
+    `Content-Type: multipart/alternative; boundary="${alternative}"`,
+    '',
+    `--${alternative}`,
+    'Content-Type: text/plain; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrapBase64(Buffer.from(text, 'utf8')),
+    `--${alternative}`,
+    'Content-Type: text/html; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrapBase64(Buffer.from(html, 'utf8')),
+    `--${alternative}--`,
+  ]
 
-  if (!Buffer.isBuffer(result.message)) {
-    throw new Error('Impossible de construire le message MIME.')
+  for (const attachment of input.attachments) {
+    const filename = safeHeaderValue(attachment.filename)
+    lines.push(
+      `--${outer}`,
+      `Content-Type: ${attachment.contentType || 'application/octet-stream'}; name="${filename}"`,
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${filename}"`,
+      '',
+      wrapBase64(attachment.content)
+    )
   }
 
-  return result.message
+  lines.push(`--${outer}--`, '')
+
+  return Buffer.from(lines.join('\r\n'), 'utf8')
 }
 
-async function appendToSent(account: MailAccount, raw: Buffer) {
-  if (!account.imapSecure) {
-    throw new Error('IMAP doit être configuré en TLS implicite (port 993).')
-  }
-
-  const socket = tls.connect({
-    host: account.imapHost,
-    port: account.imapPort,
-    servername: account.imapHost,
-  })
+function createLineReader(socket: AnySocket) {
+  let buffer = ''
+  const queue: string[] = []
+  let pending:
+    | { resolve: (line: string) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }
+    | null = null
 
   socket.setEncoding('utf8')
 
-  let buffer = ''
-  const queue: string[] = []
-  let resolveLine: ((line: string) => void) | null = null
+  socket.on('data', (chunk) => {
+    buffer += String(chunk)
 
-  socket.on('data', (chunk: string) => {
-    buffer += chunk
     while (true) {
       const index = buffer.indexOf('\r\n')
       if (index < 0) break
+
       const line = buffer.slice(0, index)
       buffer = buffer.slice(index + 2)
 
-      if (resolveLine) {
-        const resolve = resolveLine
-        resolveLine = null
-        resolve(line)
+      if (pending) {
+        const current = pending
+        pending = null
+        clearTimeout(current.timer)
+        current.resolve(line)
       } else {
         queue.push(line)
       }
     }
   })
 
-  const readLine = async (): Promise<string> => {
+  socket.on('error', (error) => {
+    if (pending) {
+      const current = pending
+      pending = null
+      clearTimeout(current.timer)
+      current.reject(error)
+    }
+  })
+
+  return async function readLine(timeoutMs = 15000): Promise<string> {
     if (queue.length) return queue.shift() as string
 
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        resolveLine = null
-        reject(new Error('Délai IMAP dépassé.'))
-      }, 15000)
+      const timer = setTimeout(() => {
+        pending = null
+        reject(new Error('Délai serveur mail dépassé.'))
+      }, timeoutMs)
 
-      resolveLine = (line) => {
-        clearTimeout(timeout)
-        resolve(line)
-      }
+      pending = { resolve, reject, timer }
     })
   }
+}
+
+function writeLine(socket: AnySocket, value: string) {
+  socket.write(`${value}\r\n`)
+}
+
+async function waitForSmtpResponse(
+  readLine: () => Promise<string>,
+  expectedCodes: number[]
+) {
+  const first = await readLine()
+  const code = Number(first.slice(0, 3))
+
+  if (first[3] === '-') {
+    while (true) {
+      const line = await readLine()
+      if (line.startsWith(`${code} `)) break
+    }
+  }
+
+  if (!expectedCodes.includes(code)) {
+    throw new Error(`SMTP ${code}: ${first}`)
+  }
+}
+
+async function connectPlain(host: string, port: number) {
+  const socket = net.connect({ host, port })
+
+  await new Promise<void>((resolve, reject) => {
+    socket.once('connect', resolve)
+    socket.once('error', reject)
+  })
+
+  return socket
+}
+
+async function connectTls(host: string, port: number) {
+  const socket = tls.connect({
+    host,
+    port,
+    servername: host,
+  })
+
+  await new Promise<void>((resolve, reject) => {
+    socket.once('secureConnect', resolve)
+    socket.once('error', reject)
+  })
+
+  return socket
+}
+
+async function sendSmtp(account: MailAccount, toEmail: string, raw: Buffer) {
+  let socket: AnySocket
+  let readLine: () => Promise<string>
+
+  if (account.smtpSecure) {
+    socket = await connectTls(account.smtpHost, account.smtpPort)
+    readLine = createLineReader(socket)
+    await waitForSmtpResponse(readLine, [220])
+  } else {
+    const plain = await connectPlain(account.smtpHost, account.smtpPort)
+    const plainReader = createLineReader(plain)
+
+    await waitForSmtpResponse(plainReader, [220])
+    writeLine(plain, 'EHLO kls3-dev.com')
+    await waitForSmtpResponse(plainReader, [250])
+    writeLine(plain, 'STARTTLS')
+    await waitForSmtpResponse(plainReader, [220])
+
+    socket = tls.connect({
+      socket: plain,
+      servername: account.smtpHost,
+    })
+
+    await new Promise<void>((resolve, reject) => {
+      ;(socket as tls.TLSSocket).once('secureConnect', resolve)
+      socket.once('error', reject)
+    })
+
+    readLine = createLineReader(socket)
+  }
+
+  try {
+    writeLine(socket, 'EHLO kls3-dev.com')
+    await waitForSmtpResponse(readLine, [250])
+
+    writeLine(socket, 'AUTH LOGIN')
+    await waitForSmtpResponse(readLine, [334])
+    writeLine(socket, Buffer.from(account.smtpUser, 'utf8').toString('base64'))
+    await waitForSmtpResponse(readLine, [334])
+    writeLine(socket, Buffer.from(account.smtpPassword, 'utf8').toString('base64'))
+    await waitForSmtpResponse(readLine, [235])
+
+    writeLine(socket, `MAIL FROM:<${account.fromEmail}>`)
+    await waitForSmtpResponse(readLine, [250])
+    writeLine(socket, `RCPT TO:<${toEmail}>`)
+    await waitForSmtpResponse(readLine, [250, 251])
+
+    writeLine(socket, 'DATA')
+    await waitForSmtpResponse(readLine, [354])
+
+    const message = raw
+      .toString('utf8')
+      .replace(/^\./gm, '..')
+      .replace(/\r?\n/g, '\r\n')
+
+    socket.write(message.endsWith('\r\n') ? message : `${message}\r\n`)
+    socket.write('.\r\n')
+
+    await waitForSmtpResponse(readLine, [250])
+    writeLine(socket, 'QUIT')
+  } finally {
+    socket.end()
+  }
+}
+
+function imapQuote(value: string) {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+async function appendToSent(account: MailAccount, raw: Buffer) {
+  if (!account.imapSecure) {
+    throw new Error('IMAP doit être configuré en TLS implicite.')
+  }
+
+  const socket = await connectTls(account.imapHost, account.imapPort)
+  const readLine = createLineReader(socket)
 
   const waitForTag = async (tag: string) => {
     while (true) {
       const line = await readLine()
       if (line.startsWith(`${tag} OK`)) return
       if (line.startsWith(`${tag} NO`) || line.startsWith(`${tag} BAD`)) {
-        throw new Error(line)
+        throw new Error(`IMAP: ${line}`)
       }
     }
   }
 
-  const quote = (value: string) =>
-    `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-
-  await new Promise<void>((resolve, reject) => {
-    socket.once('secureConnect', () => resolve())
-    socket.once('error', reject)
-  })
-
   try {
     const greeting = await readLine()
-    if (!greeting.startsWith('* OK')) throw new Error(greeting)
+    if (!greeting.startsWith('* OK')) {
+      throw new Error(`IMAP: ${greeting}`)
+    }
 
-    socket.write(
-      `A001 LOGIN ${quote(account.imapUser)} ${quote(account.imapPassword)}\r\n`
+    writeLine(
+      socket,
+      `A001 LOGIN ${imapQuote(account.imapUser)} ${imapQuote(account.imapPassword)}`
     )
     await waitForTag('A001')
 
     socket.write(
-      `A002 APPEND ${quote(account.sentMailbox || 'Sent')} (\\Seen) {${raw.length}}\r\n`
+      `A002 APPEND ${imapQuote(account.sentMailbox)} (\\Seen) {${raw.length}}\r\n`
     )
 
     const continuation = await readLine()
     if (!continuation.startsWith('+')) {
-      throw new Error(continuation)
+      throw new Error(`IMAP APPEND: ${continuation}`)
     }
 
     socket.write(raw)
     socket.write('\r\n')
     await waitForTag('A002')
 
-    socket.write('A003 LOGOUT\r\n')
+    writeLine(socket, 'A003 LOGOUT')
   } finally {
     socket.end()
   }
@@ -244,25 +402,9 @@ async function appendToSent(account: MailAccount, raw: Buffer) {
 export async function sendDirectMail(input: DirectMailSendInput) {
   const account = accountFor(input.owner)
   const messageId = `<${crypto.randomUUID()}@kls3-dev.com>`
-  const raw = await buildRawMessage(account, input, messageId)
+  const raw = buildRawMessage(account, input, messageId)
 
-  const smtp = nodemailer.createTransport({
-    host: account.smtpHost,
-    port: account.smtpPort,
-    secure: account.smtpSecure,
-    auth: {
-      user: account.smtpUser,
-      pass: account.smtpPassword,
-    },
-  })
-
-  await smtp.sendMail({
-    envelope: {
-      from: account.fromEmail,
-      to: [input.toEmail],
-    },
-    raw,
-  })
+  await sendSmtp(account, input.toEmail, raw)
 
   let imapArchived = true
   let archiveWarning = ''
