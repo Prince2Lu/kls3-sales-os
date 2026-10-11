@@ -270,7 +270,11 @@ function foldVCardLine(line: string): string {
   return chunks.join('\r\n ')
 }
 
-export function buildVCard(card: DigitalCard, photo?: EmbeddedVCardPhoto): string {
+export function buildVCard(
+  card: DigitalCard,
+  photo?: EmbeddedVCardPhoto,
+  options: { compatibilityMode?: boolean } = {}
+): string {
   const esc = (value: string) =>
     value
       .replace(/\\/g, '\\\\')
@@ -278,7 +282,11 @@ export function buildVCard(card: DigitalCard, photo?: EmbeddedVCardPhoto): strin
       .replace(/,/g, '\\,')
       .replace(/;/g, '\\;')
 
-  const projectLines = card.projects.flatMap((project, index) => {
+  const compatibilityMode = options.compatibilityMode === true
+
+  const projectLines = compatibilityMode
+    ? []
+    : card.projects.flatMap((project, index) => {
     const item = index + 2
     return [
       `item${item}.URL:${esc(project.url)}`,
@@ -295,11 +303,16 @@ export function buildVCard(card: DigitalCard, photo?: EmbeddedVCardPhoto): strin
     card.title ? `TITLE:${esc(card.title)}` : '',
     card.phone ? `TEL;TYPE=CELL:${esc(card.phone)}` : '',
     card.email ? `EMAIL;TYPE=INTERNET:${esc(card.email)}` : '',
-    photo ? `PHOTO;ENCODING=b;TYPE=${photo.type}:${photo.base64}` : '',
+    photo && !compatibilityMode
+      ? `PHOTO;ENCODING=b;TYPE=${photo.type}:${photo.base64}`
+      : '',
     card.website ? `URL:${esc(card.website)}` : '',
-    card.linkedin ? `item1.URL:${esc(card.linkedin)}` : '',
-    card.linkedin ? 'item1.X-ABLabel:LinkedIn' : '',
-    card.linkedin ? `X-SOCIALPROFILE;TYPE=linkedin:${esc(card.linkedin)}` : '',
+    card.linkedin && !compatibilityMode ? `item1.URL:${esc(card.linkedin)}` : '',
+    card.linkedin && !compatibilityMode ? 'item1.X-ABLabel:LinkedIn' : '',
+    card.linkedin && !compatibilityMode
+      ? `X-SOCIALPROFILE;TYPE=linkedin:${esc(card.linkedin)}`
+      : '',
+    card.linkedin && compatibilityMode ? `URL:${esc(card.linkedin)}` : '',
     ...projectLines,
     card.bio ? `NOTE:${esc(card.bio)}` : '',
     'END:VCARD',
