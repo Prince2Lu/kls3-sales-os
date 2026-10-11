@@ -53,12 +53,19 @@ export async function GET(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 
-  const photo = await loadPhoto(
-    card.photoVCardUrl || card.photoUrl,
-    card.photoMimeType
-  )
-
   const url = new URL(request.url)
+  const userAgent = request.headers.get('user-agent') || ''
+  const requestedPlatform = url.searchParams.get('platform') || ''
+  const androidLike =
+    requestedPlatform === 'android' ||
+    /Android|SamsungBrowser|Huawei|Xiaomi|OPPO|OnePlus/i.test(userAgent)
+
+  const photo = androidLike
+    ? undefined
+    : await loadPhoto(
+        card.photoVCardUrl || card.photoUrl,
+        card.photoMimeType
+      )
   const source = url.searchParams.get('src') || 'direct'
   const campaign = url.searchParams.get('campaign') || ''
   const visitorId = url.searchParams.get('visitor') || ''
@@ -75,12 +82,18 @@ export async function GET(
     cardRef,
   }).catch(() => undefined)
 
-  return new Response(buildVCard(card, photo), {
+  return new Response(
+    buildVCard(card, photo, { compatibilityMode: androidLike }),
+    {
     status: 200,
     headers: {
-      'Content-Type': 'text/vcard; charset=utf-8',
+      'Content-Type': androidLike
+        ? 'text/x-vcard; charset=utf-8'
+        : 'text/vcard; charset=utf-8',
       'Content-Disposition': `attachment; filename="${filename || slug}.vcf"`,
       'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
     },
-  })
+  }
+  )
 }
