@@ -189,6 +189,7 @@ export async function recordCallActivity(
   result: ActivityResult,
   metadata?: {
     callbackDate?: string // For CALLBACK result
+    notes?: string
   }
 ) {
   try {
@@ -206,7 +207,7 @@ export async function recordCallActivity(
       type: 'CALL',
       date: new Date().toISOString(),
       result,
-      notes: undefined,
+      notes: metadata?.notes,
       owner,
       durationMinutes: undefined,
     })
