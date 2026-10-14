@@ -31,7 +31,7 @@ import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { ColdCallColumn } from './cold-call-column'
 import { CallbackModal } from './callback-modal'
-import { Search, X } from 'lucide-react'
+import { Search, X, Phone, CalendarDays, MessageCircle, CalendarCheck } from 'lucide-react'
 import { normalizeSearchValue, combineSearchValues, normalizePhoneForSearch } from '@/lib/utils/search'
 
 interface ColdCallBoardProps {
@@ -386,8 +386,61 @@ export function ColdCallBoard({
 
   const activeTarget = activeId ? targets.find((t) => t.id === activeId) : null
 
+  const callKpis = useMemo(() => {
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekStart = new Date(todayStart)
+    const day = weekStart.getDay()
+    weekStart.setDate(weekStart.getDate() - (day === 0 ? 6 : day - 1))
+
+    const scopedActivities = activities.filter((activity) => {
+      if (!activity.coldCallTargetId) return false
+      const target = targets.find((item) => item.id === activity.coldCallTargetId)
+      if (!target) return false
+      return !selectedBusinessLineId || target.businessLineId === selectedBusinessLineId
+    })
+
+    const isToday = (date: string) => new Date(date) >= todayStart
+    const isThisWeek = (date: string) => new Date(date) >= weekStart
+    const callsToday = scopedActivities.filter((activity) => activity.type === 'CALL' && isToday(activity.date))
+    const callsWeek = scopedActivities.filter((activity) => activity.type === 'CALL' && isThisWeek(activity.date))
+
+    return {
+      callsToday: callsToday.length,
+      callsWeek: callsWeek.length,
+      conversationsToday: scopedActivities.filter((activity) => activity.result === 'CONVERSATION' && isToday(activity.date)).length,
+      meetingsToday: scopedActivities.filter((activity) => activity.result === 'MEETING_BOOKED' && isToday(activity.date)).length,
+      ericToday: callsToday.filter((activity) => activity.owner === 'Eric').length,
+      lilianToday: callsToday.filter((activity) => activity.owner === 'Lilian').length,
+    }
+  }, [activities, targets, selectedBusinessLineId])
+
+  const callKpiCards = [
+    { label: "Appels aujourd'hui", value: callKpis.callsToday, icon: Phone, detail: `Eric ${callKpis.ericToday} · Lilian ${callKpis.lilianToday}` },
+    { label: 'Appels cette semaine', value: callKpis.callsWeek, icon: CalendarDays },
+    { label: "Conversations aujourd'hui", value: callKpis.conversationsToday, icon: MessageCircle },
+    { label: "RDV obtenus aujourd'hui", value: callKpis.meetingsToday, icon: CalendarCheck },
+  ]
+
   return (
     <div className="relative space-y-4">
+      {/* Daily call KPIs */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {callKpiCards.map((metric) => {
+          const Icon = metric.icon
+          return (
+            <div key={metric.label} className="bg-card-bg border border-border rounded-2xl p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs uppercase tracking-wide text-text-muted">{metric.label}</div>
+                <Icon className="w-4 h-4 text-accent" />
+              </div>
+              <div className="mt-2 text-3xl font-semibold font-syne">{metric.value}</div>
+              {metric.detail && <div className="mt-1 text-xs text-text-muted">{metric.detail}</div>}
+            </div>
+          )
+        })}
+      </div>
+
       {/* Search Input */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />

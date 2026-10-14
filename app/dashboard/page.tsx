@@ -9,13 +9,14 @@ import {
   getTasks,
   getCompanies,
   getContacts,
+  getColdCallTargets,
 } from '@/lib/airtable'
 import { DashboardClient } from './dashboard-client'
 
 export default async function DashboardPage() {
   // Fetch all required data in parallel (TEAM VIEW - no owner filtering)
   // NO LIMITS - Airtable pagination handles large datasets automatically
-  const [businessLines, valueEvents, opportunities, activities, tasks, companies, contacts] =
+  const [businessLines, valueEvents, opportunities, activities, tasks, companies, contacts, coldCallTargets] =
     await Promise.all([
       getBusinessLines(),
       getValueEvents(), // No limit - all value events
@@ -24,6 +25,7 @@ export default async function DashboardPage() {
       getTasks(), // No limit - all tasks
       getCompanies(), // No limit - all companies
       getContacts(), // No limit - all contacts
+      getColdCallTargets({ maxRecords: 500 }),
     ])
 
   return (
@@ -36,6 +38,7 @@ export default async function DashboardPage() {
         tasks={tasks}
         companies={companies}
         contacts={contacts}
+        coldCallTargets={coldCallTargets}
       />
     </div>
   )

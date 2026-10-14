@@ -2,7 +2,7 @@
 // Calls, Conversations, Meetings, Opportunities Created (PERIOD FLOW)
 // Propositions, Wins (CURRENT STATE)
 
-import type { Activity, Opportunity, BusinessLine } from '@/types/domain'
+import type { Activity, Opportunity, BusinessLine, ColdCallTarget } from '@/types/domain'
 import type { DateRange, PeriodType } from '@/lib/utils/period'
 import {
   countCalls,
@@ -20,6 +20,7 @@ interface CommercialActivityProps {
   selectedBusinessLineId: string | null
   period: DateRange
   selectedPeriod: PeriodType
+  coldCallTargets: ColdCallTarget[]
 }
 
 export function CommercialActivity({
@@ -29,6 +30,7 @@ export function CommercialActivity({
   selectedBusinessLineId,
   period,
   selectedPeriod,
+  coldCallTargets,
 }: CommercialActivityProps) {
   // Period labels
   const periodLabels: Record<PeriodType, string> = {
@@ -42,7 +44,11 @@ export function CommercialActivity({
   // Filter data by selected Business Line if applicable
   const filteredActivities = selectedBusinessLineId
     ? activities.filter((activity) => {
-        // Activities link to opportunities, opportunities link to business lines
+        if (activity.coldCallTargetId) {
+          const target = coldCallTargets.find((item) => item.id === activity.coldCallTargetId)
+          if (target) return target.businessLineId === selectedBusinessLineId
+        }
+
         const opportunity = opportunities.find((opp) => opp.id === activity.opportunityId)
         return opportunity?.businessLineId === selectedBusinessLineId
       })
