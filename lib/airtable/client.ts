@@ -222,6 +222,7 @@ export async function getBusinessLineByCode(
 // ============================================================================
 
 export async function getCompanies(options?: {
+  importBatchId?: string
   maxRecords?: number
 }): Promise<Company[]> {
   const records = await fetchRecords<AirtableCompanyFields>(
@@ -231,7 +232,11 @@ export async function getCompanies(options?: {
       maxRecords: options?.maxRecords,
     }
   )
-  return records.map(mapCompany)
+  const filteredRecords = options?.importBatchId
+    ? records.filter((record) => record.fields['Import Batch']?.includes(options.importBatchId!))
+    : records
+
+  return filteredRecords.map(mapCompany)
 }
 
 export async function getCompanyById(id: string): Promise<Company> {
@@ -248,6 +253,7 @@ export async function getCompanyById(id: string): Promise<Company> {
 
 export async function getContacts(options?: {
   companyId?: string
+  importBatchId?: string
   maxRecords?: number
 }): Promise<Contact[]> {
   const records = await fetchRecords<AirtableContactFields>(
@@ -262,8 +268,15 @@ export async function getContacts(options?: {
   let filteredRecords = records
   if (options?.companyId) {
     const companyId = options.companyId
-    filteredRecords = records.filter(record =>
+    filteredRecords = filteredRecords.filter(record =>
       record.fields.Company?.includes(companyId)
+    )
+  }
+
+  if (options?.importBatchId) {
+    const importBatchId = options.importBatchId
+    filteredRecords = filteredRecords.filter(record =>
+      record.fields['Import Batch']?.includes(importBatchId)
     )
   }
 
@@ -646,6 +659,7 @@ export interface CreateCompanyInput {
   companySize?: string
   linkedin?: string
   notes?: string
+  importBatchId?: string
 }
 
 export async function createCompany(
@@ -674,6 +688,7 @@ export async function createCompany(
     'Company Size': input.companySize,
     LinkedIn: input.linkedin,
     Notes: input.notes,
+    'Import Batch': input.importBatchId ? [input.importBatchId] : undefined,
     'Created At': now,
     'Updated At': now,
   }
@@ -717,6 +732,8 @@ export async function updateCompany(
   if (input.companySize !== undefined) fields['Company Size'] = input.companySize
   if (input.linkedin !== undefined) fields.LinkedIn = input.linkedin
   if (input.notes !== undefined) fields.Notes = input.notes
+  if (input.importBatchId !== undefined)
+    fields['Import Batch'] = input.importBatchId ? [input.importBatchId] : []
 
   const record = await updateRecord<AirtableCompanyFields>(
     TABLE_NAMES.COMPANIES,
@@ -1786,6 +1803,17 @@ export async function completeImportBatch(
     Excluded: stats.excluded ?? 0,
     Errors: stats.errors ?? 0,
     'Imported At': new Date().toISOString(),
+  })
+  return mapImportBatch(record)
+}
+
+export async function markImportBatchRolledBack(
+  id: string,
+  summary: string
+): Promise<ImportBatch> {
+  const record = await updateRecord<AirtableImportBatchFields>(TABLE_NAMES.IMPORT_BATCHES, id, {
+    'Rolled Back At': new Date().toISOString(),
+    'Rollback Summary': summary,
   })
   return mapImportBatch(record)
 }
