@@ -119,6 +119,7 @@ export function mapCompany(
     companySize: fields['Company Size'] ?? null,
     linkedin: fields.LinkedIn ?? null,
     notes: fields.Notes ?? null,
+    importBatchId: fields['Import Batch']?.[0] ?? null,
     createdAt: fields['Created At'],
     updatedAt: fields['Updated At'],
   }
@@ -166,6 +167,8 @@ export function mapImportBatch(record: AirtableRecord<AirtableImportBatchFields>
     importedBy: fields['Imported By'] as Owner,
     status: fields.Status as ImportBatchStatus,
     importedAt: fields['Imported At'] ?? null,
+    rolledBackAt: fields['Rolled Back At'] ?? null,
+    rollbackSummary: fields['Rollback Summary'] ?? null,
     createdAt: fields['Created At'],
   }
 }
