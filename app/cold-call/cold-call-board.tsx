@@ -286,14 +286,33 @@ export function ColdCallBoard({
     const target = targets.find((t) => t.id === targetId)
     if (!target) return
 
-    // Determine if dropping on a call status or stage column
-    const isCallStatusColumn = CALL_STATUSES.includes(overId as CallStatus)
-    const isStageColumn = POST_RDV_STAGES.includes(
+    // Resolve destination from either the column itself OR a card inside it.
+    // dnd-kit returns the hovered card id when dropping between cards, so only
+    // checking column ids makes drops work mainly on empty/top areas.
+    const overTarget = targets.find((t) => t.id === overId)
+    const overOpportunity = overTarget?.opportunityId
+      ? opportunitiesMap[overTarget.opportunityId]
+      : null
+
+    const resolvedCallStatus = CALL_STATUSES.includes(overId as CallStatus)
+      ? (overId as CallStatus)
+      : overTarget && CALL_STATUSES.includes(overTarget.callStatus)
+        ? overTarget.callStatus
+        : null
+
+    const resolvedStage = POST_RDV_STAGES.includes(
       overId as (typeof POST_RDV_STAGES)[number]
     )
+      ? (overId as (typeof POST_RDV_STAGES)[number])
+      : overOpportunity &&
+          POST_RDV_STAGES.includes(
+            overOpportunity.stage as (typeof POST_RDV_STAGES)[number]
+          )
+        ? (overOpportunity.stage as (typeof POST_RDV_STAGES)[number])
+        : null
 
-    if (isCallStatusColumn) {
-      const newStatus = overId as CallStatus
+    if (resolvedCallStatus) {
+      const newStatus = resolvedCallStatus
 
       // If already in this status, do nothing
       if (target.callStatus === newStatus) return
@@ -316,8 +335,8 @@ export function ColdCallBoard({
       } else {
         alert('Erreur lors de la mise à jour')
       }
-    } else if (isStageColumn) {
-      const newStage = overId as 'Gagné' | 'Perdu'
+    } else if (resolvedStage) {
+      const newStage = resolvedStage as 'Gagné' | 'Perdu'
 
       // Must have an opportunity to move to Gagné/Perdu
       if (!target.opportunityId) {
