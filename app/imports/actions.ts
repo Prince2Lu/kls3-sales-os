@@ -6,10 +6,18 @@ import {
   createCompany,
   createContact,
   createImportBatch,
+  deleteCompany,
+  deleteContact,
   getBusinessLineByCode,
+  getColdCallTargets,
   getCompanies,
   getContacts,
+  getEmailRecipients,
   getEmailSuppressions,
+  getImportBatches,
+  getOpportunities,
+  getRelationships,
+  markImportBatchRolledBack,
   updateContact,
   updateCompany,
 } from '@/lib/airtable'
@@ -105,7 +113,6 @@ export async function importNotaryPilotAction(candidates: NotaryDirectoryCandida
             country: company.country ?? 'France',
             industry: company.industry ?? 'Notariat',
             notaryCount: candidate.notaries.length,
-            importBatchId: batch.id,
             notes: company.notes ?? `Source : ${candidate.sourceUrl}`,
           })
           stats.companiesUpdated += 1
@@ -161,6 +168,7 @@ export async function importNotaryPilotAction(candidates: NotaryDirectoryCandida
             jobTitle: 'Notaire',
             email: notary.email || undefined,
             decisionMaker: false,
+            importBatchId: batch.id,
             notes: `Source : ${candidate.sourceUrl}${notary.email ? `\nSource email direct : ${notary.sourceUrl}` : ''}`,
           })
           contacts.push(contact)
@@ -182,3 +190,144 @@ export async function importNotaryPilotAction(candidates: NotaryDirectoryCandida
   revalidatePath('/contacts')
   return { success: stats.errors === 0, batchId: batch.id, stats, error: stats.errors ? `${stats.errors} office(s) n'ont pas pu être traités.` : undefined }
 }
+
+export interface ImportRollbackPreview {
+  batchId: string
+  batchName: string
+  companiesToDelete: number
+  contactsToDelete: number
+  safe: boolean
+  reasons: string[]
+  rolledBackAt: string | null
+}
+
+async function buildImportRollbackPreview(batchId?: string): Promise<ImportRollbackPreview | null> {
+  const batches = await getImportBatches({ maxRecords: 50 })
+  const batch = batchId ? batches.find((item) => item.id === batchId) : batches[0]
+  if (!batch) return null
+
+  const [companies, contacts, allContacts, opportunities, targets, relationships, recipients] = await Promise.all([
+    getCompanies({ importBatchId: batch.id, maxRecords: 5000 }),
+    getContacts({ importBatchId: batch.id, maxRecords: 10000 }),
+    getContacts({ maxRecords: 10000 }),
+    getOpportunities({ maxRecords: 5000 }),
+    getColdCallTargets({ includeArchived: true, maxRecords: 10000 }),
+    getRelationships({ maxRecords: 5000 }),
+    getEmailRecipients(),
+  ])
+
+  const companyIds = new Set(companies.map((item) => item.id))
+  const contactIds = new Set(contacts.map((item) => item.id))
+  const reasons: string[] = []
+
+  if (batch.rolledBackAt) {
+    reasons.push('Ce lot a déjà été annulé.')
+  }
+
+  if (companies.length !== batch.companiesCreated) {
+    reasons.push(
+      `Traçabilité sociétés incomplète : ${companies.length} liée(s) au batch pour ${batch.companiesCreated} créée(s).`
+    )
+  }
+
+  if (contacts.length !== batch.contactsCreated) {
+    reasons.push(
+      `Traçabilité contacts incomplète : ${contacts.length} lié(s) au batch pour ${batch.contactsCreated} créé(s).`
+    )
+  }
+
+  const foreignContacts = allContacts.filter(
+    (contact) =>
+      !!contact.companyId &&
+      companyIds.has(contact.companyId) &&
+      !contactIds.has(contact.id)
+  )
+  if (foreignContacts.length > 0) {
+    reasons.push(
+      `${foreignContacts.length} contact(s) non créé(s) par ce lot sont désormais rattachés aux sociétés à supprimer.`
+    )
+  }
+
+  const usedOpportunities = opportunities.filter(
+    (opportunity) => !!opportunity.companyId && companyIds.has(opportunity.companyId)
+  )
+  if (usedOpportunities.length > 0) {
+    reasons.push(`${usedOpportunities.length} Opportunity(s) utilisent déjà ces sociétés.`)
+  }
+
+  const usedTargets = targets.filter(
+    (target) => companyIds.has(target.companyId) || (!!target.contactId && contactIds.has(target.contactId))
+  )
+  if (usedTargets.length > 0) {
+    reasons.push(`${usedTargets.length} cible(s) de prospection utilisent déjà ces données.`)
+  }
+
+  const usedRelationships = relationships.filter(
+    (relationship) =>
+      (!!relationship.companyId && companyIds.has(relationship.companyId)) ||
+      (!!relationship.contactId && contactIds.has(relationship.contactId))
+  )
+  if (usedRelationships.length > 0) {
+    reasons.push(`${usedRelationships.length} relation(s) stratégique(s) utilisent déjà ces données.`)
+  }
+
+  const usedRecipients = recipients.filter(
+    (recipient) =>
+      companyIds.has(recipient.companyId) ||
+      (!!recipient.contactId && contactIds.has(recipient.contactId))
+  )
+  if (usedRecipients.length > 0) {
+    reasons.push(`${usedRecipients.length} destinataire(s) de campagne utilisent déjà ces données.`)
+  }
+
+  return {
+    batchId: batch.id,
+    batchName: batch.name,
+    companiesToDelete: companies.length,
+    contactsToDelete: contacts.length,
+    safe: reasons.length === 0,
+    reasons,
+    rolledBackAt: batch.rolledBackAt,
+  }
+}
+
+export async function previewLastImportRollbackAction() {
+  await getCurrentOwner()
+  const preview = await buildImportRollbackPreview()
+  if (!preview) return { success: false, error: 'Aucun import à annuler.' }
+  return { success: true, preview }
+}
+
+export async function rollbackLastImportAction(batchId: string) {
+  await getCurrentOwner()
+  const preview = await buildImportRollbackPreview(batchId)
+  if (!preview) return { success: false, error: 'Lot d’import introuvable.' }
+  if (!preview.safe) {
+    return {
+      success: false,
+      error: 'Rollback refusé : la traçabilité ou les dépendances ne permettent pas une suppression sûre.',
+      preview,
+    }
+  }
+
+  const [contacts, companies] = await Promise.all([
+    getContacts({ importBatchId: batchId, maxRecords: 10000 }),
+    getCompanies({ importBatchId: batchId, maxRecords: 5000 }),
+  ])
+
+  for (const contact of contacts) {
+    await deleteContact(contact.id)
+  }
+  for (const company of companies) {
+    await deleteCompany(company.id)
+  }
+
+  const summary = `Rollback Sales OS : ${companies.length} société(s) et ${contacts.length} contact(s) supprimés.`
+  await markImportBatchRolledBack(batchId, summary)
+
+  revalidatePath('/imports')
+  revalidatePath('/companies')
+  revalidatePath('/contacts')
+  return { success: true, summary }
+}
+
