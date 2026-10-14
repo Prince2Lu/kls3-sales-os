@@ -162,6 +162,7 @@ export interface Company {
   companySize: string | null
   linkedin: string | null
   notes: string | null
+  importBatchId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -203,6 +204,8 @@ export interface ImportBatch {
   importedBy: Owner
   status: ImportBatchStatus
   importedAt: string | null
+  rolledBackAt: string | null
+  rollbackSummary: string | null
   createdAt: string
 }
 
