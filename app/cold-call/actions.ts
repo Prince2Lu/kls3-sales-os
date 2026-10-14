@@ -291,6 +291,27 @@ export async function recordCallActivity(
           })
           break
 
+        case 'CALLBACK':
+          // KLS3 rule: a callback is still prospecting, not an Opportunity.
+          await changeColdCallStatus({
+            targetId,
+            toStatus: 'À rappeler',
+          })
+          if (metadata?.callbackDate) {
+            await createTask({
+              opportunityId: target.opportunityId ?? undefined,
+              contactId: target.contactId ?? undefined,
+              coldCallTargetId: targetId,
+              type: 'CALL',
+              dueAt: metadata.callbackDate,
+              priority: 'MEDIUM',
+              status: 'TODO',
+              notes: 'Relance programmée',
+              owner: target.owner,
+            })
+          }
+          break
+
         case 'EMAIL_REQUESTED':
           // Create TASK for email but stay in prospecting
           if (metadata?.callbackDate) {
