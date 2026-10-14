@@ -162,7 +162,6 @@ export interface Company {
   companySize: string | null
   linkedin: string | null
   notes: string | null
-  importBatchId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -183,6 +182,7 @@ export interface Contact {
   decisionMaker: boolean
   linkedin: string | null
   notes: string | null
+  importBatchId: string | null
   createdAt: string
   updatedAt: string
 }
