@@ -60,6 +60,7 @@ export interface AirtableContactFields {
   'Decision Maker'?: boolean
   LinkedIn?: string
   Notes?: string
+  'Import Batch'?: string[]
   'Created At': string
   'Updated At': string
 }
