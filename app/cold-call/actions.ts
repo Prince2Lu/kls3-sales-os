@@ -11,6 +11,8 @@ import {
   updateOpportunity,
   createStageHistory,
   createActivity,
+  getTasks,
+  updateTask,
 } from '@/lib/airtable'
 import { changeColdCallStatus } from '@/lib/cold-call/status-manager'
 import { revalidatePath } from 'next/cache'
@@ -49,6 +51,26 @@ export async function updateColdCallStatus(
     }
 
     const updated = statusChangeResult.target
+
+    // If we leave "À rappeler", close only the automatic callback task created
+    // for this exact target. Past activities and unrelated/manual tasks are preserved.
+    if (target.callStatus === 'À rappeler' && newStatus !== 'À rappeler') {
+      const callbackTasks = await getTasks({
+        coldCallTargetId: targetId,
+        status: 'TODO',
+      })
+
+      const automaticCallbackTasks = callbackTasks.filter(
+        (task) => task.type === 'CALL' && task.notes === 'Relance programmée'
+      )
+
+      for (const task of automaticCallbackTasks) {
+        await updateTask(task.id, {
+          status: 'DONE',
+          completedAt: new Date().toISOString(),
+        })
+      }
+    }
 
     // Business logic by status
     switch (newStatus) {
