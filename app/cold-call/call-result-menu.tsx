@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card'
 import type { ActivityResult } from '@/types/domain'
 
 interface CallResultMenuProps {
-  onSelect: (result: ActivityResult) => void
+  onSelect: (result: ActivityResult, notes?: string) => void
   onCancel: () => void
 }
 
@@ -24,6 +24,8 @@ const CALL_RESULTS: { value: ActivityResult; label: string }[] = [
 ]
 
 export function CallResultMenu({ onSelect, onCancel }: CallResultMenuProps) {
+  const [notes, setNotes] = useState('')
+
   return (
     <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center">
       <Card className="max-w-sm w-full p-4 space-y-3">
@@ -35,10 +37,27 @@ export function CallResultMenu({ onSelect, onCancel }: CallResultMenuProps) {
         </div>
 
         <div className="space-y-2">
+          <div className="space-y-1">
+            <label
+              htmlFor="call-notes"
+              className="text-xs font-medium text-text-muted"
+            >
+              Notes / compte rendu
+            </label>
+            <textarea
+              id="call-notes"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Points clés, besoin exprimé, objection, contexte..."
+              rows={4}
+              className="w-full resize-y rounded-lg border border-border bg-card-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+
           {CALL_RESULTS.map((result) => (
             <Button
               key={result.value}
-              onClick={() => onSelect(result.value)}
+              onClick={() => onSelect(result.value, notes.trim() || undefined)}
               variant="ghost"
               className="w-full justify-start"
             >
