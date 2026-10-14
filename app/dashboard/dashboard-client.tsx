@@ -4,7 +4,7 @@
 // Commercial piloting cockpit for KLS3 Sales OS
 
 import { useState, useMemo, useEffect } from 'react'
-import type { BusinessLine, ValueEvent, Opportunity, Activity, Task, Company, Contact } from '@/types/domain'
+import type { BusinessLine, ValueEvent, Opportunity, Activity, Task, Company, Contact, ColdCallTarget } from '@/types/domain'
 import type { PeriodType } from '@/lib/utils/period'
 import { getPeriodDateRange } from '@/lib/utils/period'
 import { BusinessLineSelector } from './business-line-selector'
@@ -24,6 +24,7 @@ interface DashboardClientProps {
   tasks: Task[]
   companies: Company[]
   contacts: Contact[]
+  coldCallTargets: ColdCallTarget[]
 }
 
 export function DashboardClient({
@@ -34,6 +35,7 @@ export function DashboardClient({
   tasks,
   companies,
   contacts,
+  coldCallTargets,
 }: DashboardClientProps) {
   // State
   const [selectedBusinessLineId, setSelectedBusinessLineId] = useState<string | null>(null)
@@ -157,6 +159,7 @@ export function DashboardClient({
         selectedBusinessLineId={selectedBusinessLineId}
         period={periodRange}
         selectedPeriod={selectedPeriod}
+        coldCallTargets={coldCallTargets}
       />
 
       {/* Lower Dashboard: 3-Column Layout - CURRENT STATE */}
