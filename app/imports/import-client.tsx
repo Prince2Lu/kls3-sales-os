@@ -1,11 +1,16 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle2, Database, Loader2, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, Database, Loader2, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ImportBatch } from '@/types/domain'
 import type { NotaryDirectoryCandidate } from '@/lib/notaries/directory'
-import { importNotaryPilotAction, previewNotaryImportAction } from './actions'
+import {
+  importNotaryPilotAction,
+  previewLastImportRollbackAction,
+  previewNotaryImportAction,
+  rollbackLastImportAction,
+} from './actions'
 
 export function ImportClient({ lastImport, importEnabled }: { lastImport: ImportBatch | null; importEnabled: boolean }) {
   const [candidates, setCandidates] = useState<NotaryDirectoryCandidate[]>([])
@@ -25,6 +30,31 @@ export function ImportClient({ lastImport, importEnabled }: { lastImport: Import
     if (!result.success) return setMessage(result.error ?? "L'import a échoué")
     setMessage(`Import terminé : ${result.stats?.companiesCreated ?? 0} entreprise(s), ${result.stats?.contactsCreated ?? 0} contact(s).`)
     setCandidates([])
+  })
+
+  const rollbackLastImport = () => startTransition(async () => {
+    setMessage(null)
+    const previewResult = await previewLastImportRollbackAction()
+    if (!previewResult.success || !previewResult.preview) {
+      return setMessage(previewResult.error ?? 'Rollback impossible')
+    }
+
+    const rollbackPreview = previewResult.preview
+    if (!rollbackPreview.safe) {
+      return setMessage(
+        `Rollback bloqué pour protéger les données : ${rollbackPreview.reasons.join(' ')}`
+      )
+    }
+
+    const confirmed = window.confirm(
+      `Supprimer définitivement les données créées par « ${rollbackPreview.batchName} » ?\n\n` +
+      `${rollbackPreview.companiesToDelete} société(s) et ${rollbackPreview.contactsToDelete} contact(s) seront supprimés.\n` +
+      `Les sociétés seulement enrichies par l'import seront conservées.`
+    )
+    if (!confirmed) return
+
+    const result = await rollbackLastImportAction(rollbackPreview.batchId)
+    setMessage(result.success ? result.summary ?? 'Rollback terminé.' : result.error ?? 'Rollback impossible')
   })
 
   return (
@@ -92,16 +122,42 @@ export function ImportClient({ lastImport, importEnabled }: { lastImport: Import
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-xl font-semibold">Dernier import</h2>
-        {!lastImport ? <p className="mt-2 text-sm text-muted-foreground">Aucun import réalisé.</p> : (
-          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
-            <div><span className="text-muted-foreground">Date</span><p className="font-medium">{new Date(lastImport.importedAt ?? lastImport.createdAt).toLocaleString('fr-FR')}</p></div>
-            <div><span className="text-muted-foreground">Statut</span><p className="font-medium">{lastImport.status}</p></div>
-            <div><span className="text-muted-foreground">Créées</span><p className="font-medium">{lastImport.companiesCreated}</p></div>
-            <div><span className="text-muted-foreground">Mises à jour</span><p className="font-medium">{lastImport.companiesUpdated}</p></div>
-            <div><span className="text-muted-foreground">Contacts</span><p className="font-medium">{lastImport.contactsCreated}</p></div>
-            <div><span className="text-muted-foreground">Doublons</span><p className="font-medium">{lastImport.duplicatesSkipped}</p></div>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">Dernier import</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Le rollback supprime uniquement les enregistrements dont la création est traçable avec certitude.
+            </p>
           </div>
+          {lastImport && !lastImport.rolledBackAt && (
+            <Button
+              variant="ghost"
+              onClick={rollbackLastImport}
+              disabled={isPending}
+              className="text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Analyser / annuler le dernier import
+            </Button>
+          )}
+        </div>
+        {!lastImport ? <p className="mt-2 text-sm text-muted-foreground">Aucun import réalisé.</p> : (
+          <>
+            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+              <div><span className="text-muted-foreground">Date</span><p className="font-medium">{new Date(lastImport.importedAt ?? lastImport.createdAt).toLocaleString('fr-FR')}</p></div>
+              <div><span className="text-muted-foreground">Statut</span><p className="font-medium">{lastImport.status}</p></div>
+              <div><span className="text-muted-foreground">Créées</span><p className="font-medium">{lastImport.companiesCreated}</p></div>
+              <div><span className="text-muted-foreground">Mises à jour</span><p className="font-medium">{lastImport.companiesUpdated}</p></div>
+              <div><span className="text-muted-foreground">Contacts</span><p className="font-medium">{lastImport.contactsCreated}</p></div>
+              <div><span className="text-muted-foreground">Doublons</span><p className="font-medium">{lastImport.duplicatesSkipped}</p></div>
+            </div>
+            {lastImport.rolledBackAt && (
+              <p className="mt-4 rounded-lg bg-muted p-3 text-sm">
+                Lot annulé le {new Date(lastImport.rolledBackAt).toLocaleString('fr-FR')}.
+                {lastImport.rollbackSummary ? ` ${lastImport.rollbackSummary}` : ''}
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
