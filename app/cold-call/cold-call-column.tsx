@@ -178,6 +178,7 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
   const [showCallMenu, setShowCallMenu] = useState(false)
   const [showMultichannelMenu, setShowMultichannelMenu] = useState(false)
   const [showCallbackModal, setShowCallbackModal] = useState(false)
+  const [pendingCallNotes, setPendingCallNotes] = useState<string | undefined>(undefined)
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [showOptionsMenu, setShowOptionsMenu] = useState(false)
@@ -195,19 +196,19 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
     opacity: isDragging ? 0.5 : 1,
   }
 
-  async function handleCallResult(result: ActivityResult) {
+  async function handleCallResult(result: ActivityResult, notes?: string) {
     setShowCallMenu(false)
 
-    // CALLBACK requires date
+    // CALLBACK requires date; preserve notes until the callback date is confirmed.
     if (result === 'CALLBACK') {
+      setPendingCallNotes(notes)
       setShowCallbackModal(true)
       return
     }
 
-    // Other results: record directly
-    // owner is determined server-side from session
+    // Other results: record directly.
     setIsRecording(true)
-    const response = await recordCallActivity(target.id, result)
+    const response = await recordCallActivity(target.id, result, { notes })
     setIsRecording(false)
 
     if (response.success) {
@@ -230,9 +231,11 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
     // owner is determined server-side from session
     const response = await recordCallActivity(target.id, 'CALLBACK', {
       callbackDate,
+      notes: pendingCallNotes,
     })
 
     setIsRecording(false)
+    setPendingCallNotes(undefined)
 
     if (response.success) {
       router.refresh()
@@ -507,7 +510,10 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
       {showCallbackModal && (
         <CallbackModal
           onConfirm={handleCallbackConfirm}
-          onCancel={() => setShowCallbackModal(false)}
+          onCancel={() => {
+            setShowCallbackModal(false)
+            setPendingCallNotes(undefined)
+          }}
         />
       )}
 
