@@ -145,6 +145,7 @@ export function mapContact(
     decisionMaker: fields['Decision Maker'] ?? false,
     linkedin: fields.LinkedIn ?? null,
     notes: fields.Notes ?? null,
+    importBatchId: fields['Import Batch']?.[0] ?? null,
     createdAt: fields['Created At'],
     updatedAt: fields['Updated At'],
   }
