@@ -44,6 +44,7 @@ export interface AirtableCompanyFields {
   'Company Size'?: string
   LinkedIn?: string
   Notes?: string
+  'Import Batch'?: string[]
   'Created At': string
   'Updated At': string
 }
@@ -208,6 +209,8 @@ export interface AirtableImportBatchFields {
   'Imported By': string
   Status: string
   'Imported At'?: string
+  'Rolled Back At'?: string
+  'Rollback Summary'?: string
   'Created At': string
 }
 
