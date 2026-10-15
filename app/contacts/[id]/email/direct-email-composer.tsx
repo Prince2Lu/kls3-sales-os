@@ -31,6 +31,8 @@ export function DirectEmailComposer({
   const editorRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [subject, setSubject] = useState('')
+  const [ccEmails, setCcEmails] = useState('')
+  const [bccEmails, setBccEmails] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
@@ -102,7 +104,11 @@ export function DirectEmailComposer({
       return
     }
 
-    if (!window.confirm(`Envoyer maintenant ce mail à ${email} ?`)) return
+    const copies = [
+      ccEmails.trim() ? `CC : ${ccEmails.trim()}` : '',
+      bccEmails.trim() ? `CCI : ${bccEmails.trim()}` : '',
+    ].filter(Boolean).join('\n')
+    if (!window.confirm(`Envoyer maintenant ce mail à ${email}${copies ? `\n${copies}` : ''} ?`)) return
 
     startTransition(async () => {
       setMessage(null)
@@ -113,6 +119,8 @@ export function DirectEmailComposer({
       formData.set('subject', subject)
       formData.set('bodyHtml', bodyHtml)
       formData.set('bodyText', bodyText)
+      formData.set('ccEmails', ccEmails)
+      formData.set('bccEmails', bccEmails)
       files.forEach((file) => formData.append('attachments', file, file.name))
 
       const result = await sendDirectEmailAction(formData)
@@ -143,6 +151,31 @@ export function DirectEmailComposer({
             <div className="mb-1 text-xs text-muted-foreground">Destinataire</div>
             <div className="font-medium">{contactName}</div>
             <div className="text-sm text-muted-foreground">{email}</div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label htmlFor="ccEmails" className="mb-2 block text-sm font-medium">CC</label>
+              <Input
+                id="ccEmails"
+                value={ccEmails}
+                onChange={(event) => setCcEmails(event.target.value)}
+                placeholder="adresse@exemple.com, autre@exemple.com"
+                disabled={pending || success}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">Séparez plusieurs adresses par une virgule ou un point-virgule.</p>
+            </div>
+            <div>
+              <label htmlFor="bccEmails" className="mb-2 block text-sm font-medium">CCI</label>
+              <Input
+                id="bccEmails"
+                value={bccEmails}
+                onChange={(event) => setBccEmails(event.target.value)}
+                placeholder="adresse@exemple.com, autre@exemple.com"
+                disabled={pending || success}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">Les destinataires CCI restent invisibles pour tous les autres destinataires.</p>
+            </div>
           </div>
 
           <div>
