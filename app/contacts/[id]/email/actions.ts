@@ -50,6 +50,15 @@ function cleanText(value: FormDataEntryValue | null) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function parseEmailList(value: string) {
+  const emails = value
+    .split(/[;,\n]+/)
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+
+  return Array.from(new Set(emails))
+}
+
 export async function sendDirectEmailAction(
   formData: FormData
 ): Promise<SendDirectEmailResult> {
@@ -59,11 +68,23 @@ export async function sendDirectEmailAction(
   const subject = cleanText(formData.get('subject'))
   const bodyText = cleanText(formData.get('bodyText'))
   const bodyHtml = sanitizeHtml(cleanText(formData.get('bodyHtml')))
+  const ccEmails = parseEmailList(cleanText(formData.get('ccEmails')))
+  const bccEmails = parseEmailList(cleanText(formData.get('bccEmails')))
 
   if (!contactId) return { success: false, error: 'Contact manquant.' }
   if (!subject) return { success: false, error: 'L’objet du mail est obligatoire.' }
   if (!bodyText || !bodyHtml) {
     return { success: false, error: 'Le message est obligatoire.' }
+  }
+
+  const invalidCc = ccEmails.find((email) => !validEmail(email))
+  if (invalidCc) return { success: false, error: `Adresse CC invalide : ${invalidCc}` }
+
+  const invalidBcc = bccEmails.find((email) => !validEmail(email))
+  if (invalidBcc) return { success: false, error: `Adresse CCI invalide : ${invalidBcc}` }
+
+  if (ccEmails.length > 20 || bccEmails.length > 20) {
+    return { success: false, error: 'Maximum 20 destinataires en CC et 20 en CCI.' }
   }
 
   const contact = await getContactById(contactId)
@@ -120,6 +141,12 @@ export async function sendDirectEmailAction(
     }))
   )
 
+  const primaryEmail = contact.email.toLowerCase()
+  const normalizedCcEmails = ccEmails.filter((email) => email !== primaryEmail)
+  const normalizedBccEmails = bccEmails.filter(
+    (email) => email !== primaryEmail && !normalizedCcEmails.includes(email)
+  )
+
   const company = contact.companyId
     ? await getCompanyById(contact.companyId).catch(() => null)
     : null
@@ -135,6 +162,8 @@ export async function sendDirectEmailAction(
     companyId: company?.id,
     owner,
     toEmail: contact.email,
+    ccEmails: normalizedCcEmails,
+    bccEmails: normalizedBccEmails,
     subject,
     body: bodyText,
     bodyHtml,
@@ -153,6 +182,8 @@ export async function sendDirectEmailAction(
     const sent = await sendDirectMail({
       owner,
       toEmail: contact.email,
+      ccEmails: normalizedCcEmails,
+      bccEmails: normalizedBccEmails,
       subject,
       text: bodyText,
       html: bodyHtml,
@@ -177,7 +208,7 @@ export async function sendDirectEmailAction(
         contactId: contact.id,
         type: 'EMAIL',
         date: sentAt,
-        notes: `Email direct envoyé depuis Sales OS — ${subject} — carte personnalisée ${cardRef}`,
+        notes: `Email direct envoyé depuis Sales OS — ${subject} — CC ${normalizedCcEmails.length} · CCI ${normalizedBccEmails.length} — carte personnalisée ${cardRef}`,
         owner,
       })
     } catch (error) {

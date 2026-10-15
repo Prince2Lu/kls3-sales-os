@@ -12,6 +12,8 @@ export type DirectMailAttachment = {
 export type DirectMailSendInput = {
   owner: Owner
   toEmail: string
+  ccEmails?: string[]
+  bccEmails?: string[]
   subject: string
   html: string
   text: string
@@ -126,6 +128,7 @@ function buildRawMessage(
     `Date: ${new Date().toUTCString()}`,
     `From: ${encodeHeader(account.fromName)} <${account.fromEmail}>`,
     `To: <${input.toEmail}>`,
+    ...(input.ccEmails?.length ? [`Cc: ${input.ccEmails.map((email) => `<${email}>`).join(', ')}`] : []),
     `Subject: ${encodeHeader(input.subject)}`,
     'MIME-Version: 1.0',
     `Content-Type: multipart/mixed; boundary="${outer}"`,
@@ -265,7 +268,7 @@ async function connectTls(host: string, port: number) {
   return socket
 }
 
-async function sendSmtp(account: MailAccount, toEmail: string, raw: Buffer) {
+async function sendSmtp(account: MailAccount, recipients: string[], raw: Buffer) {
   let socket: AnySocket
   let readLine: () => Promise<string>
 
@@ -309,8 +312,10 @@ async function sendSmtp(account: MailAccount, toEmail: string, raw: Buffer) {
 
     writeLine(socket, `MAIL FROM:<${account.fromEmail}>`)
     await waitForSmtpResponse(readLine, [250])
-    writeLine(socket, `RCPT TO:<${toEmail}>`)
-    await waitForSmtpResponse(readLine, [250, 251])
+    for (const recipient of recipients) {
+      writeLine(socket, `RCPT TO:<${recipient}>`)
+      await waitForSmtpResponse(readLine, [250, 251])
+    }
 
     writeLine(socket, 'DATA')
     await waitForSmtpResponse(readLine, [354])
@@ -388,7 +393,8 @@ export async function sendDirectMail(input: DirectMailSendInput) {
   const messageId = `<${crypto.randomUUID()}@kls3-dev.com>`
   const raw = buildRawMessage(account, input, messageId)
 
-  await sendSmtp(account, input.toEmail, raw)
+  const recipients = Array.from(new Set([input.toEmail, ...(input.ccEmails || []), ...(input.bccEmails || [])]))
+  await sendSmtp(account, recipients, raw)
 
   let imapArchived = true
   let archiveWarning = ''
