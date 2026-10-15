@@ -10,6 +10,8 @@ export type DirectEmailRecord = {
   companyId: string | null
   owner: Owner
   toEmail: string
+  ccEmails: string
+  bccEmails: string
   subject: string
   body: string
   bodyHtml: string
@@ -38,6 +40,8 @@ function mapRecord(record: AirtableRecord): DirectEmailRecord {
     companyId: Array.isArray(f.Company) ? String(f.Company[0] || '') || null : null,
     owner: text(f.Owner) as Owner,
     toEmail: text(f['To Email']),
+    ccEmails: text(f['CC Emails']),
+    bccEmails: text(f['BCC Emails']),
     subject: text(f.Subject),
     body: text(f.Body),
     bodyHtml: text(f['Body HTML']),
@@ -56,6 +60,8 @@ export async function createDirectEmail(input: {
   companyId?: string
   owner: Owner
   toEmail: string
+  ccEmails?: string[]
+  bccEmails?: string[]
   subject: string
   body: string
   bodyHtml: string
@@ -75,6 +81,8 @@ export async function createDirectEmail(input: {
           Company: input.companyId ? [input.companyId] : undefined,
           Owner: input.owner,
           'To Email': input.toEmail,
+          'CC Emails': input.ccEmails?.join(', ') || '',
+          'BCC Emails': input.bccEmails?.join(', ') || '',
           Subject: input.subject,
           Body: input.body,
           'Body HTML': input.bodyHtml,
