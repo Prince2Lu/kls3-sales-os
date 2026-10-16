@@ -425,16 +425,16 @@ export function ColdCallBoard({
   return (
     <div className="relative space-y-4">
       {/* Daily call KPIs */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         {callKpiCards.map((metric) => {
           const Icon = metric.icon
           return (
-            <div key={metric.label} className="bg-card-bg border border-border rounded-2xl p-4">
+            <div key={metric.label} className="bg-card-bg border border-border rounded-2xl p-3 sm:p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs uppercase tracking-wide text-text-muted">{metric.label}</div>
                 <Icon className="w-4 h-4 text-accent" />
               </div>
-              <div className="mt-2 text-3xl font-semibold font-syne">{metric.value}</div>
+              <div className="mt-2 text-2xl sm:text-3xl font-semibold font-syne">{metric.value}</div>
               {metric.detail && <div className="mt-1 text-xs text-text-muted">{metric.detail}</div>}
             </div>
           )
@@ -501,7 +501,7 @@ export function ColdCallBoard({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-3 sm:gap-4 overflow-x-auto overscroll-x-contain pb-4 snap-x snap-mandatory">
           {/* Call Status Columns */}
           {CALL_STATUSES.map((status) => (
             <ColdCallColumn
