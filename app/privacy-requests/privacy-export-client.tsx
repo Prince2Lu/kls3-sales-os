@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 
 export function PrivacyExportClient({ contacts }: { contacts: Array<{ id: string; name: string; email: string | null }> }) {
   const [contactId, setContactId] = useState('')
-  return <div className="max-w-2xl rounded-xl border border-border bg-card p-6">
+  return <div className="max-w-2xl rounded-xl border border-border bg-card p-4 sm:p-6">
     <h2 className="text-xl font-semibold">Export d’accès</h2>
     <p className="mt-1 text-sm text-muted-foreground">Le fichier JSON contient les coordonnées et les données CRM directement rattachées au contact.</p>
     <label className="mt-4 block space-y-1 text-sm">
@@ -16,7 +16,7 @@ export function PrivacyExportClient({ contacts }: { contacts: Array<{ id: string
       </select>
     </label>
     <a href={contactId ? `/api/privacy/export?contactId=${encodeURIComponent(contactId)}` : undefined} download>
-      <Button className="mt-4" disabled={!contactId}>Télécharger l’export JSON</Button>
+      <Button className="mt-4 w-full sm:w-auto" disabled={!contactId}>Télécharger l’export JSON</Button>
     </a>
     <p className="mt-4 text-xs text-muted-foreground">Avant transmission, vérifier l’identité du demandeur et contrôler manuellement le contenu exporté.</p>
   </div>
