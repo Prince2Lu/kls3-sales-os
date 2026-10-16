@@ -466,17 +466,6 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
         />
       )}
 
-      {/* Callback Modal */}
-      {showCallbackModal && (
-        <CallbackModal
-          onConfirm={handleCallbackConfirm}
-          onCancel={() => {
-            setShowCallbackModal(false)
-            setPendingCallNotes(undefined)
-          }}
-        />
-      )}
-
       {/* Create Task Modal */}
       {showCreateTaskModal && (
         <CreateTaskModal
