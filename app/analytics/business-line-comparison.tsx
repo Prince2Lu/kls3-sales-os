@@ -22,7 +22,7 @@ export function BusinessLineComparison({
 
       {/* Comparison Table */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-white/[0.07]">
               <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
@@ -33,9 +33,6 @@ export function BusinessLineComparison({
               </th>
               <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
                 Opportunités
-              </th>
-              <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
-                RDV
               </th>
               <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
                 Propositions
@@ -61,12 +58,12 @@ export function BusinessLineComparison({
                 </td>
                 <td className="text-right py-4 px-4">
                   <div className="text-lg font-semibold text-text-primary font-syne">
-                    {bl.opportunites}
+                    {bl.rdv}
                   </div>
                 </td>
                 <td className="text-right py-4 px-4">
                   <div className="text-lg font-semibold text-text-primary font-syne">
-                    {bl.rdv}
+                    {bl.opportunites}
                   </div>
                 </td>
                 <td className="text-right py-4 px-4">
