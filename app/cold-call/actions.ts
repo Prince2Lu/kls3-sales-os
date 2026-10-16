@@ -54,6 +54,12 @@ export async function updateColdCallStatus(
         // Status only: no TASK is created for callbacks.
         break
 
+      case 'Email Flow':
+      case 'Échange':
+      case 'Qualifié':
+        // Prospecting-only statuses: never create or link an Opportunity.
+        break
+
       case 'Converti':
         // Use centralized conversion engine
         // Manual conversion is explicit and enters the opportunity pipeline at 'Opportunité'
