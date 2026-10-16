@@ -42,7 +42,7 @@ export function CohortView({
   // Get cohort period range
   const cohortPeriodRange = getCohortPeriodRange(selectedCohortPeriod, now)
 
-  // Build cohort (all opportunities that entered Contacté during period)
+  // Build cohort (all opportunities that entered RDV during period)
   const allCohortEntries = buildCohort(
     stageHistory,
     opportunities,
@@ -149,7 +149,7 @@ export function CohortView({
             Aucune opportunité dans cette cohorte.
           </p>
           <p className="text-xs text-text-muted/60 mt-2">
-            Aucune opportunité n'est entrée dans "Contacté" pendant la période
+            Aucune opportunité n'est entrée dans "RDV" pendant la période
             sélectionnée.
           </p>
         </div>

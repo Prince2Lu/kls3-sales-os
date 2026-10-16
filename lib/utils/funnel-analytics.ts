@@ -13,9 +13,6 @@ import { isInPeriod } from './period'
 
 // Funnel stages in display order (excludes "À prospecter" and "Perdu")
 export const FUNNEL_STAGES: Stage[] = [
-  'Contacté',
-  'Échange',
-  'Qualifié',
   'RDV',
   'Opportunité',
   'Proposition',
@@ -32,9 +29,8 @@ export interface BusinessLineAnalytics {
   businessLineId: string
   businessLineName: string
   businessLineCode: string
-  contactes: number // Contacté count
-  echanges: number // Échange count
   rdv: number // RDV count
+  opportunites: number // Opportunity stage count
   propositions: number // Proposition count
   gagnes: number // Gagné count
 }
@@ -144,15 +140,13 @@ export function compareBusinessLines(
     const volumes = calculateStageVolumes(stageMap)
 
     // Extract key metrics
-    const contacteVolume = volumes.find((v) => v.stage === 'Contacté')
-    const echangeVolume = volumes.find((v) => v.stage === 'Échange')
     const rdvVolume = volumes.find((v) => v.stage === 'RDV')
+    const opportunityVolume = volumes.find((v) => v.stage === 'Opportunité')
     const propositionVolume = volumes.find((v) => v.stage === 'Proposition')
     const gagneVolume = volumes.find((v) => v.stage === 'Gagné')
 
-    const contactes = contacteVolume?.count || 0
-    const echanges = echangeVolume?.count || 0
     const rdv = rdvVolume?.count || 0
+    const opportunites = opportunityVolume?.count || 0
     const propositions = propositionVolume?.count || 0
     const gagnes = gagneVolume?.count || 0
 
@@ -160,9 +154,8 @@ export function compareBusinessLines(
       businessLineId: bl.id,
       businessLineName: bl.name,
       businessLineCode: bl.code,
-      contactes,
-      echanges,
       rdv,
+      opportunites,
       propositions,
       gagnes,
     }
@@ -178,13 +171,12 @@ export function calculateSummaryKPIs(volumes: StageVolume[]): {
   propositions: number
   gagnes: number
 } {
-  const contacteVolume = volumes.find((v) => v.stage === 'Contacté')
   const rdvVolume = volumes.find((v) => v.stage === 'RDV')
   const propositionVolume = volumes.find((v) => v.stage === 'Proposition')
   const gagneVolume = volumes.find((v) => v.stage === 'Gagné')
 
-  const entrees = contacteVolume?.count || 0
   const rdv = rdvVolume?.count || 0
+  const entrees = rdv
   const propositions = propositionVolume?.count || 0
   const gagnes = gagneVolume?.count || 0
 

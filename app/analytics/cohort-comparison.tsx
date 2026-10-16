@@ -30,13 +30,13 @@ export function CohortComparison({ comparison }: CohortComparisonProps) {
                 Cohorte mature
               </th>
               <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
-                Contacté → Échange
+                RDV → Opportunité
               </th>
               <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
-                Contacté → RDV
+                RDV → Proposition
               </th>
               <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
-                Contacté → Gagné
+                RDV → Gagné
               </th>
             </tr>
           </thead>

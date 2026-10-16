@@ -1,5 +1,5 @@
 // Velocity summary KPI cards (Phase 7C)
-// Displays 4 key transition medians: Contacté→RDV, RDV→Proposition, Proposition→Gagné, Contacté→Gagné
+// Displays 4 key transition medians: RDV→Opportunité, RDV→Proposition, Proposition→Gagné, RDV→Gagné
 
 import type { TransitionMetrics } from '@/lib/utils/velocity-analytics'
 import { formatDuration } from '@/lib/utils/velocity-analytics'
@@ -17,10 +17,10 @@ interface SummaryKPI {
 
 const SUMMARY_KPIS: SummaryKPI[] = [
   {
-    label: 'Contacté → RDV',
-    fromStage: 'Contacté',
-    toStage: 'RDV',
-    subtext: 'Temps pour obtenir RDV',
+    label: 'RDV → Opportunité',
+    fromStage: 'RDV',
+    toStage: 'Opportunité',
+    subtext: 'Temps pour ouvrir l’opportunité',
   },
   {
     label: 'RDV → Proposition',
@@ -35,10 +35,10 @@ const SUMMARY_KPIS: SummaryKPI[] = [
     subtext: 'Temps pour closer',
   },
   {
-    label: 'Contacté → Gagné',
-    fromStage: 'Contacté',
+    label: 'RDV → Gagné',
+    fromStage: 'RDV',
     toStage: 'Gagné',
-    subtext: 'Cycle de vente complet',
+    subtext: 'Cycle depuis le RDV',
   },
 ]
 
