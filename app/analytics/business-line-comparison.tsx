@@ -29,10 +29,10 @@ export function BusinessLineComparison({
                 Business Line
               </th>
               <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
-                Contactés
+                RDV
               </th>
               <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
-                Échanges
+                Opportunités
               </th>
               <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-text-muted font-medium">
                 RDV
@@ -61,12 +61,7 @@ export function BusinessLineComparison({
                 </td>
                 <td className="text-right py-4 px-4">
                   <div className="text-lg font-semibold text-text-primary font-syne">
-                    {bl.contactes}
-                  </div>
-                </td>
-                <td className="text-right py-4 px-4">
-                  <div className="text-lg font-semibold text-text-primary font-syne">
-                    {bl.echanges}
+                    {bl.opportunites}
                   </div>
                 </td>
                 <td className="text-right py-4 px-4">
