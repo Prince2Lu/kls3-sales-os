@@ -75,7 +75,7 @@ export function DashboardClient({
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold font-syne mb-2">Dashboard</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold font-syne mb-2">Dashboard</h1>
         <p className="text-text-muted">
           Pilotage commercial · Où en est KLS3 ? Quelle Business Line produit de la valeur ?
         </p>
@@ -163,7 +163,7 @@ export function DashboardClient({
       />
 
       {/* Lower Dashboard: 3-Column Layout - CURRENT STATE */}
-      <div className="grid gap-6 lg:grid-cols-[32%_22%_46%]">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[32%_22%_46%] [&>*]:min-w-0">
         {/* Pipeline by Stage */}
         <PipelineByStage
           opportunities={opportunities}
