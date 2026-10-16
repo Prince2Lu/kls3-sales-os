@@ -61,10 +61,6 @@ export async function convertProspectingTargetToOpportunity(params: {
       // Reuse existing opportunity
       // DO NOT regress stage if already advanced beyond initialStage
       const stageOrder = [
-        'À prospecter',
-        'Contacté',
-        'Échange',
-        'Qualifié',
         'RDV',
         'Opportunité',
         'Proposition',
@@ -118,10 +114,6 @@ export async function convertProspectingTargetToOpportunity(params: {
         // Concurrent creation detected - reuse the existing opportunity
         // Apply same logic as above (stage progression + primary contact enrichment)
         const stageOrder = [
-          'À prospecter',
-          'Contacté',
-          'Échange',
-          'Qualifié',
           'RDV',
           'Opportunité',
           'Proposition',
@@ -188,7 +180,7 @@ export async function convertProspectingTargetToOpportunity(params: {
 
     // Update prospecting status based on activity result (unless already changed)
     // MEETING_BOOKED → 'RDV booké' (visible in board)
-    // CONVERSATION/EMAIL_REPLY/CALLBACK → 'Converti' (visible in board)
+    // Converti is reserved for explicit manual conversion
     if (!skipStatusChange) {
       const { getConvertedProspectingStatus } = await import('@/lib/prospecting/conversion-rules')
       const convertedStatus = getConvertedProspectingStatus(activityResult)
