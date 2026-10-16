@@ -80,6 +80,12 @@ export function ColdCallBoard({
   >(null)
   const [search, setSearch] = useState('')
 
+  // Create lookup maps
+  const blMap = useMemo(
+    () => Object.fromEntries(businessLines.map((bl) => [bl.id, bl])),
+    [businessLines]
+  )
+
   // Filter Business Lines for dropdown: only BLs present in active targets
   // (All BLs needed for badge display, but only active BLs for filtering)
   const targetBusinessLineIds = useMemo(
