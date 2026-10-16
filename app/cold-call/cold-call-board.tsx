@@ -21,7 +21,6 @@ import type {
   BusinessLine,
   Company,
   Contact,
-  Opportunity,
   CallStatus,
   Activity,
   Task,
@@ -37,7 +36,6 @@ interface ColdCallBoardProps {
   businessLines: BusinessLine[]
   companies: Company[]
   contacts: Contact[]
-  opportunities: Opportunity[]
   activities: Activity[]
   tasks: Task[]
   currentOwner: 'Eric' | 'Lilian'
@@ -60,7 +58,6 @@ export function ColdCallBoard({
   businessLines,
   companies,
   contacts,
-  opportunities,
   activities,
   tasks,
   currentOwner,
@@ -99,11 +96,6 @@ export function ColdCallBoard({
   const contactsMap = useMemo(
     () => Object.fromEntries(contacts.map((c) => [c.id, c])),
     [contacts]
-  )
-
-  const opportunitiesMap = useMemo(
-    () => Object.fromEntries(opportunities.map((o) => [o.id, o])),
-    [opportunities]
   )
 
   // Group activities by coldCallTargetId for efficient access
@@ -258,6 +250,13 @@ export function ColdCallBoard({
     // dnd-kit returns the hovered card id when dropping between cards, so only
     // checking column ids makes drops work mainly on empty/top areas.
     const overTarget = targets.find((t) => t.id === overId)
+
+    const resolvedCallStatus = CALL_STATUSES.includes(overId as CallStatus)
+      ? (overId as CallStatus)
+      : overTarget && CALL_STATUSES.includes(overTarget.callStatus)
+        ? overTarget.callStatus
+        : null
+
     if (resolvedCallStatus) {
       const newStatus = resolvedCallStatus
 
@@ -412,22 +411,6 @@ export function ColdCallBoard({
             />
           ))}
 
-          {/* Gagné / Perdu Columns */}
-          {POST_RDV_STAGES.map((stage) => (
-            <ColdCallColumn
-              key={stage}
-              id={stage}
-              title={stage}
-              targets={targetsByStage[stage] || []}
-              companiesMap={companiesMap}
-              contactsMap={contactsMap}
-              blMap={blMap}
-              activitiesByTargetId={activitiesByTargetId}
-              tasksByTargetId={tasksByTargetId}
-              currentOwner={currentOwner}
-              isStageColumn
-            />
-          ))}
         </div>
 
         <DragOverlay>{activeTarget && <div>Déplacement...</div>}</DragOverlay>
