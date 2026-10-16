@@ -24,9 +24,6 @@ export type CohortPeriodType = 'thisMonth' | 'lastMonth' | 'last90days'
 
 // Funnel stages for cohort analysis (same as Phase 7A)
 export const COHORT_STAGES: Stage[] = [
-  'Contacté',
-  'Échange',
-  'Qualifié',
   'RDV',
   'Opportunité',
   'Proposition',
@@ -128,7 +125,7 @@ export function getCohortPeriodRange(
 }
 
 /**
- * Get first "Contacté" entry date for an opportunity (cohort entry date)
+ * Get first "RDV" entry date for an opportunity (cohort entry date)
  * Returns null if opportunity never entered "Contacté"
  */
 export function getCohortEntryDate(
@@ -138,7 +135,7 @@ export function getCohortEntryDate(
   const contacteEntries = stageHistory
     .filter(
       (entry) =>
-        entry.opportunityId === opportunityId && entry.toStage === 'Contacté'
+        entry.opportunityId === opportunityId && entry.toStage === 'RDV'
     )
     .sort(
       (a, b) => new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime()
@@ -249,7 +246,7 @@ export function hasValidTransition(
 }
 
 /**
- * Build cohort from opportunities that entered "Contacté" during period
+ * Build cohort from opportunities that entered "RDV" during period
  * Uses Europe/Paris timezone for consistent period boundaries
  */
 export function buildCohort(
@@ -267,7 +264,7 @@ export function buildCohort(
   opportunityIds.forEach((oppId) => {
     const cohortEntryDate = getCohortEntryDate(oppId, stageHistory)
 
-    // Only include if they entered Contacté during the cohort period
+    // Only include if they entered RDV during the cohort period
     if (cohortEntryDate && isInPeriod(cohortEntryDate.toISOString(), cohortPeriod)) {
       const opportunity = opportunityMap.get(oppId)
       const businessLineId = opportunity?.businessLineId || null
@@ -432,11 +429,11 @@ export function compareBusinessLinesCohort(
     const matureCount = blMatures.length
 
     const echangeCount = blMatures.filter(
-      (entry) => stageReachedMap[entry.opportunityId]?.['Échange']
+      (entry) => stageReachedMap[entry.opportunityId]?.['Opportunité']
     ).length
 
     const rdvCount = blMatures.filter(
-      (entry) => stageReachedMap[entry.opportunityId]?.['RDV']
+      (entry) => stageReachedMap[entry.opportunityId]?.['Proposition']
     ).length
 
     const gagneCount = blMatures.filter(
@@ -459,7 +456,7 @@ export function compareBusinessLinesCohort(
 }
 
 /**
- * Count data quality issues (opportunities that reached RDV without Contacté)
+ * Count data quality issues (advanced opportunities without an RDV stage history)
  */
 export function countDataQualityIssues(
   opportunities: Opportunity[],
@@ -474,17 +471,16 @@ export function countDataQualityIssues(
       return
     }
 
-    // Check if opportunity reached RDV
     const reachedRdv = stageHistory.some(
       (entry) => entry.opportunityId === opp.id && entry.toStage === 'RDV'
     )
-
-    // Check if opportunity ever entered Contacté
-    const hasContacte = stageHistory.some(
-      (entry) => entry.opportunityId === opp.id && entry.toStage === 'Contacté'
+    const reachedAdvancedStage = stageHistory.some(
+      (entry) =>
+        entry.opportunityId === opp.id &&
+        ['Opportunité', 'Proposition', 'Gagné'].includes(entry.toStage)
     )
 
-    if (reachedRdv && !hasContacte) {
+    if (reachedAdvancedStage && !reachedRdv) {
       count++
     }
   })
