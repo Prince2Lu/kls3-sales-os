@@ -5,7 +5,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MoreHorizontal } from 'lucide-react'
+import { ChevronDown, Menu, MoreHorizontal } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { Button } from '@/components/ui/button'
 import { UserMenuV2 } from '@/components/layout/user-menu-v2'
@@ -164,6 +164,96 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
     )
   }
 
+
+  const MobileMenu = () => {
+    const mobileDirectItems = [...primaryNavItems, ...secondaryNavItems]
+
+    const trigger = (
+      <Button
+        variant={
+          isOpportunitiesActive ||
+          isToolsActive ||
+          mobileDirectItems.some(
+            (item) => pathname === item.href || pathname?.startsWith(`${item.href}/`)
+          )
+            ? 'primary'
+            : 'nav'
+        }
+        size="sm"
+        className="gap-1.5 whitespace-nowrap"
+      >
+        <Menu className="w-4 h-4" />
+        <span>Menu</span>
+      </Button>
+    )
+
+    const renderMobileLink = (item: { href: string; label: string }) => {
+      const isActive =
+        pathname === item.href || pathname?.startsWith(`${item.href}/`)
+
+      return (
+        <Link key={item.href} href={item.href}>
+          <DropdownMenuItem
+            className={cn(
+              'cursor-pointer',
+              isActive && 'bg-accent/10 text-accent font-medium'
+            )}
+          >
+            {item.label}
+          </DropdownMenuItem>
+        </Link>
+      )
+    }
+
+    return (
+      <DropdownMenu
+        trigger={trigger}
+        align="left"
+        className="w-[min(20rem,calc(100vw-1rem))]"
+      >
+        <div className="py-1">
+          {primaryNavItems.map(renderMobileLink)}
+
+          <details className="border-t border-border/70" open={isOpportunitiesActive}>
+            <summary
+              className={cn(
+                'flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm transition-colors hover:bg-accent/10',
+                isOpportunitiesActive && 'text-accent font-medium'
+              )}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <span>Opportunités</span>
+              <ChevronDown className="h-4 w-4" />
+            </summary>
+            <div className="border-t border-border/40 bg-white/[0.02] pl-3">
+              {opportunitiesItems.map(renderMobileLink)}
+            </div>
+          </details>
+
+          <details className="border-t border-border/70" open={isToolsActive}>
+            <summary
+              className={cn(
+                'flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm transition-colors hover:bg-accent/10',
+                isToolsActive && 'text-accent font-medium'
+              )}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <span>Outils</span>
+              <ChevronDown className="h-4 w-4" />
+            </summary>
+            <div className="border-t border-border/40 bg-white/[0.02] pl-3">
+              {toolsItems.map(renderMobileLink)}
+            </div>
+          </details>
+
+          <div className="border-t border-border/70">
+            {secondaryNavItems.map(renderMobileLink)}
+          </div>
+        </div>
+      </DropdownMenu>
+    )
+  }
+
   const MoreMenu = ({
     items,
     label = 'Plus',
@@ -254,17 +344,9 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
             ))}
           </div>
 
-          {/* Mobile: single compact navigation menu */}
+          {/* Mobile: compact menu with desktop-like submenus */}
           <div className="md:hidden">
-            <MoreMenu
-              label="Menu"
-              items={[
-                ...primaryNavItems,
-                ...opportunitiesItems,
-                ...toolsItems,
-                ...secondaryNavItems,
-              ]}
-            />
+            <MobileMenu />
           </div>
         </div>
 
