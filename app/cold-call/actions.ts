@@ -21,6 +21,9 @@ import type { CallStatus, Stage, ActivityResult } from '@/types/domain'
 export async function updateColdCallStatus(
   targetId: string,
   newStatus: CallStatus,
+  _metadata?: {
+    callbackDate?: string // Backward-compatible input, intentionally ignored
+  }
 ) {
   try {
     // Get changedBy server-side from session for STAGE_HISTORY
