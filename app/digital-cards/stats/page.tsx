@@ -162,7 +162,7 @@ export default async function CardStatsPage({
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold font-syne">Statistiques des cartes</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold font-syne">Statistiques des cartes</h1>
           <p className="mt-2 text-muted-foreground">
             Suivez les consultations et les actions générées par chaque carte digitale.
           </p>
@@ -269,7 +269,7 @@ export default async function CardStatsPage({
           {stats.daily.slice(-30).map((day) => {
             const total = day.views + day.actions
             return (
-              <div key={day.date} className="grid grid-cols-[90px_1fr_110px] items-center gap-3 text-sm">
+              <div key={day.date} className="grid grid-cols-[64px_1fr] sm:grid-cols-[90px_1fr_110px] items-center gap-2 sm:gap-3 text-sm">
                 <span className="text-muted-foreground">
                   {new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit' }).format(new Date(day.date))}
                 </span>
@@ -279,7 +279,7 @@ export default async function CardStatsPage({
                     style={{ width: `${Math.max(3, Math.round((total / maxDaily) * 100))}%` }}
                   />
                 </div>
-                <span className="text-right">
+                <span className="col-span-2 text-right text-xs sm:col-span-1 sm:text-sm">
                   {day.views} vue{day.views > 1 ? 's' : ''} · {day.actions} action{day.actions > 1 ? 's' : ''}
                 </span>
               </div>
