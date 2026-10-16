@@ -18,7 +18,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { CallResultMenu } from './call-result-menu'
-import { CallbackModal } from './callback-modal'
 import { StatusChangeMenu } from './status-change-menu'
 import { ColdCallQuickView } from './cold-call-quick-view'
 import { TargetOptionsMenu } from './target-options-menu'
@@ -177,8 +176,6 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
   const router = useRouter()
   const [showCallMenu, setShowCallMenu] = useState(false)
   const [showMultichannelMenu, setShowMultichannelMenu] = useState(false)
-  const [showCallbackModal, setShowCallbackModal] = useState(false)
-  const [pendingCallNotes, setPendingCallNotes] = useState<string | undefined>(undefined)
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [showOptionsMenu, setShowOptionsMenu] = useState(false)
@@ -199,14 +196,7 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
   async function handleCallResult(result: ActivityResult, notes?: string) {
     setShowCallMenu(false)
 
-    // CALLBACK requires date; preserve notes until the callback date is confirmed.
-    if (result === 'CALLBACK') {
-      setPendingCallNotes(notes)
-      setShowCallbackModal(true)
-      return
-    }
-
-    // Other results: record directly.
+    // All call results are recorded directly. CALLBACK is a status only.
     setIsRecording(true)
     const response = await recordCallActivity(target.id, result, { notes })
     setIsRecording(false)
@@ -224,38 +214,8 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
     }
   }
 
-  async function handleCallbackConfirm(callbackDate: string) {
-    setShowCallbackModal(false)
-    setIsRecording(true)
-
-    // owner is determined server-side from session
-    const response = await recordCallActivity(target.id, 'CALLBACK', {
-      callbackDate,
-      notes: pendingCallNotes,
-    })
-
-    setIsRecording(false)
-    setPendingCallNotes(undefined)
-
-    if (response.success) {
-      router.refresh()
-
-      // CALLBACK: propose task creation with CALL preselected
-      setTaskInitialType('CALL')
-      setShowCreateTaskModal(true)
-    } else {
-      alert('Erreur lors de l\'enregistrement')
-    }
-  }
-
   async function handleStatusChange(newStatus: import('@/types/domain').CallStatus) {
     setShowStatusMenu(false)
-
-    // À rappeler requires callback date
-    if (newStatus === 'À rappeler') {
-      setShowCallbackModal(true)
-      return
-    }
 
     setIsChangingStatus(true)
     const response = await updateColdCallStatus(target.id, newStatus)
