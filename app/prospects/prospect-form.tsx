@@ -14,10 +14,6 @@ import type { BusinessLine, Company, Contact, Opportunity } from '@/types/domain
 import { createOpportunityAction, updateOpportunityAction } from './actions'
 
 const STAGES = [
-  'À prospecter',
-  'Contacté',
-  'Échange',
-  'Qualifié',
   'RDV',
   'Opportunité',
   'Proposition',
@@ -186,7 +182,7 @@ export function ProspectForm({
               <label className="text-sm font-medium mb-1 block">
                 Étape <span className="text-red-500">*</span>
               </label>
-              <Select name="stage" required defaultValue={opportunity?.stage || 'À prospecter'}>
+              <Select name="stage" required defaultValue={opportunity?.stage || 'RDV'}>
                 {STAGES.map((stage) => (
                   <option key={stage} value={stage}>
                     {stage}
