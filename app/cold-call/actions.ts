@@ -3,20 +3,16 @@
 'use server'
 
 import {
-  updateColdCallTarget,
   getColdCallTargetById,
   createTask,
-  createOpportunity,
   getOpportunities,
   updateOpportunity,
   createStageHistory,
   createActivity,
-  getTasks,
-  updateTask,
 } from '@/lib/airtable'
 import { changeColdCallStatus } from '@/lib/cold-call/status-manager'
 import { revalidatePath } from 'next/cache'
-import type { CallStatus, Stage, ActivityResult, Owner } from '@/types/domain'
+import type { CallStatus, Stage, ActivityResult } from '@/types/domain'
 
 /**
  * Update cold call target status
