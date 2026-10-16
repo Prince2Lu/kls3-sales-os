@@ -91,9 +91,9 @@ export function CommercialActivity({
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid gap-1 sm:grid-cols-3 lg:grid-cols-6 bg-[rgba(255,255,255,0.06)] rounded-[20px] overflow-hidden p-1">
+      <div className="grid gap-1 grid-cols-2 md:grid-cols-3 xl:grid-cols-6 bg-[rgba(255,255,255,0.06)] rounded-[20px] overflow-hidden p-1">
         {metrics.map((metric) => (
-          <div key={metric.label} className="bg-card-bg p-6 rounded-2xl">
+          <div key={metric.label} className="bg-card-bg p-4 sm:p-6 rounded-2xl">
             <div className="text-text-muted text-xs uppercase tracking-wide mb-2">
               {metric.label}
             </div>
