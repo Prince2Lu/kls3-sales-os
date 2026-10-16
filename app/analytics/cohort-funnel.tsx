@@ -37,12 +37,12 @@ export function CohortFunnel({
         </div>
       ) : (
         <div className="space-y-8">
-          {/* Conversion depuis Contacté */}
+          {/* Conversion depuis RDV */}
           <div>
             <h3 className="text-sm font-medium text-text-primary mb-4">
               Conversion depuis Contacté
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               {conversionsFromContacted.map((conversion) => (
                 <div
                   key={conversion.stage}
