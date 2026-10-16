@@ -179,6 +179,8 @@ export default async function TodayPage(props: {
     'À appeler',
     'À rappeler',
     'Email Flow',
+    'Échange',
+    'Qualifié',
     'Mauvais numéro',
     'Pas intéressé',
     'RDV booké',

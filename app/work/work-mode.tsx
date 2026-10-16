@@ -39,6 +39,8 @@ const PRE_RDV_STATUSES: CallStatus[] = [
   'À appeler',
   'À rappeler',
   'Email Flow',
+  'Échange',
+  'Qualifié',
   'Mauvais numéro',
   'Pas intéressé',
   'RDV booké',
@@ -56,10 +58,6 @@ const POST_RDV_STAGES: Stage[] = [
 
 // All opportunity stages for DIRECT_OPPORTUNITY business lines
 const ALL_OPPORTUNITY_STAGES: Stage[] = [
-  'À prospecter',
-  'Contacté',
-  'Échange',
-  'Qualifié',
   'RDV',
   'Opportunité',
   'Proposition',

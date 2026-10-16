@@ -93,15 +93,15 @@ export async function updateColdCallStatus(
 
       case 'Converti':
         // Use centralized conversion engine
-        // Manual conversion (drag & drop or status menu) defaults to 'Échange' stage
+        // Manual conversion is explicit and enters the opportunity pipeline at 'Opportunité'
         // Status already changed by changeColdCallStatus above, skip duplicate status update
         const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
         const conversionResult = await convertProspectingTargetToOpportunity({
           targetId,
-          initialStage: 'Échange',
+          initialStage: 'Opportunité',
           source: 'Cold Call',
           owner: changedBy,
-          activityResult: 'CONVERSATION', // Manual conversion defaults to CONVERSATION
+          activityResult: 'CONVERSATION', // only used for converter metadata; status is already Converti
           skipStatusChange: true, // Status already changed by changeColdCallStatus above
         })
 
@@ -234,7 +234,7 @@ export async function recordCallActivity(
       durationMinutes: undefined,
     })
 
-    // Check if this result requires Opportunity conversion
+    // Only booked meetings trigger automatic Opportunity conversion.
     if (requiresOpportunityConversion(result)) {
       // Get the appropriate stage based on result
       const initialStage = getInitialOpportunityStage(result)
@@ -275,6 +275,23 @@ export async function recordCallActivity(
     } else {
       // Results that DON'T create Opportunity: update status only
       switch (result) {
+        case 'CONVERSATION':
+          // A real conversation is still prospecting.
+          await changeColdCallStatus({
+            targetId,
+            toStatus: 'Échange',
+          })
+          break
+
+        case 'EMAIL_REPLY':
+        case 'LINKEDIN_REPLY':
+          // A two-way written exchange is still prospecting.
+          await changeColdCallStatus({
+            targetId,
+            toStatus: 'Échange',
+          })
+          break
+
         case 'NOT_INTERESTED':
           // Update to Pas intéressé with history tracking
           await changeColdCallStatus({
@@ -355,7 +372,7 @@ export async function recordCallActivity(
 /**
  * Record email activity (EMAIL_SENT or EMAIL_REPLY)
  * - EMAIL_SENT: Creates EMAIL activity, stays in prospecting
- * - EMAIL_REPLY: Creates EMAIL activity and triggers Opportunity conversion to stage Échange
+ * - EMAIL_REPLY: Creates EMAIL activity and moves prospecting status to Échange
  */
 export async function recordEmailActivity(
   targetId: string,
@@ -381,12 +398,8 @@ export async function recordEmailActivity(
       durationMinutes: undefined,
     })
 
-    // Check if this result requires Opportunity conversion
     if (requiresOpportunityConversion(result)) {
-      // Get the appropriate stage (should be 'Échange' for EMAIL_REPLY)
       const initialStage = getInitialOpportunityStage(result)
-
-      // Use centralized conversion engine
       const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
       const conversionResult = await convertProspectingTargetToOpportunity({
         targetId,
@@ -395,13 +408,11 @@ export async function recordEmailActivity(
         owner,
         activityResult: result,
       })
-
       if (!conversionResult.success) {
-        return {
-          success: false,
-          error: conversionResult.error || 'Failed to convert to opportunity',
-        }
+        return { success: false, error: conversionResult.error || 'Failed to convert to opportunity' }
       }
+    } else if (result === 'EMAIL_REPLY') {
+      await changeColdCallStatus({ targetId, toStatus: 'Échange' })
     }
 
     revalidatePath('/cold-call')
@@ -424,7 +435,7 @@ export async function recordEmailActivity(
 /**
  * Record LinkedIn activity (LINKEDIN_SENT or LINKEDIN_REPLY)
  * - LINKEDIN_SENT: Creates LINKEDIN activity, stays in prospecting
- * - LINKEDIN_REPLY: Creates LINKEDIN activity and triggers Opportunity conversion to stage Échange
+ * - LINKEDIN_REPLY: Creates LINKEDIN activity and moves prospecting status to Échange
  */
 export async function recordLinkedInActivity(
   targetId: string,
@@ -450,12 +461,8 @@ export async function recordLinkedInActivity(
       durationMinutes: undefined,
     })
 
-    // Check if this result requires Opportunity conversion
     if (requiresOpportunityConversion(result)) {
-      // Get the appropriate stage (should be 'Échange' for LINKEDIN_REPLY)
       const initialStage = getInitialOpportunityStage(result)
-
-      // Use centralized conversion engine
       const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
       const conversionResult = await convertProspectingTargetToOpportunity({
         targetId,
@@ -464,13 +471,11 @@ export async function recordLinkedInActivity(
         owner,
         activityResult: result,
       })
-
       if (!conversionResult.success) {
-        return {
-          success: false,
-          error: conversionResult.error || 'Failed to convert to opportunity',
-        }
+        return { success: false, error: conversionResult.error || 'Failed to convert to opportunity' }
       }
+    } else if (result === 'LINKEDIN_REPLY') {
+      await changeColdCallStatus({ targetId, toStatus: 'Échange' })
     }
 
     revalidatePath('/cold-call')

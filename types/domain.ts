@@ -116,10 +116,12 @@ export type ProspectingStatus =
   | 'À appeler'        // To be contacted (any channel) - Lilian's familiar label
   | 'À rappeler'       // Scheduled follow-up (any channel) - Lilian's familiar label
   | 'Email Flow'       // In automated/manual sequence - Lilian's familiar label
+  | 'Échange'          // Real two-way exchange, still prospecting
+  | 'Qualifié'         // Qualified prospect, still pre-opportunity
   | 'Mauvais numéro'   // Unreachable (bad contact info) - Lilian's familiar label
   | 'Pas intéressé'    // Out of target (not interested) - Lilian's familiar label
   | 'RDV booké'        // Meeting booked (MEETING_BOOKED only) - Lilian's familiar label
-  | 'Converti'         // Generic conversion (EMAIL_REPLY, CONVERSATION) - Technical status, hidden from board
+  | 'Converti'         // Explicit manual conversion to Opportunity
 
 // Backward compatibility alias (deprecated, use ProspectingStatus)
 export type CallStatus = ProspectingStatus

@@ -47,12 +47,14 @@ interface ColdCallBoardProps {
 
 // Active prospecting status columns (Lilian's familiar labels)
 // Multi-channel: cold call, email, LinkedIn, referrals, etc.
-// Includes 'Converti' - visible trace of converted prospects (EMAIL_REPLY, CONVERSATION, CALLBACK)
+// Échange and Qualifié remain in prospecting. Converti is explicit manual conversion.
 // Includes 'RDV booké' - visible trace of confirmed meetings (MEETING_BOOKED)
 const CALL_STATUSES: CallStatus[] = [
   'À appeler',
   'À rappeler',
   'Email Flow',
+  'Échange',
+  'Qualifié',
   'Mauvais numéro',
   'Pas intéressé',
   'Converti',
