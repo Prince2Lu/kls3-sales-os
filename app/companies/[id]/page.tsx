@@ -43,7 +43,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     return (
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Link
@@ -53,12 +53,12 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                 ← Entreprises
               </Link>
             </div>
-            <h1 className="text-4xl font-bold font-syne">{company.name}</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold font-syne break-words">{company.name}</h1>
             {company.industry && (
               <p className="text-text-muted mt-2 text-lg">{company.industry}</p>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <AddToProspectingButton
               companyId={company.id}
               companyName={company.name}
@@ -97,7 +97,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                     href={company.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-accent hover:underline text-sm"
+                    className="text-accent hover:underline text-sm break-all"
                   >
                     {company.website}
                   </a>
