@@ -102,7 +102,7 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
     return (
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Link
@@ -112,14 +112,14 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                 ← Prospects
               </Link>
             </div>
-            <h1 className="text-4xl font-bold font-syne">{opportunity.name}</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold font-syne break-words">{opportunity.name}</h1>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <Badge variant="default">{opportunity.stage}</Badge>
               <Badge variant="accent">{businessLine.name}</Badge>
               {opportunity.priority && <Badge>{opportunity.priority}</Badge>}
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
             <Link href={`/prospects/${id}/edit`}>
               <Button variant="ghost" size="sm">
                 Modifier
