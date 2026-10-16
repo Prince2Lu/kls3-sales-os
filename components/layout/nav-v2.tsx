@@ -164,7 +164,13 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
     )
   }
 
-  const MoreMenu = ({ items }: { items: typeof secondaryNavItems }) => {
+  const MoreMenu = ({
+    items,
+    label = 'Plus',
+  }: {
+    items: typeof secondaryNavItems
+    label?: string
+  }) => {
     const hasActiveItem = items.some(
       (item) => pathname === item.href || pathname?.startsWith(`${item.href}/`)
     )
@@ -178,7 +184,7 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
           hasActiveItem && 'ring-2 ring-accent/20'
         )}
       >
-        <span>Plus</span>
+        <span>{label}</span>
         <MoreHorizontal className="w-4 h-4" />
       </Button>
     )
@@ -208,14 +214,14 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
 
   return (
     <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-      <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
         {/* Left: Logo */}
         <Link href="/" className="flex items-center shrink-0">
           <Logo size="md" />
         </Link>
 
         {/* Center: Navigation */}
-        <div className="flex items-center gap-1.5 mx-4 lg:mx-8">
+        <div className="flex min-w-0 items-center gap-1.5 mx-1 sm:mx-3 lg:mx-8">
           {/* Compact nav - visible on medium screens (768-1023px) */}
           <div className="hidden md:flex lg:hidden items-center gap-1.5">
             {compactNavItems.map((item) => (
@@ -248,11 +254,17 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
             ))}
           </div>
 
-          {/* Mobile: All items in dropdown */}
+          {/* Mobile: single compact navigation menu */}
           <div className="md:hidden">
-            <OpportunitesMenu />
-            <ToolsMenu />
-            <MoreMenu items={[...primaryNavItems, ...secondaryNavItems]} />
+            <MoreMenu
+              label="Menu"
+              items={[
+                ...primaryNavItems,
+                ...opportunitiesItems,
+                ...toolsItems,
+                ...secondaryNavItems,
+              ]}
+            />
           </div>
         </div>
 
