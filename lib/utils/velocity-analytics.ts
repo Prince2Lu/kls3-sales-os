@@ -13,10 +13,10 @@ import { isInPeriod } from './period'
 
 // Velocity transitions to measure (Phase 7C V1)
 export const VELOCITY_TRANSITIONS = [
-  { from: 'Contacté', to: 'RDV' },
+  { from: 'RDV', to: 'Opportunité' },
   { from: 'RDV', to: 'Proposition' },
   { from: 'Proposition', to: 'Gagné' },
-  { from: 'Contacté', to: 'Gagné' },
+  { from: 'RDV', to: 'Gagné' },
 ] as const
 
 export type VelocityTransition = typeof VELOCITY_TRANSITIONS[number]
@@ -313,7 +313,7 @@ export function compareBusinessLinesVelocity(
 
     // Extract medians for each key transition
     const contacteToRdv = metrics.find(
-      (m) => m.fromStage === 'Contacté' && m.toStage === 'RDV'
+      (m) => m.fromStage === 'RDV' && m.toStage === 'Opportunité'
     )
     const rdvToProposition = metrics.find(
       (m) => m.fromStage === 'RDV' && m.toStage === 'Proposition'
@@ -322,7 +322,7 @@ export function compareBusinessLinesVelocity(
       (m) => m.fromStage === 'Proposition' && m.toStage === 'Gagné'
     )
     const contacteToGagne = metrics.find(
-      (m) => m.fromStage === 'Contacté' && m.toStage === 'Gagné'
+      (m) => m.fromStage === 'RDV' && m.toStage === 'Gagné'
     )
 
     return {
