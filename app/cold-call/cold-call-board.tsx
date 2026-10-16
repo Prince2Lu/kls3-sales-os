@@ -27,7 +27,6 @@ import type {
   Task,
 } from '@/types/domain'
 import { updateColdCallStatus, updateColdCallOpportunityStage } from './actions'
-import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { ColdCallColumn } from './cold-call-column'
 import { Search, X, Phone, CalendarDays, MessageCircle, CalendarCheck } from 'lucide-react'
@@ -503,16 +502,6 @@ export function ColdCallBoard({
         <DragOverlay>{activeTarget && <div>Déplacement...</div>}</DragOverlay>
       </DndContext>
 
-      {/* Callback Modal */}
-      {showCallbackModal && pendingCallbackTargetId && (
-        <CallbackModal
-          onConfirm={(date) => handleCallbackConfirm(pendingCallbackTargetId, date)}
-          onCancel={() => {
-            setShowCallbackModal(false)
-            setPendingCallbackTargetId(null)
-          }}
-        />
-      )}
     </div>
   )
 }
