@@ -15,7 +15,7 @@ interface StatusChangeMenuProps {
 
 const PROSPECTING_STATUSES: { value: ProspectingStatus; label: string; description?: string }[] = [
   { value: 'À appeler', label: 'À appeler', description: 'Prospect non contacté' },
-  { value: 'À rappeler', label: 'À rappeler', description: 'Relance programmée' },
+  { value: 'À rappeler', label: 'À rappeler', description: 'Prospect à rappeler' },
   { value: 'Email Flow', label: 'Email Flow', description: 'Séquence email/LinkedIn active' },
   { value: 'Échange', label: 'Échange', description: 'Échange réel avec le prospect' },
   { value: 'Qualifié', label: 'Qualifié', description: 'Besoin / potentiel confirmé, avant RDV' },

@@ -27,10 +27,8 @@ import type {
   Task,
 } from '@/types/domain'
 import { updateColdCallStatus, updateColdCallOpportunityStage } from './actions'
-import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { ColdCallColumn } from './cold-call-column'
-import { CallbackModal } from './callback-modal'
 import { Search, X, Phone, CalendarDays, MessageCircle, CalendarCheck } from 'lucide-react'
 import { normalizeSearchValue, combineSearchValues, normalizePhoneForSearch } from '@/lib/utils/search'
 
@@ -81,12 +79,6 @@ export function ColdCallBoard({
     string | null
   >(null)
   const [search, setSearch] = useState('')
-
-  // Callback modal state
-  const [showCallbackModal, setShowCallbackModal] = useState(false)
-  const [pendingCallbackTargetId, setPendingCallbackTargetId] = useState<
-    string | null
-  >(null)
 
   // Create lookup maps
   const blMap = useMemo(
@@ -319,13 +311,6 @@ export function ColdCallBoard({
       // If already in this status, do nothing
       if (target.callStatus === newStatus) return
 
-      // Special handling for "À rappeler" - show modal for callback date
-      if (newStatus === 'À rappeler') {
-        setPendingCallbackTargetId(targetId)
-        setShowCallbackModal(true)
-        return
-      }
-
       // Update status directly
       // changedBy is determined server-side from session
       setIsUpdating(true)
@@ -365,24 +350,6 @@ export function ColdCallBoard({
       } else {
         alert(result.error || 'Erreur lors de la mise à jour')
       }
-    }
-  }
-
-  async function handleCallbackConfirm(targetId: string, callbackDate: string) {
-    setShowCallbackModal(false)
-    setPendingCallbackTargetId(null)
-
-    // changedBy is determined server-side from session
-    setIsUpdating(true)
-    const result = await updateColdCallStatus(targetId, 'À rappeler', {
-      callbackDate,
-    })
-    setIsUpdating(false)
-
-    if (result.success) {
-      router.refresh()
-    } else {
-      alert('Erreur lors de la création du rappel')
     }
   }
 
@@ -541,16 +508,6 @@ export function ColdCallBoard({
         <DragOverlay>{activeTarget && <div>Déplacement...</div>}</DragOverlay>
       </DndContext>
 
-      {/* Callback Modal */}
-      {showCallbackModal && pendingCallbackTargetId && (
-        <CallbackModal
-          onConfirm={(date) => handleCallbackConfirm(pendingCallbackTargetId, date)}
-          onCancel={() => {
-            setShowCallbackModal(false)
-            setPendingCallbackTargetId(null)
-          }}
-        />
-      )}
     </div>
   )
 }
