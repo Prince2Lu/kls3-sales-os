@@ -36,7 +36,7 @@ const SUMMARY_KPIS: SummaryKPI[] = [
   },
   {
     label: 'RDV → Gagné',
-    fromStage: 'Contacté',
+    fromStage: 'RDV',
     toStage: 'Gagné',
     subtext: 'Cycle depuis le RDV',
   },
