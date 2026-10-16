@@ -120,8 +120,8 @@ export type ProspectingStatus =
   | 'Qualifié'         // Qualified prospect, still pre-opportunity
   | 'Mauvais numéro'   // Unreachable (bad contact info) - Lilian's familiar label
   | 'Pas intéressé'    // Out of target (not interested) - Lilian's familiar label
-  | 'RDV booké'        // Meeting booked (MEETING_BOOKED only) - Lilian's familiar label
-  | 'Converti'         // Explicit manual conversion to Opportunity
+  | 'RDV booké'        // Exit state: meeting booked, hidden from active Cold Call
+  | 'Converti'         // Exit state: explicit manual conversion, hidden from active Cold Call
 
 // Backward compatibility alias (deprecated, use ProspectingStatus)
 export type CallStatus = ProspectingStatus
