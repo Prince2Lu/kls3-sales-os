@@ -25,9 +25,6 @@ import type { CallStatus, Stage, ActivityResult, Owner } from '@/types/domain'
 export async function updateColdCallStatus(
   targetId: string,
   newStatus: CallStatus,
-  metadata?: {
-    callbackDate?: string // For "Relance prévue"
-  }
 ) {
   try {
     // Get changedBy server-side from session for STAGE_HISTORY
@@ -52,43 +49,10 @@ export async function updateColdCallStatus(
 
     const updated = statusChangeResult.target
 
-    // If we leave "À rappeler", close only the automatic callback task created
-    // for this exact target. Past activities and unrelated/manual tasks are preserved.
-    if (target.callStatus === 'À rappeler' && newStatus !== 'À rappeler') {
-      const callbackTasks = await getTasks({
-        coldCallTargetId: targetId,
-        status: 'TODO',
-      })
-
-      const automaticCallbackTasks = callbackTasks.filter(
-        (task) => task.type === 'CALL' && task.notes === 'Relance programmée'
-      )
-
-      for (const task of automaticCallbackTasks) {
-        await updateTask(task.id, {
-          status: 'DONE',
-          completedAt: new Date().toISOString(),
-        })
-      }
-    }
-
     // Business logic by status
     switch (newStatus) {
       case 'À rappeler':
-        // Create TASK for callback
-        if (metadata?.callbackDate) {
-          await createTask({
-            opportunityId: target.opportunityId ?? undefined,
-            contactId: target.contactId ?? undefined,
-            coldCallTargetId: targetId,
-            type: 'CALL',
-            dueAt: metadata.callbackDate,
-            priority: 'MEDIUM',
-            status: 'TODO',
-            notes: 'Relance programmée',
-            owner: target.owner,
-          })
-        }
+        // Status only: no TASK is created for callbacks.
         break
 
       case 'Converti':
@@ -210,7 +174,7 @@ export async function recordCallActivity(
   targetId: string,
   result: ActivityResult,
   metadata?: {
-    callbackDate?: string // For CALLBACK result
+    callbackDate?: string // Legacy input ignored for CALLBACK; kept for compatibility
     notes?: string
   }
 ) {
@@ -256,22 +220,6 @@ export async function recordCallActivity(
         }
       }
 
-      const opportunityId = conversionResult.opportunityId!
-
-      // Create TASK for callback if CALLBACK result with date
-      if (result === 'CALLBACK' && metadata?.callbackDate) {
-        await createTask({
-          opportunityId,
-          contactId: target.contactId ?? undefined,
-          coldCallTargetId: targetId,
-          type: 'CALL',
-          dueAt: metadata.callbackDate,
-          priority: 'MEDIUM',
-          status: 'TODO',
-          notes: 'Relance programmée',
-          owner: target.owner,
-        })
-      }
     } else {
       // Results that DON'T create Opportunity: update status only
       switch (result) {
@@ -309,24 +257,11 @@ export async function recordCallActivity(
           break
 
         case 'CALLBACK':
-          // KLS3 rule: a callback is still prospecting, not an Opportunity.
+          // CALLBACK is a prospecting status only. No TASK is created.
           await changeColdCallStatus({
             targetId,
             toStatus: 'À rappeler',
           })
-          if (metadata?.callbackDate) {
-            await createTask({
-              opportunityId: target.opportunityId ?? undefined,
-              contactId: target.contactId ?? undefined,
-              coldCallTargetId: targetId,
-              type: 'CALL',
-              dueAt: metadata.callbackDate,
-              priority: 'MEDIUM',
-              status: 'TODO',
-              notes: 'Relance programmée',
-              owner: target.owner,
-            })
-          }
           break
 
         case 'EMAIL_REQUESTED':
