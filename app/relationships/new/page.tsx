@@ -31,7 +31,7 @@ export default async function NewRelationshipPage({
             ← Relations stratégiques
           </Link>
         </div>
-        <h1 className="text-4xl font-bold font-syne">Nouvelle relation</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold font-syne">Nouvelle relation</h1>
         <p className="text-text-muted mt-2">
           Créer une relation stratégique pour le développement commercial
         </p>
