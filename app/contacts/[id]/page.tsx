@@ -50,7 +50,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
     return (
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Link
@@ -60,7 +60,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
                 ← Contacts
               </Link>
             </div>
-            <h1 className="text-4xl font-bold font-syne">
+            <h1 className="text-3xl sm:text-4xl font-bold font-syne break-words">
               {contact.firstName} {contact.lastName}
             </h1>
             {contact.jobTitle && (
@@ -79,7 +79,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {contact.email && (
               <Link href={`/contacts/${id}/email`}>
                 <Button>Envoyer un mail</Button>
@@ -119,7 +119,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
                   <div className="text-text-muted text-xs mb-1">Email direct</div>
                   <a
                     href={`mailto:${contact.email}`}
-                    className="text-accent hover:underline text-sm"
+                    className="text-accent hover:underline text-sm break-all"
                   >
                     {contact.email}
                   </a>
