@@ -246,7 +246,7 @@ export function RelationshipForm({
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
         <Button type="submit" disabled={isPending}>
           {isPending
             ? 'Enregistrement...'
