@@ -145,20 +145,20 @@ export default async function AnalyticsPage(props: {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-1 bg-white/[0.06] rounded-[20px] overflow-hidden">
             <div className="bg-background-card p-6">
               <div className="text-xs uppercase tracking-wider text-text-muted mb-2">
-                Entrées funnel
+                Entrées pipeline
               </div>
               <div className="text-3xl font-bold text-text-primary font-syne">
                 {summaryKPIs.entrees}
               </div>
-              <div className="text-xs text-text-muted mt-1">Contactés</div>
+              <div className="text-xs text-text-muted mt-1">Passées en opportunité</div>
             </div>
 
             <div className="bg-background-card p-6">
               <div className="text-xs uppercase tracking-wider text-text-muted mb-2">
-                RDV générés
+                Opportunités ouvertes
               </div>
               <div className="text-3xl font-bold text-text-primary font-syne">
-                {summaryKPIs.rdv}
+                {volumes.find((v) => v.stage === 'Opportunité')?.count || 0}
               </div>
               <div className="text-xs text-text-muted mt-1">RDV obtenus</div>
             </div>
