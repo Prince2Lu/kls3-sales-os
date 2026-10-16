@@ -15,9 +15,9 @@ export function CreateMenu() {
   const router = useRouter()
 
   const trigger = (
-    <Button size="sm" className="gap-1.5 whitespace-nowrap">
+    <Button size="sm" className="gap-1.5 whitespace-nowrap px-2 sm:px-3">
       <Plus className="w-4 h-4" />
-      <span>Créer</span>
+      <span className="hidden sm:inline">Créer</span>
     </Button>
   )
 

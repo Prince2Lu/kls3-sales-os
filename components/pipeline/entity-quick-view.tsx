@@ -128,7 +128,7 @@ export function EntityQuickView({
                 <span className="text-text-muted">{contact?.email ? 'Email direct' : 'Email de l’étude'} : </span>
                 <a
                   href={`mailto:${email}`}
-                  className="text-accent hover:underline"
+                  className="text-accent hover:underline break-all"
                 >
                   {email}
                 </a>
@@ -142,7 +142,7 @@ export function EntityQuickView({
                   href={company.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-accent hover:underline"
+                  className="text-accent hover:underline break-all"
                 >
                   {company.website}
                 </a>

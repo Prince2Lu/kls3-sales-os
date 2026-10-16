@@ -7,7 +7,7 @@ export default async function ImportsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold font-syne">Ajouter des prospects</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold font-syne">Ajouter des prospects</h1>
         <p className="mt-2 text-muted-foreground">Import progressif et contrôlé des offices notariaux.</p>
       </div>
       <ImportClient lastImport={lastImport ?? null} importEnabled={isNotaryImportEnabled()} />

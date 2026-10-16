@@ -34,7 +34,7 @@ export default async function NewActivityPage({
     return (
       <div className="max-w-2xl mx-auto space-y-8">
         <div>
-          <h1 className="text-4xl font-bold font-syne">
+          <h1 className="text-3xl sm:text-4xl font-bold font-syne">
             {isFromCallTask ? 'Enregistrer l\'appel' : 'Enregistrer une activité'}
           </h1>
           <p className="text-text-muted mt-2">{opportunity.name}</p>

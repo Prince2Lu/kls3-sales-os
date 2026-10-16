@@ -29,7 +29,7 @@ export default async function RelationshipPage({ params }: RelationshipPageProps
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Link
@@ -39,8 +39,8 @@ export default async function RelationshipPage({ params }: RelationshipPageProps
               ← Relations stratégiques
             </Link>
           </div>
-          <h1 className="text-4xl font-bold font-syne">{relationship.name}</h1>
-          <div className="flex items-center gap-2 mt-3">
+          <h1 className="text-3xl sm:text-4xl font-bold font-syne break-words">{relationship.name}</h1>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
             <Badge variant="default">{relationship.relationshipType}</Badge>
             <Badge
               variant={
@@ -66,7 +66,7 @@ export default async function RelationshipPage({ params }: RelationshipPageProps
             </Badge>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
           <Link href={`/relationships/${id}/edit`}>
             <Button variant="ghost" size="sm">
               Modifier

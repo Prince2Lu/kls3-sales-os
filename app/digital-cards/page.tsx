@@ -14,7 +14,7 @@ export default async function DigitalCardsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold font-syne">Cartes de visite</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold font-syne">Cartes de visite</h1>
         <p className="mt-2 text-muted-foreground">
           Modifiez les informations sans changer le QR code déjà diffusé.
         </p>

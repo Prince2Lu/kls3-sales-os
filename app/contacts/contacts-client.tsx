@@ -334,7 +334,7 @@ export function ContactsClient({
                 <Card className="hover:border-accent/50 transition-all cursor-pointer">
                   <div className="space-y-3">
                     <div>
-                      <h3 className="font-semibold text-lg">
+                      <h3 className="font-semibold text-lg break-words">
                         {contact.firstName} {contact.lastName}
                       </h3>
 
@@ -360,7 +360,7 @@ export function ContactsClient({
 
                     <div className="space-y-1 text-xs text-text-muted">
                       {(contact.email || company?.email) && (
-                        <div>
+                        <div className="break-all">
                           {contact.email || company?.email}
                           {!contact.email && <span className="ml-1">· Étude</span>}
                         </div>
@@ -386,7 +386,7 @@ export function ContactsClient({
 
       {/* List View */}
       {view === 'list' && filteredAndSortedContacts.length > 0 && (
-        <div className="bg-card-bg border border-border rounded-2xl overflow-hidden">
+        <div className="bg-card-bg border border-border rounded-2xl overflow-x-auto">
           <table className="w-full">
             <thead className="border-b border-border">
               <tr className="text-left text-xs text-text-muted uppercase tracking-wide">

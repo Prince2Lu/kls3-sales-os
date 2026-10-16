@@ -32,7 +32,7 @@ export function UserMenuV2({ userEmail, userName }: UserMenuV2Props) {
     .slice(0, 2)
 
   const trigger = (
-    <button className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-accent/10 transition-colors">
+    <button className="flex items-center gap-2 px-1.5 sm:px-3 py-1.5 rounded-full hover:bg-accent/10 transition-colors">
       {/* Avatar */}
       <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-xs font-semibold text-accent">
         {initials}

@@ -30,7 +30,7 @@ export default async function EmailCampaignsPage() {
 
   return <div className="space-y-8">
     <div>
-      <h1 className="text-4xl font-bold font-syne">Campagnes email</h1>
+      <h1 className="text-3xl sm:text-4xl font-bold font-syne">Campagnes email</h1>
       <p className="mt-2 text-muted-foreground">Sélection, aperçu, envoi Brevo et suivi des signaux.</p>
       <Link href="/email-campaigns/follow-up" className="mt-3 inline-block text-sm text-accent hover:underline">Voir le suivi des prospects et planifier les appels →</Link>
     </div>

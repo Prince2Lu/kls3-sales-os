@@ -241,7 +241,7 @@ export function ContactForm({
       </Card>
 
       {/* Actions */}
-      <div className="flex gap-3 justify-end">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end [&>button]:w-full sm:[&>button]:w-auto">
         <Button
           type="button"
           variant="ghost"

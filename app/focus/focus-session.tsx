@@ -98,8 +98,8 @@ export function FocusSession({ initialQueue, businessLineCode }: FocusSessionPro
   return (
     <div className="space-y-6">
       {/* Progress header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h1 className="text-2xl font-bold font-syne">FOCUS</h1>
           <span className="text-text-muted">·</span>
           <span className="text-text-muted text-sm">{businessLineName}</span>

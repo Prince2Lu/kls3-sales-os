@@ -21,7 +21,7 @@ export default async function MailSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold font-syne">Paramètres messagerie</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold font-syne">Paramètres messagerie</h1>
         <p className="mt-2 max-w-3xl text-muted-foreground">
           Configurez les boîtes KLS3 utilisées pour les mails directs du CRM. Les mots de passe sont chiffrés avant stockage et ne sont jamais réaffichés.
         </p>

@@ -10,7 +10,7 @@ export default async function EmailSuppressionsPage() {
 
   return <div className="space-y-8">
     <div>
-      <h1 className="text-4xl font-bold font-syne">Exclusions email</h1>
+      <h1 className="text-3xl sm:text-4xl font-bold font-syne">Exclusions email</h1>
       <p className="mt-2 text-muted-foreground">Enregistrer et contrôler les oppositions, désabonnements et adresses invalides.</p>
     </div>
     <SuppressionsClient

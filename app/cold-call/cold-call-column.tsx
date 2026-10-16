@@ -104,7 +104,7 @@ export function ColdCallColumn({
       })[0] || null
 
   return (
-    <div className="flex-shrink-0 w-80">
+    <div className="flex-shrink-0 w-[min(20rem,calc(100vw-2rem))]">
       <div className="space-y-3">
         {/* Column Header */}
         <div className="flex items-center justify-between px-3">

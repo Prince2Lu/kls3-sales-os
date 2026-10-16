@@ -70,7 +70,7 @@ export function TodayHero({
       </div>
 
       {/* Today Summary */}
-      <div className="flex items-baseline gap-3 flex-wrap">
+      <div className="flex items-baseline gap-2 sm:gap-3 flex-wrap">
         <h1 className="text-2xl font-bold font-syne">Bonjour {userName}</h1>
         <span className="text-text-muted">—</span>
         <span className="text-text-muted">{todayDate}</span>
@@ -112,15 +112,15 @@ export function TodayHero({
       {/* Focus CTA */}
       {focusableCount > 0 ? (
         <div>
-          <Link href={focusUrl}>
-            <Button size="lg" className="font-semibold">
+          <Link href={focusUrl} className="block sm:inline-block">
+            <Button size="lg" className="w-full sm:w-auto font-semibold">
               ▶ DÉMARRER MA SESSION — {focusableCount} {focusableCount === 1 ? 'ACTION' : 'ACTIONS'}
             </Button>
           </Link>
         </div>
       ) : (
         <div>
-          <Button size="lg" disabled className="font-semibold">
+          <Button size="lg" disabled className="w-full sm:w-auto font-semibold">
             Aucune action Focus disponible
           </Button>
         </div>

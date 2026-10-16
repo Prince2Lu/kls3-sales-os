@@ -69,7 +69,7 @@ interface SheetHeaderProps {
 
 export function SheetHeader({ children }: SheetHeaderProps) {
   return (
-    <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-4">
+    <div className="sticky top-0 z-10 bg-card border-b border-border px-4 py-4 sm:px-6">
       {children}
     </div>
   )
@@ -92,5 +92,5 @@ interface SheetContentProps {
 }
 
 export function SheetContent({ children }: SheetContentProps) {
-  return <div className="px-6 py-6 space-y-6">{children}</div>
+  return <div className="px-4 py-5 sm:px-6 sm:py-6 space-y-6">{children}</div>
 }

@@ -36,7 +36,7 @@ export default async function RootLayout({
           userEmail={session?.user?.email}
           userName={session?.user?.name}
         />
-        <main className="container mx-auto px-6 py-8">{children}</main>
+        <main className="container mx-auto min-w-0 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-8">{children}</main>
         <Analytics />
       </body>
     </html>

@@ -26,7 +26,7 @@ export default async function NewContactPage({
         >
           ← Contacts
         </Link>
-        <h1 className="text-4xl font-bold font-syne mt-2">Nouveau contact</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold font-syne mt-2">Nouveau contact</h1>
       </div>
 
       <ContactForm

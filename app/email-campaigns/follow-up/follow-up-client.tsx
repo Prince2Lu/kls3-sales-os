@@ -56,8 +56,8 @@ export function FollowUpClient({ rows, currentOwner }: { rows: DisplayRow[]; cur
         <h2 className="text-xl font-semibold">Appels après campagne</h2>
         <p className="text-sm text-muted-foreground">{rows.filter((row) => row.state === 'AVAILABLE' && row.priority !== 'NONE').length} prospect(s) avec un signal à examiner. Un clic sur le CTA prime sur les ouvertures.</p>
       </div>
-      <div className="flex items-center gap-2">
-        <select aria-label="Filtrer les prospects" className="rounded-md border border-border bg-background p-2 text-sm" value={filter} onChange={(event) => setFilter(event.target.value)}>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+        <select aria-label="Filtrer les prospects" className="w-full sm:w-auto rounded-md border border-border bg-background p-2 text-sm" value={filter} onChange={(event) => setFilter(event.target.value)}>
           <option value="AVAILABLE">À examiner</option>
           <option value="TASK_OPEN">Tâche ouverte</option>
           <option value="CALLED">Déjà appelés</option>
@@ -67,7 +67,7 @@ export function FollowUpClient({ rows, currentOwner }: { rows: DisplayRow[]; cur
           <option value="TEST">Tests ({rows.filter((row) => row.state === 'TEST').length})</option>
           <option value="ALL">Tous</option>
         </select>
-        <Button disabled={pending || selected.length === 0} onClick={() => plan(selected)}>Planifier {selected.length || ''} appel(s)</Button>
+        <Button className="w-full sm:w-auto" disabled={pending || selected.length === 0} onClick={() => plan(selected)}>Planifier {selected.length || ''} appel(s)</Button>
       </div>
     </div>
     <p className="mt-3 text-xs text-muted-foreground">Sélectionnez jusqu’à 10 prospects par lot. Une tâche existante est réutilisée. Dans « Tests », vous pouvez créer une tâche marquée TEST, la terminer ou l’annuler, sans créer d’opportunité.</p>

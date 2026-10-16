@@ -15,7 +15,7 @@ export default async function EmailFollowUpPage() {
   return <div className="space-y-6">
     <div>
       <Link href="/email-campaigns" className="text-sm text-accent hover:underline">← Campagnes email</Link>
-      <h1 className="mt-2 text-4xl font-bold font-syne">Suivi des prospects</h1>
+      <h1 className="mt-2 text-3xl sm:text-4xl font-bold font-syne">Suivi des prospects</h1>
       <p className="mt-2 text-muted-foreground">Une ligne par adresse et activité commerciale. Sélectionnez les appels à planifier ; les signaux seuls ne créent aucune tâche.</p>
     </div>
     <FollowUpClient currentOwner={currentOwner} rows={rows.map((row) => ({ ...row, companyName: companyNames.get(row.companyId) ?? row.email,

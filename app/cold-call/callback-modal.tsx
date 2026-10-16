@@ -27,8 +27,8 @@ export function CallbackModal({ onConfirm, onCancel }: CallbackModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center">
-      <Card className="max-w-md w-full p-6 space-y-6">
+    <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+      <Card className="max-w-md w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 space-y-6">
         <div>
           <h2 className="text-2xl font-bold font-syne">Planifier un rappel</h2>
           <p className="text-text-muted text-sm mt-1">
@@ -61,7 +61,7 @@ export function CallbackModal({ onConfirm, onCancel }: CallbackModalProps) {
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col-reverse sm:flex-row gap-3">
           <Button onClick={handleConfirm} className="flex-1">
             Confirmer
           </Button>

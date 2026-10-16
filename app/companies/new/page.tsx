@@ -9,7 +9,7 @@ export default async function NewCompanyPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-4xl font-bold font-syne">Nouvelle entreprise</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold font-syne">Nouvelle entreprise</h1>
         <p className="text-text-muted mt-2">
           Créer une nouvelle entreprise dans le CRM
         </p>

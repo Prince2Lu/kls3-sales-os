@@ -99,13 +99,13 @@ export function ImportClient({ lastImport, importEnabled }: { lastImport: Import
 
         {candidates.length > 0 && (
           <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="font-medium">{candidates.length} offices prêts à importer · {candidates.reduce((count, item) => count + item.notaries.filter((notary) => notary.email).length, 0)} emails nominatifs trouvés</p>
               <Button onClick={runImport} disabled={isPending}>Importer ce lot</Button>
             </div>
-            <div className="overflow-hidden rounded-lg border border-border">
+            <div className="overflow-x-auto rounded-lg border border-border">
               <div className="max-h-[480px] overflow-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full min-w-[680px] text-left text-sm">
                   <thead className="sticky top-0 bg-muted"><tr><th className="p-3">Office</th><th className="p-3">Ville</th><th className="p-3">Notaires</th><th className="p-3">Destinataire futur</th></tr></thead>
                   <tbody>{candidates.map((item) => (
                     <tr key={item.sourceId} className="border-t border-border">
