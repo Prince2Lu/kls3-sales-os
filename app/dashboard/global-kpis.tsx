@@ -78,7 +78,7 @@ export function GlobalKPIs({
     <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4 bg-[rgba(255,255,255,0.06)] rounded-[20px] overflow-hidden p-1">
       {/* Partner Revenue - PERIOD FLOW */}
       {showPartnerRevenue && (
-        <div className="bg-card-bg p-6 rounded-2xl">
+        <div className="bg-card-bg p-4 sm:p-6 rounded-2xl">
           <div className="text-text-muted text-xs uppercase tracking-wide mb-2">
             Revenue Partner
           </div>
@@ -104,7 +104,7 @@ export function GlobalKPIs({
 
       {/* Owned Revenue - PERIOD FLOW */}
       {showOwnedRevenue && (
-        <div className="bg-card-bg p-6 rounded-2xl">
+        <div className="bg-card-bg p-4 sm:p-6 rounded-2xl">
           <div className="text-text-muted text-xs uppercase tracking-wide mb-2">
             Revenue KLS3
           </div>
@@ -130,7 +130,7 @@ export function GlobalKPIs({
 
       {/* MRR - CURRENT STATE */}
       {showMRR && (
-        <div className="bg-card-bg p-6 rounded-2xl">
+        <div className="bg-card-bg p-4 sm:p-6 rounded-2xl">
           <div className="text-text-muted text-xs uppercase tracking-wide mb-2">
             MRR
           </div>
@@ -153,7 +153,7 @@ export function GlobalKPIs({
       )}
 
       {/* Pipeline - CURRENT STATE */}
-      <div className="bg-card-bg p-6 rounded-2xl">
+      <div className="bg-card-bg p-4 sm:p-6 rounded-2xl">
         <div className="text-text-muted text-xs uppercase tracking-wide mb-2">
           Pipeline
         </div>
