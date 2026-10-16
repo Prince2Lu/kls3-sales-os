@@ -127,7 +127,7 @@ export function DropdownMenu({
       {isOpen && (
         <div
           className={cn(
-            'absolute top-full mt-2 min-w-[200px] overlay-surface py-1 z-50',
+            'absolute top-full mt-2 min-w-[200px] max-w-[calc(100vw-1rem)] max-h-[70vh] overflow-y-auto overlay-surface py-1 z-50',
             align === 'right' ? 'right-0' : 'left-0',
             className
           )}
