@@ -32,7 +32,7 @@ export const COHORT_STAGES: Stage[] = [
 
 export interface CohortEntry {
   opportunityId: string
-  cohortEntryDate: Date // First entry into "Contacté"
+  cohortEntryDate: Date // First entry into "RDV"
   isMature: boolean // Now >= cohortEntryDate + 30 days
   businessLineId: string | null
 }
@@ -126,7 +126,7 @@ export function getCohortPeriodRange(
 
 /**
  * Get first "RDV" entry date for an opportunity (cohort entry date)
- * Returns null if opportunity never entered "Contacté"
+ * Returns null if opportunity never entered "RDV"
  */
 export function getCohortEntryDate(
   opportunityId: string,
@@ -309,7 +309,7 @@ export function buildStageReachedMap(
 }
 
 /**
- * Calculate conversion from Contacté for each stage
+ * Calculate conversion from RDV for each stage
  */
 export function calculateConversionsFromContacted(
   cohortEntries: CohortEntry[],
@@ -471,16 +471,16 @@ export function countDataQualityIssues(
       return
     }
 
-    const reachedRdv = stageHistory.some(
-      (entry) => entry.opportunityId === opp.id && entry.toStage === 'RDV'
-    )
-    const reachedAdvancedStage = stageHistory.some(
-      (entry) =>
-        entry.opportunityId === opp.id &&
-        ['Opportunité', 'Proposition', 'Gagné'].includes(entry.toStage)
-    )
+    const history = stageHistory
+      .filter((entry) => entry.opportunityId === opp.id)
+      .sort((a, b) => new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime())
 
-    if (reachedAdvancedStage && !reachedRdv) {
+    const reachedRdv = history.some((entry) => entry.toStage === 'RDV')
+    const firstStage = history[0]?.toStage
+
+    // A first stage of Opportunité is valid: it represents an explicit manual conversion.
+    // Flag only advanced records that skipped both the RDV entry and explicit Opportunity entry.
+    if (!reachedRdv && firstStage && firstStage !== 'Opportunité') {
       count++
     }
   })
