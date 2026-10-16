@@ -98,7 +98,7 @@ export function DigitalCardEditor({ initialCard }: { initialCard: DigitalCard })
   )
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[1fr_360px]">
+    <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           {field('Prénom', 'firstName')}
@@ -184,7 +184,7 @@ export function DigitalCardEditor({ initialCard }: { initialCard: DigitalCard })
           <span>Carte publique active</span>
         </label>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
           <button
             onClick={save}
             disabled={saving}
@@ -203,7 +203,7 @@ export function DigitalCardEditor({ initialCard }: { initialCard: DigitalCard })
           <img
             src={qrUrl}
             alt={`QR code de ${card.displayName}`}
-            className="mx-auto my-4 h-56 w-56 rounded-lg bg-white p-2"
+            className="mx-auto my-4 h-auto w-full max-w-56 rounded-lg bg-white p-2"
           />
           <a href={publicUrl} target="_blank" rel="noreferrer" className="text-sm text-accent underline">
             Ouvrir la carte publique
