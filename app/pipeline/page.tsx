@@ -31,10 +31,6 @@ export default async function PipelinePage() {
 
   // Group opportunities by stage
   const stages = [
-    'À prospecter',
-    'Contacté',
-    'Échange',
-    'Qualifié',
     'RDV',
     'Opportunité',
     'Proposition',
