@@ -150,7 +150,7 @@ export default async function AnalyticsPage(props: {
               <div className="text-3xl font-bold text-text-primary font-syne">
                 {summaryKPIs.entrees}
               </div>
-              <div className="text-xs text-text-muted mt-1">Passées en opportunité</div>
+              <div className="text-xs text-text-muted mt-1">RDV obtenus</div>
             </div>
 
             <div className="bg-background-card p-6">
@@ -160,7 +160,7 @@ export default async function AnalyticsPage(props: {
               <div className="text-3xl font-bold text-text-primary font-syne">
                 {volumes.find((v) => v.stage === 'Opportunité')?.count || 0}
               </div>
-              <div className="text-xs text-text-muted mt-1">RDV obtenus</div>
+              <div className="text-xs text-text-muted mt-1">Passées en opportunité</div>
             </div>
 
             <div className="bg-background-card p-6">
