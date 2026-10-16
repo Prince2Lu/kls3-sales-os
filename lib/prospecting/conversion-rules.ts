@@ -16,22 +16,22 @@ import type { ActivityResult, Stage } from '@/types/domain'
  * - EMAIL_SENT → reste en prospection (email envoyé, pas de réponse)
  * - LINKEDIN_SENT → reste en prospection (message LinkedIn envoyé, pas de réponse)
  *
- * - CONVERSATION → create/reuse Opportunity, stage 'Échange'
+ * - CONVERSATION → reste en prospection, statut 'Échange'
  * - CALLBACK → reste en prospection (rappel planifié, pas de contact commercial confirmé)
- * - MEETING_BOOKED → create/reuse Opportunity, stage 'RDV' (PAS Échange!)
- * - EMAIL_REPLY → create/reuse Opportunity, stage 'Échange'
- * - LINKEDIN_REPLY → create/reuse Opportunity, stage 'Échange'
+ * - MEETING_BOOKED → create/reuse Opportunity, stage 'RDV'
+ * - EMAIL_REPLY → reste en prospection, statut 'Échange'
+ * - LINKEDIN_REPLY → reste en prospection, statut 'Échange'
  */
 export function requiresOpportunityConversion(result: ActivityResult): boolean {
   switch (result) {
     // Results that create/reuse Opportunity
-    case 'CONVERSATION':
     case 'MEETING_BOOKED':
-    case 'EMAIL_REPLY':
-    case 'LINKEDIN_REPLY':
       return true
 
     // Results that stay in prospecting
+    case 'CONVERSATION':
+    case 'EMAIL_REPLY':
+    case 'LINKEDIN_REPLY':
     case 'NO_ANSWER':
     case 'VOICEMAIL':
     case 'WRONG_NUMBER':
@@ -52,11 +52,8 @@ export function requiresOpportunityConversion(result: ActivityResult): boolean {
  * Based on the activity result that triggered the conversion
  *
  * RÈGLE MÉTIER:
- * - CONVERSATION → 'Échange'
- * - CALLBACK → ne convertit pas en Opportunity
- * - MEETING_BOOKED → 'RDV' (NOT 'Échange'!)
- * - EMAIL_REPLY → 'Échange' (real contact via email)
- * - LINKEDIN_REPLY → 'Échange' (real contact via LinkedIn)
+ * - MEETING_BOOKED → 'RDV'
+ * - all other results do not auto-create an Opportunity
  */
 export function getInitialOpportunityStage(result: ActivityResult): Stage {
   switch (result) {
@@ -64,15 +61,9 @@ export function getInitialOpportunityStage(result: ActivityResult): Stage {
       // RDV booké → créer Opportunity directement en stage RDV
       return 'RDV'
 
-    case 'CONVERSATION':
-    case 'EMAIL_REPLY':
-    case 'LINKEDIN_REPLY':
-      // Conversation, callback, email reply, or LinkedIn reply → créer Opportunity en stage Échange
-      return 'Échange'
-
     default:
-      // Fallback (should never happen if requiresOpportunityConversion is checked first)
-      return 'Échange'
+      // Fallback: Opportunities created by automatic conversion always start at RDV.
+      return 'RDV'
   }
 }
 
@@ -82,7 +73,7 @@ export function getInitialOpportunityStage(result: ActivityResult): Stage {
  *
  * SEMANTIC DISTINCTION:
  * - MEETING_BOOKED → 'RDV booké' (actual meeting scheduled, Lilian's familiar label)
- * - CONVERSATION, EMAIL_REPLY, LINKEDIN_REPLY → 'Converti' (generic conversion, Lilian's familiar label)
+ * - Other results no longer use automatic conversion
  *
  * UI BEHAVIOR:
  * - Both 'RDV booké' and 'Converti' visible in prospecting board
@@ -95,14 +86,7 @@ export function getConvertedProspectingStatus(result: ActivityResult): 'RDV book
       // Real meeting booked → 'RDV booké' (Lilian's familiar label)
       return 'RDV booké'
 
-    case 'CONVERSATION':
-    case 'EMAIL_REPLY':
-    case 'LINKEDIN_REPLY':
-      // Generic conversion → 'Converti' (technical status, exits board)
-      return 'Converti'
-
     default:
-      // Fallback
       return 'Converti'
   }
 }
