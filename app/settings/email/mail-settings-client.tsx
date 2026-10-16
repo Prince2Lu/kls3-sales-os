@@ -52,7 +52,7 @@ function MailboxCard({ settings }: { settings: PublicSettings }) {
   }
 
   return (
-    <form action={save} className="rounded-xl border border-border bg-card p-6">
+    <form action={save} className="rounded-xl border border-border bg-card p-4 sm:p-6">
       <input type="hidden" name="owner" value={settings.owner} />
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -88,7 +88,7 @@ function MailboxCard({ settings }: { settings: PublicSettings }) {
             <label className="mb-1 block text-xs text-muted-foreground">Serveur SMTP</label>
             <Input name="smtpHost" defaultValue={settings.smtpHost} required />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">Port</label>
               <Input name="smtpPort" type="number" defaultValue={settings.smtpPort} required />
