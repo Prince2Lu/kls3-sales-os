@@ -311,7 +311,7 @@ export function CompaniesClient({
               <Card className="hover:border-accent/50 transition-all cursor-pointer h-full">
                 <div className="space-y-3">
                   <div>
-                    <h3 className="font-semibold text-lg">{company.name}</h3>
+                    <h3 className="font-semibold text-lg break-words">{company.name}</h3>
 
                     {/* Business Line Badges */}
                     {company.businessLineNames.length > 0 && (
@@ -347,7 +347,7 @@ export function CompaniesClient({
 
       {/* List View */}
       {view === 'list' && filteredAndSortedCompanies.length > 0 && (
-        <div className="bg-card-bg border border-border rounded-2xl overflow-hidden">
+        <div className="bg-card-bg border border-border rounded-2xl overflow-x-auto">
           <table className="w-full">
             <thead className="border-b border-border">
               <tr className="text-left text-xs text-text-muted uppercase tracking-wide">
