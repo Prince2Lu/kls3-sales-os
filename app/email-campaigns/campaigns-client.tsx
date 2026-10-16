@@ -329,7 +329,7 @@ export function CampaignsClient({
             </div>)}
           </div>
         </details>}
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
           <Button onClick={createDraft} disabled={pending || selected.length === 0 || selected.length > 25 || unresolved > 0 || duplicateSelectedEmails > 0 || (previouslySentCount > 0 && !includePreviouslySent) || !templateId || !subject.trim()}>
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Créer le brouillon
@@ -374,8 +374,8 @@ export function CampaignsClient({
 
             <details className="mt-3">
               <summary className="cursor-pointer text-sm text-accent">Voir les statuts individuels</summary>
-              <div className="mt-2 max-h-72 overflow-auto rounded border border-border">
-                <table className="w-full text-left text-xs">
+              <div className="mt-2 max-h-72 overflow-x-auto overflow-y-auto rounded border border-border">
+                <table className="w-full min-w-[720px] text-left text-xs">
                   <thead className="sticky top-0 bg-muted">
                     <tr>
                       <th className="p-2">Destinataire</th>
