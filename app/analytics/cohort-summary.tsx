@@ -16,8 +16,8 @@ export function CohortSummary({
   inMaturationCount,
   conversionsFromContacted,
 }: CohortSummaryProps) {
-  // Find RDV and Gagné conversions
-  const rdvConversion = conversionsFromContacted.find((c) => c.stage === 'RDV')
+  // Find Opportunity and Gagné conversions
+  const rdvConversion = conversionsFromContacted.find((c) => c.stage === 'Opportunité')
   const gagneConversion = conversionsFromContacted.find((c) => c.stage === 'Gagné')
 
   return (
@@ -50,7 +50,7 @@ export function CohortSummary({
 
         <div className="bg-background-card p-6">
           <div className="text-xs uppercase tracking-wider text-text-muted mb-2">
-            Contacté → RDV
+            RDV → Opportunité
           </div>
           <div className="text-3xl font-bold text-text-primary font-syne">
             {rdvConversion?.conversionRate !== null &&
@@ -65,7 +65,7 @@ export function CohortSummary({
 
         <div className="bg-background-card p-6">
           <div className="text-xs uppercase tracking-wider text-text-muted mb-2">
-            Contacté → Gagné
+            RDV → Gagné
           </div>
           <div className="text-3xl font-bold text-text-primary font-syne">
             {gagneConversion?.conversionRate !== null &&
