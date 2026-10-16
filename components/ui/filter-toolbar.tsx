@@ -50,13 +50,13 @@ export function FilterToolbar({
   }
 
   return (
-    <div className="flex flex-wrap gap-2 items-center">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 items-stretch sm:items-center">
       {/* Business Line Filter */}
       {businessLines && onBusinessLineChange && (
         <select
           value={selectedBusinessLine || ''}
           onChange={(e) => onBusinessLineChange(e.target.value)}
-          className="bg-card-bg border border-border rounded-full px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors cursor-pointer"
+          className="w-full sm:w-auto min-w-0 bg-card-bg border border-border rounded-full px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors cursor-pointer"
         >
           {businessLines.map((bl) => (
             <option key={bl.value} value={bl.value}>
@@ -72,7 +72,7 @@ export function FilterToolbar({
           key={index}
           value={filter.value}
           onChange={(e) => filter.onChange(e.target.value)}
-          className="bg-card-bg border border-border rounded-full px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors cursor-pointer"
+          className="w-full sm:w-auto min-w-0 bg-card-bg border border-border rounded-full px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors cursor-pointer"
         >
           {filter.options.map((option) => (
             <option key={option.value} value={option.value}>
@@ -87,7 +87,7 @@ export function FilterToolbar({
         <select
           value={selectedSort || ''}
           onChange={(e) => onSortChange(e.target.value)}
-          className="bg-card-bg border border-border rounded-full px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors cursor-pointer"
+          className="w-full sm:w-auto min-w-0 bg-card-bg border border-border rounded-full px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent transition-colors cursor-pointer"
         >
           {sortOptions.map((option) => (
             <option key={option.value} value={option.value}>
