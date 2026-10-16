@@ -67,7 +67,7 @@ export function CreateTaskModal({ onConfirm, onCancel, initialType }: CreateTask
 
   return (
     <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
-      <Card className="max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <Card className="max-w-md w-full p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div>
           <h3 className="text-lg font-bold font-syne">Créer une tâche</h3>
           <p className="text-xs text-text-muted mt-1">
@@ -158,7 +158,7 @@ export function CreateTaskModal({ onConfirm, onCancel, initialType }: CreateTask
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3 pt-2">
             <Button type="submit" className="flex-1">
               Créer
             </Button>
