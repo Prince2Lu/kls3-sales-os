@@ -43,7 +43,7 @@ export function VelocityComparison({ comparison }: VelocityComparisonProps) {
                 Business Line
               </th>
               <th className="text-right px-6 py-3 text-xs uppercase tracking-wider text-text-muted font-medium">
-                Contacté → RDV
+                RDV → Opportunité
               </th>
               <th className="text-right px-6 py-3 text-xs uppercase tracking-wider text-text-muted font-medium">
                 RDV → Proposition
@@ -52,7 +52,7 @@ export function VelocityComparison({ comparison }: VelocityComparisonProps) {
                 Proposition → Gagné
               </th>
               <th className="text-right px-6 py-3 text-xs uppercase tracking-wider text-text-muted font-medium">
-                Contacté → Gagné
+                RDV → Gagné
               </th>
             </tr>
           </thead>
