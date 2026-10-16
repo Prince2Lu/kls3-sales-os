@@ -188,8 +188,8 @@ function calculateAverage(values: number[]): number | null {
  * 5. No backfilling - both stages must exist in STAGE_HISTORY
  *
  * Example workflow:
- * - Find all opportunities with Contacté in August
- * - For each, find first RDV AFTER that Contacté (even if in September)
+ * - Find all opportunities with RDV in August
+ * - For each, find the first target stage AFTER that RDV (even if in September)
  * - Calculate duration
  */
 export function calculateTransitionDurations(
