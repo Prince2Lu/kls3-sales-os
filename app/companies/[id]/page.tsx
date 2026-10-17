@@ -1,3 +1,4 @@
+import { ManualInteractions } from '@/components/crm/manual-interactions'
 // Company detail page (Phase 2)
 
 import {
@@ -59,6 +60,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <ManualInteractions contacts={contacts.map(c => ({ id: c.id, label: c.firstName + ' ' + c.lastName }))} />
             <AddToProspectingButton
               companyId={company.id}
               companyName={company.name}
