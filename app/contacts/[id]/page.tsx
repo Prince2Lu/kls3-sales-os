@@ -1,3 +1,4 @@
+import { ManualInteractions } from '@/components/crm/manual-interactions'
 // Contact detail page (Phase 2.5)
 
 import {
@@ -80,6 +81,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <ManualInteractions contacts={[{ id: contact.id, label: contact.firstName + ' ' + contact.lastName }]} />
             {contact.email && (
               <Link href={`/contacts/${id}/email`}>
                 <Button>Envoyer un mail</Button>
