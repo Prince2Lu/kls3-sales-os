@@ -2688,3 +2688,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## KLS3 GÉNÉRALISTE — PROSPECTION ET RÉSEAU
+
+- Code stable : `KLS3`; catégorie `OWNED`, revenu `PROJECT`, événement `SIGNED_PROJECT`, mode `PROSPECTING`.
+- `COMPANIES` et `CONTACTS` sont partagés entre Business Lines : ne jamais dupliquer une société pour distinguer réseau et prospection.
+- Le réseau relationnel est suivi dans `RELATIONSHIPS` avec son statut indépendant (`À activer`, `En discussion`, `Action prévue`, `Actif`, `Dormant`, `Clos`).
+- La prospection est suivie dans `COLD_CALL_TARGETS` (nom physique historique) avec ses statuts distincts.
+- Une entreprise ou un contact peut être présent dans les deux parcours. Une relation réseau ne crée pas automatiquement de cible de prospection ou d'opportunité.
+- Ne créer une opportunité que sur action explicite lorsqu'un besoin commercial concret est identifié.
+- Le code `KLS3_NOTAIRES` demeure indépendant. Préserver les données, l'historique et les liens existants.
