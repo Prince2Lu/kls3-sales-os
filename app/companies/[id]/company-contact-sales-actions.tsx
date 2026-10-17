@@ -9,6 +9,7 @@ import { CallResultMenu } from '@/app/cold-call/call-result-menu'
 import { MultichannelActionMenu } from '@/app/cold-call/multichannel-action-menu'
 import { StatusChangeMenu } from '@/app/cold-call/status-change-menu'
 import { CreateTaskModal } from '@/components/pipeline/create-task-modal'
+import { CreateActivityModal } from '@/components/pipeline/create-activity-modal'
 import {
   recordCallActivity,
   recordEmailActivity,
@@ -54,6 +55,7 @@ export function CompanyContactSalesActions({
   const [showMultichannelMenu, setShowMultichannelMenu] = useState(false)
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [showActivityModal, setShowActivityModal] = useState(false)
   const [taskInitialType, setTaskInitialType] = useState<TaskType | undefined>(undefined)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -168,6 +170,14 @@ export function CompanyContactSalesActions({
       {target ? (
         <>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowActivityModal(true)}
+              disabled={isSaving}
+            >
+              + Activité
+            </Button>
             <Badge variant="muted">{target.callStatus}</Badge>
             {openTasks.length > 0 && (
               <span className="text-xs text-text-muted">📋 {openTasks.length}</span>
@@ -236,6 +246,16 @@ export function CompanyContactSalesActions({
           preSelectedContactId={contact.id}
           currentOwner={currentOwner}
           onClose={() => setShowProspectingModal(false)}
+        />
+      )}
+
+      {showActivityModal && (
+        <CreateActivityModal
+          contactId={contact.id}
+          coldCallTargetId={target?.id}
+          opportunityId={target?.opportunityId || undefined}
+          revalidatePaths={[`/companies/${company.id}`, `/contacts/${contact.id}`]}
+          onClose={() => setShowActivityModal(false)}
         />
       )}
 
