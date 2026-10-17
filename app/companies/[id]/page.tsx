@@ -1,3 +1,4 @@
+import { ManualInteractions } from '@/components/crm/manual-interactions'
 // Company detail page (Phase 2)
 
 import {
@@ -5,6 +6,8 @@ import {
   getContacts,
   getOpportunities,
   getBusinessLines,
+  getActivities,
+  getTasks,
 } from '@/lib/airtable'
 import { loadCompanyRelationships } from '@/app/relationships/actions'
 import { RelationshipCard } from '@/components/relationships/relationship-card'
@@ -35,6 +38,10 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     ])
 
     const relationships = relationshipsResult.success ? relationshipsResult.data : []
+    const [allActivities, allTasks] = await Promise.all([getActivities({ maxRecords: 10000 }), getTasks({ maxRecords: 10000 })])
+    const companyContactIds = new Set(contacts.map(c => c.id))
+    const companyActivities = allActivities.filter(a => a.contactId && companyContactIds.has(a.contactId)).sort((a,b) => b.date.localeCompare(a.date))
+    const companyTasks = allTasks.filter(t => t.contactId && companyContactIds.has(t.contactId) && t.status === 'TODO').sort((a,b) => (a.dueAt || '').localeCompare(b.dueAt || ''))
 
     const primaryBusinessLine = company.primaryBusinessLineId
       ? businessLines.find((bl) => bl.id === company.primaryBusinessLineId)
@@ -59,6 +66,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <ManualInteractions contacts={contacts.map(c => ({ id: c.id, label: c.firstName + ' ' + c.lastName }))} />
             <AddToProspectingButton
               companyId={company.id}
               companyName={company.name}
@@ -189,6 +197,28 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
               </Card>
             )}
 
+            <Card>
+              <CardHeader><CardTitle className="text-lg">Activités récentes ({companyActivities.length})</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {companyActivities.length === 0 ? <p className="text-sm text-text-muted">Aucune activité</p> : companyActivities.slice(0, 10).map(a => (
+                  <div key={a.id} className="p-3 rounded-lg bg-white/5 text-sm">
+                    <div className="font-medium">{a.type} · {new Date(a.date).toLocaleDateString('fr-FR')}</div>
+                    {a.notes && <p className="whitespace-pre-wrap mt-1">{a.notes}</p>}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-lg">Tâches à faire ({companyTasks.length})</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {companyTasks.length === 0 ? <p className="text-sm text-text-muted">Aucune tâche</p> : companyTasks.map(t => (
+                  <div key={t.id} className="p-3 rounded-lg bg-white/5 text-sm">
+                    <div className="font-medium">{t.type} · {t.dueAt ? new Date(t.dueAt).toLocaleDateString('fr-FR') : 'Sans échéance'}</div>
+                    {t.notes && <p className="whitespace-pre-wrap mt-1">{t.notes}</p>}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
             {/* Contacts */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">

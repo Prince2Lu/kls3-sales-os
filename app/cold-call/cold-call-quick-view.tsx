@@ -1,3 +1,4 @@
+import { ManualInteractions } from '@/components/crm/manual-interactions'
 'use client'
 
 // Quick View drawer for Cold Call Target cards
@@ -66,11 +67,14 @@ export function ColdCallQuickView({
       : null
 
   const actions = detailPageUrl ? (
-    <Link href={detailPageUrl} className="block">
+    <div className="space-y-3">
+      {contact && <ManualInteractions contacts={[{ id: contact.id, label: contact.firstName + " " + contact.lastName }]} coldCallTargetId={target.id} />}
+      <Link href={detailPageUrl} className="block">
       <Button variant="primary" className="w-full" size="sm">
         Ouvrir la fiche complète
       </Button>
-    </Link>
+      </Link>
+    </div>
   ) : null
 
   return (
