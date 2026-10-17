@@ -604,14 +604,18 @@ export async function getStageHistoryById(id: string): Promise<StageHistory> {
 // Helper to create a record
 async function createRecord<TFields>(
   tableName: string,
-  fields: Partial<TFields>
+  fields: Partial<TFields>,
+  options?: { typecast?: boolean }
 ): Promise<AirtableRecord<TFields>> {
   const url = getTableUrl(tableName)
 
   const response = await fetch(url, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify({
+      fields,
+      ...(options?.typecast ? { typecast: true } : {}),
+    }),
   })
 
   const data = await handleAirtableResponse<{ records?: AirtableRecord<TFields>[] }>(response)
@@ -1025,7 +1029,8 @@ export async function createActivity(
 
   const record = await createRecord<AirtableActivityFields>(
     TABLE_NAMES.ACTIVITIES,
-    fields
+    fields,
+    { typecast: true }
   )
   return mapActivity(record)
 }
