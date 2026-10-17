@@ -6,7 +6,6 @@ import {
   getBusinessLines,
   getCompanies,
   getContacts,
-  getOpportunities,
   getActivities,
   getTasks,
 } from '@/lib/airtable'
@@ -18,32 +17,43 @@ export default async function ColdCallPage() {
 
   // Load all data (pagination handled automatically by fetchRecords)
   // No maxRecords limits to ensure complete call counts and task counts
-  const [targets, businessLines, companies, contacts, opportunities, activities, tasks] =
+  const [targets, businessLines, companies, contacts, activities, tasks] =
     await Promise.all([
       getColdCallTargets({ maxRecords: 500 }), // Cold call targets are limited scope
       getBusinessLines(),
       getCompanies({ maxRecords: 500 }),
       getContacts({ maxRecords: 500 }),
-      getOpportunities({ maxRecords: 500 }),
       getActivities(), // No limit - complete call history
       getTasks({ status: 'TODO' }), // No limit - all TODO tasks
     ])
 
+  const activeProspectingStatuses = new Set([
+    'À appeler',
+    'À rappeler',
+    'Email Flow',
+    'Échange',
+    'Qualifié',
+    'Mauvais numéro',
+    'Pas intéressé',
+  ])
+  const activeTargets = targets.filter((target) =>
+    activeProspectingStatuses.has(target.callStatus)
+  )
+
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold font-syne">Pipeline Cold Call</h1>
+        <h1 className="text-4xl font-bold font-syne">Prospection</h1>
         <p className="text-text-muted mt-2">
-          {targets.length} cible{targets.length !== 1 ? 's' : ''} de prospection multicanale
+          {activeTargets.length} cible{activeTargets.length !== 1 ? 's' : ''} en prospection active
         </p>
       </div>
 
       <ColdCallBoard
-        targets={targets}
+        targets={activeTargets}
         businessLines={businessLines}
         companies={companies}
         contacts={contacts}
-        opportunities={opportunities}
         activities={activities}
         tasks={tasks}
         currentOwner={currentOwner}

@@ -21,12 +21,11 @@ import type {
   BusinessLine,
   Company,
   Contact,
-  Opportunity,
   CallStatus,
   Activity,
   Task,
 } from '@/types/domain'
-import { updateColdCallStatus, updateColdCallOpportunityStage } from './actions'
+import { updateColdCallStatus } from './actions'
 import { useRouter } from 'next/navigation'
 import { ColdCallColumn } from './cold-call-column'
 import { Search, X, Phone, CalendarDays, MessageCircle, CalendarCheck } from 'lucide-react'
@@ -37,16 +36,13 @@ interface ColdCallBoardProps {
   businessLines: BusinessLine[]
   companies: Company[]
   contacts: Contact[]
-  opportunities: Opportunity[]
   activities: Activity[]
   tasks: Task[]
   currentOwner: 'Eric' | 'Lilian'
 }
 
-// Active prospecting status columns (Lilian's familiar labels)
-// Multi-channel: cold call, email, LinkedIn, referrals, etc.
-// Échange and Qualifié remain in prospecting. Converti is explicit manual conversion.
-// Includes 'RDV booké' - visible trace of confirmed meetings (MEETING_BOOKED)
+// Active prospecting statuses only.
+// RDV booké and Converti are exit states kept in history/Airtable but hidden from Cold Call.
 const CALL_STATUSES: CallStatus[] = [
   'À appeler',
   'À rappeler',
@@ -55,19 +51,13 @@ const CALL_STATUSES: CallStatus[] = [
   'Qualifié',
   'Mauvais numéro',
   'Pas intéressé',
-  'Converti',
-  'RDV booké',
 ]
-
-// Opportunity stages for post-RDV (displayed in cold call view)
-const POST_RDV_STAGES = ['Gagné', 'Perdu'] as const
 
 export function ColdCallBoard({
   targets,
   businessLines,
   companies,
   contacts,
-  opportunities,
   activities,
   tasks,
   currentOwner,
@@ -106,11 +96,6 @@ export function ColdCallBoard({
   const contactsMap = useMemo(
     () => Object.fromEntries(contacts.map((c) => [c.id, c])),
     [contacts]
-  )
-
-  const opportunitiesMap = useMemo(
-    () => Object.fromEntries(opportunities.map((o) => [o.id, o])),
-    [opportunities]
   )
 
   // Group activities by coldCallTargetId for efficient access
@@ -233,25 +218,6 @@ export function ColdCallBoard({
     return grouped
   }, [filteredTargets])
 
-  // Group targets with opportunities by stage (post-RDV: Gagné, Perdu)
-  const targetsByStage = useMemo(() => {
-    const grouped: Record<string, ColdCallTarget[]> = {
-      Gagné: [],
-      Perdu: [],
-    }
-
-    filteredTargets.forEach((target) => {
-      if (target.opportunityId) {
-        const opp = opportunitiesMap[target.opportunityId]
-        if (opp && (opp.stage === 'Gagné' || opp.stage === 'Perdu')) {
-          grouped[opp.stage].push(target)
-        }
-      }
-    })
-
-    return grouped
-  }, [filteredTargets, opportunitiesMap])
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -284,25 +250,11 @@ export function ColdCallBoard({
     // dnd-kit returns the hovered card id when dropping between cards, so only
     // checking column ids makes drops work mainly on empty/top areas.
     const overTarget = targets.find((t) => t.id === overId)
-    const overOpportunity = overTarget?.opportunityId
-      ? opportunitiesMap[overTarget.opportunityId]
-      : null
 
     const resolvedCallStatus = CALL_STATUSES.includes(overId as CallStatus)
       ? (overId as CallStatus)
       : overTarget && CALL_STATUSES.includes(overTarget.callStatus)
         ? overTarget.callStatus
-        : null
-
-    const resolvedStage = POST_RDV_STAGES.includes(
-      overId as (typeof POST_RDV_STAGES)[number]
-    )
-      ? (overId as (typeof POST_RDV_STAGES)[number])
-      : overOpportunity &&
-          POST_RDV_STAGES.includes(
-            overOpportunity.stage as (typeof POST_RDV_STAGES)[number]
-          )
-        ? (overOpportunity.stage as (typeof POST_RDV_STAGES)[number])
         : null
 
     if (resolvedCallStatus) {
@@ -321,34 +273,6 @@ export function ColdCallBoard({
         router.refresh()
       } else {
         alert('Erreur lors de la mise à jour')
-      }
-    } else if (resolvedStage) {
-      const newStage = resolvedStage as 'Gagné' | 'Perdu'
-
-      // Must have an opportunity to move to Gagné/Perdu
-      if (!target.opportunityId) {
-        alert('Impossible de passer à Gagné/Perdu sans conversion en opportunité')
-        return
-      }
-
-      const opp = opportunitiesMap[target.opportunityId]
-      if (!opp) return
-
-      // If already in this stage, do nothing
-      if (opp.stage === newStage) return
-
-      // changedBy is determined server-side from session
-      setIsUpdating(true)
-      const result = await updateColdCallOpportunityStage(
-        targetId,
-        newStage
-      )
-      setIsUpdating(false)
-
-      if (result.success) {
-        router.refresh()
-      } else {
-        alert(result.error || 'Erreur lors de la mise à jour')
       }
     }
   }
@@ -487,22 +411,6 @@ export function ColdCallBoard({
             />
           ))}
 
-          {/* Gagné / Perdu Columns */}
-          {POST_RDV_STAGES.map((stage) => (
-            <ColdCallColumn
-              key={stage}
-              id={stage}
-              title={stage}
-              targets={targetsByStage[stage] || []}
-              companiesMap={companiesMap}
-              contactsMap={contactsMap}
-              blMap={blMap}
-              activitiesByTargetId={activitiesByTargetId}
-              tasksByTargetId={tasksByTargetId}
-              currentOwner={currentOwner}
-              isStageColumn
-            />
-          ))}
         </div>
 
         <DragOverlay>{activeTarget && <div>Déplacement...</div>}</DragOverlay>

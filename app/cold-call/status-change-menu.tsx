@@ -21,8 +21,6 @@ const PROSPECTING_STATUSES: { value: ProspectingStatus; label: string; descripti
   { value: 'Qualifié', label: 'Qualifié', description: 'Besoin / potentiel confirmé, avant RDV' },
   { value: 'Mauvais numéro', label: 'Mauvais numéro', description: 'Coordonnées invalides' },
   { value: 'Pas intéressé', label: 'Pas intéressé', description: 'Pas intéressé ou hors profil' },
-  { value: 'RDV booké', label: 'RDV booké', description: 'Meeting confirmé' },
-  { value: 'Converti', label: 'Converti', description: 'Conversion manuelle explicite en opportunité' },
 ]
 
 export function StatusChangeMenu({
