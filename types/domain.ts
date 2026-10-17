@@ -5,7 +5,7 @@
 // ENUMS AND CONTROLLED VALUES
 // ============================================================================
 
-export type BusinessLineCode = 'PAUL' | 'SACHA' | 'CALYMIA' | 'KLS3_NOTAIRES'
+export type BusinessLineCode = 'PAUL' | 'SACHA' | 'CALYMIA' | 'KLS3_NOTAIRES' | 'KLS3'
 
 export type Category = 'PARTNER' | 'OWNED'
 
