@@ -5,6 +5,9 @@ import {
   getContacts,
   getOpportunities,
   getBusinessLines,
+  getColdCallTargets,
+  getActivities,
+  getTasks,
 } from '@/lib/airtable'
 import { loadCompanyRelationships } from '@/app/relationships/actions'
 import { RelationshipCard } from '@/components/relationships/relationship-card'
@@ -16,6 +19,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { AddToProspectingButton } from './add-to-prospecting-button'
+import { CompanyContactSalesActions } from './company-contact-sales-actions'
 
 interface CompanyPageProps {
   params: Promise<{ id: string }>
@@ -26,13 +30,41 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
 
   try {
     const company = await getCompanyById(id)
-    const [contacts, opportunities, businessLines, currentOwner, relationshipsResult] = await Promise.all([
+    const [
+      contacts,
+      opportunities,
+      businessLines,
+      currentOwner,
+      relationshipsResult,
+      prospectingTargets,
+      activities,
+      tasks,
+    ] = await Promise.all([
       getContacts({ companyId: id }),
       getOpportunities({ companyId: id }),
       getBusinessLines(),
       getCurrentOwner(),
       loadCompanyRelationships(id),
+      getColdCallTargets({ maxRecords: 500 }),
+      getActivities(),
+      getTasks({ status: 'TODO' }),
     ])
+
+    const activeProspectingStatuses = new Set([
+      'À appeler',
+      'À rappeler',
+      'Email Flow',
+      'Échange',
+      'Qualifié',
+      'Mauvais numéro',
+      'Pas intéressé',
+    ])
+
+    const companyProspectingTargets = prospectingTargets.filter(
+      (target) =>
+        target.companyId === id &&
+        activeProspectingStatuses.has(target.callStatus)
+    )
 
     const relationships = relationshipsResult.success ? relationshipsResult.data : []
 
@@ -206,31 +238,65 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                   <p className="text-text-muted text-sm">Aucun contact</p>
                 ) : (
                   <div className="space-y-3">
-                    {contacts.map((contact) => (
-                      <Link
-                        key={contact.id}
-                        href={`/contacts/${contact.id}`}
-                        className="block p-3 rounded-lg hover:bg-white/5 transition-colors"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="font-medium">
-                              {contact.firstName} {contact.lastName}
+                    {contacts.map((contact) => {
+                      const target =
+                        companyProspectingTargets.find(
+                          (item) => item.contactId === contact.id
+                        ) || null
+
+                      const contactActivities = activities.filter(
+                        (activity) =>
+                          activity.contactId === contact.id ||
+                          (target && activity.coldCallTargetId === target.id)
+                      )
+
+                      const contactTasks = tasks.filter(
+                        (task) =>
+                          task.contactId === contact.id ||
+                          (target && task.coldCallTargetId === target.id)
+                      )
+
+                      return (
+                        <div
+                          key={contact.id}
+                          className="p-3 rounded-lg hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <Link
+                                href={`/contacts/${contact.id}`}
+                                className="font-medium hover:text-accent transition-colors"
+                              >
+                                {contact.firstName} {contact.lastName}
+                              </Link>
+                              {contact.jobTitle && (
+                                <div className="text-text-muted text-sm">
+                                  {contact.jobTitle}
+                                </div>
+                              )}
+                              {contact.email && (
+                                <a
+                                  href={`mailto:${contact.email}`}
+                                  className="text-text-muted hover:text-accent text-xs break-all"
+                                >
+                                  {contact.email}
+                                </a>
+                              )}
                             </div>
-                            {contact.jobTitle && (
-                              <div className="text-text-muted text-sm">
-                                {contact.jobTitle}
-                              </div>
-                            )}
+
+                            <CompanyContactSalesActions
+                              company={company}
+                              contact={contact}
+                              target={target}
+                              businessLines={businessLines}
+                              currentOwner={currentOwner}
+                              activities={contactActivities}
+                              tasks={contactTasks}
+                            />
                           </div>
-                          {contact.email && (
-                            <div className="text-text-muted text-xs">
-                              {contact.email}
-                            </div>
-                          )}
                         </div>
-                      </Link>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>
