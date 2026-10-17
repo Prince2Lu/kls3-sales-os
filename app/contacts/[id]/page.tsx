@@ -7,6 +7,7 @@ import {
   getActivities,
   getTasks,
   getBusinessLines,
+  getColdCallTargets,
 } from '@/lib/airtable'
 import { loadContactRelationships } from '@/app/relationships/actions'
 import { RelationshipCard } from '@/components/relationships/relationship-card'
@@ -17,6 +18,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { AddToProspectingButton } from './add-to-prospecting-button'
+import { CreateContactActivityButton } from './create-contact-activity-button'
 
 interface ContactPageProps {
   params: Promise<{ id: string }>
@@ -28,7 +30,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
   try {
     const contact = await getContactById(id)
 
-    const [company, opportunities, activities, tasks, businessLines, currentOwner, relationshipsResult] = await Promise.all([
+    const [company, opportunities, activities, tasks, businessLines, currentOwner, relationshipsResult, prospectingTargets] = await Promise.all([
       contact.companyId
         ? getCompanyById(contact.companyId).catch(() => null)
         : Promise.resolve(null),
@@ -38,6 +40,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
       getBusinessLines(),
       getCurrentOwner(),
       loadContactRelationships(id),
+      getColdCallTargets({ maxRecords: 500 }),
     ])
 
     const relationships = relationshipsResult.success ? relationshipsResult.data : []
@@ -46,6 +49,13 @@ export default async function ContactPage({ params }: ContactPageProps) {
     const contactOpportunities = opportunities.filter(
       (opp) => opp.primaryContactId === id
     )
+
+    const activeTarget =
+      prospectingTargets.find(
+        (target) =>
+          target.contactId === id &&
+          ['À appeler', 'À rappeler', 'Email Flow', 'Échange', 'Qualifié', 'Mauvais numéro', 'Pas intéressé'].includes(target.callStatus)
+      ) || null
 
     return (
       <div className="space-y-8">
@@ -80,6 +90,11 @@ export default async function ContactPage({ params }: ContactPageProps) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <CreateContactActivityButton
+              contactId={contact.id}
+              opportunityId={contactOpportunities[0]?.id}
+              coldCallTargetId={activeTarget?.id}
+            />
             {contact.email && (
               <Link href={`/contacts/${id}/email`}>
                 <Button>Envoyer un mail</Button>
