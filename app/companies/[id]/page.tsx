@@ -163,6 +163,18 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                 </div>
               )}
 
+              {company.email && (
+                <div>
+                  <div className="text-text-muted text-xs mb-1">Email entreprise</div>
+                  <a
+                    href={`mailto:${company.email}`}
+                    className="text-accent hover:underline text-sm break-all"
+                  >
+                    {company.email}
+                  </a>
+                </div>
+              )}
+
               {company.companySize && (
                 <div>
                   <div className="text-text-muted text-xs mb-1">Taille</div>
@@ -274,13 +286,18 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                                   {contact.jobTitle}
                                 </div>
                               )}
-                              {contact.email && (
-                                <a
-                                  href={`mailto:${contact.email}`}
-                                  className="text-text-muted hover:text-accent text-xs break-all"
-                                >
-                                  {contact.email}
-                                </a>
+                              {(contact.email || company.email) && (
+                                <div className="text-xs">
+                                  <a
+                                    href={`mailto:${contact.email || company.email}`}
+                                    className="text-text-muted hover:text-accent break-all"
+                                  >
+                                    {contact.email || company.email}
+                                  </a>
+                                  {!contact.email && company.email && (
+                                    <span className="text-text-muted ml-1">· entreprise</span>
+                                  )}
+                                </div>
                               )}
                             </div>
 
