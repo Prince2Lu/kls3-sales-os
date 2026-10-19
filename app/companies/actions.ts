@@ -16,6 +16,7 @@ interface CompanyFormData {
   city?: string
   country?: string
   phone?: string
+  email?: string
   companySize?: string
   linkedin?: string
   notes?: string
@@ -34,6 +35,7 @@ export async function createCompanyAction(data: CompanyFormData) {
       city: data.city,
       country: data.country,
       phone: data.phone,
+      email: data.email,
       companySize: data.companySize,
       linkedin: data.linkedin,
       notes: data.notes,
@@ -63,6 +65,7 @@ export async function updateCompanyAction(id: string, data: CompanyFormData) {
       city: data.city,
       country: data.country,
       phone: data.phone,
+      email: data.email,
       companySize: data.companySize,
       linkedin: data.linkedin,
       notes: data.notes,
