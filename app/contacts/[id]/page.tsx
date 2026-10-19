@@ -95,7 +95,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
               opportunityId={contactOpportunities[0]?.id}
               coldCallTargetId={activeTarget?.id}
             />
-            {contact.email && (
+            {(contact.email || company?.email) && (
               <Link href={`/contacts/${id}/email`}>
                 <Button>Envoyer un mail</Button>
               </Link>

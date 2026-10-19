@@ -36,6 +36,7 @@ export function CompanyForm({ company, businessLines, mode = 'create' }: Company
       city: (formData.get('city') as string) || undefined,
       country: (formData.get('country') as string) || undefined,
       phone: (formData.get('phone') as string) || undefined,
+      email: (formData.get('email') as string) || undefined,
       companySize: (formData.get('companySize') as string) || undefined,
       linkedin: (formData.get('linkedin') as string) || undefined,
       notes: (formData.get('notes') as string) || undefined,
@@ -181,13 +182,26 @@ export function CompanyForm({ company, businessLines, mode = 'create' }: Company
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1 block">Taille</label>
+              <label className="text-sm font-medium mb-1 block">Email entreprise</label>
               <Input
-                name="companySize"
-                defaultValue={company?.companySize || ''}
-                placeholder="Ex: 50-200 employés"
+                name="email"
+                type="email"
+                defaultValue={company?.email || ''}
+                placeholder="contact@entreprise.com"
               />
+              <p className="text-xs text-text-muted mt-1">
+                Utilisé comme email de secours si un contact n’a pas d’adresse nominative.
+              </p>
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-1 block">Taille</label>
+            <Input
+              name="companySize"
+              defaultValue={company?.companySize || ''}
+              placeholder="Ex: 50-200 employés"
+            />
           </div>
 
           <div>
