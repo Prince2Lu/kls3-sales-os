@@ -20,6 +20,8 @@ import { notFound } from 'next/navigation'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { AddToProspectingButton } from './add-to-prospecting-button'
 import { CompanyContactSalesActions } from './company-contact-sales-actions'
+import { CompanyTaskActions } from './company-task-actions'
+import { getFrenchActivityType, getFrenchTaskType, getFrenchPriority } from '@/lib/utils/french-labels'
 
 interface CompanyPageProps {
   params: Promise<{ id: string }>
@@ -45,9 +47,9 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
       getBusinessLines(),
       getCurrentOwner(),
       loadCompanyRelationships(id),
-      getColdCallTargets({ maxRecords: 500 }),
+      getColdCallTargets({ maxRecords: 500, includeArchived: true }),
       getActivities(),
-      getTasks({ status: 'TODO' }),
+      getTasks(),
     ])
 
     const activeProspectingStatuses = new Set([
@@ -60,10 +62,45 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
       'Pas intéressé',
     ])
 
-    const companyProspectingTargets = prospectingTargets.filter(
-      (target) =>
-        target.companyId === id &&
-        activeProspectingStatuses.has(target.callStatus)
+    const allCompanyProspectingTargets = prospectingTargets.filter(
+      (target) => target.companyId === id
+    )
+
+    const companyProspectingTargets = allCompanyProspectingTargets.filter(
+      (target) => activeProspectingStatuses.has(target.callStatus) && !target.archived
+    )
+
+    const contactIds = new Set(contacts.map((contact) => contact.id))
+    const targetIds = new Set(allCompanyProspectingTargets.map((target) => target.id))
+    const opportunityIds = new Set(opportunities.map((opportunity) => opportunity.id))
+
+    const companyActivities = activities
+      .filter(
+        (activity) =>
+          (activity.contactId && contactIds.has(activity.contactId)) ||
+          (activity.coldCallTargetId && targetIds.has(activity.coldCallTargetId)) ||
+          (activity.opportunityId && opportunityIds.has(activity.opportunityId))
+      )
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+    const companyTasks = tasks
+      .filter(
+        (task) =>
+          (task.contactId && contactIds.has(task.contactId)) ||
+          (task.coldCallTargetId && targetIds.has(task.coldCallTargetId)) ||
+          (task.opportunityId && opportunityIds.has(task.opportunityId))
+      )
+      .sort((a, b) => {
+        if (a.status === 'TODO' && b.status !== 'TODO') return -1
+        if (a.status !== 'TODO' && b.status === 'TODO') return 1
+        if (!a.dueAt && !b.dueAt) return 0
+        if (!a.dueAt) return 1
+        if (!b.dueAt) return -1
+        return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
+      })
+
+    const contactById = new Map(
+      contacts.map((contact) => [contact.id, contact] as const)
     )
 
     const relationships = relationshipsResult.success ? relationshipsResult.data : []
@@ -311,6 +348,157 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                               tasks={contactTasks}
                             />
                           </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* CRM Activity History */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  Activités récentes ({companyActivities.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {companyActivities.length === 0 ? (
+                  <p className="text-text-muted text-sm">Aucune activité</p>
+                ) : (
+                  <div className="space-y-3">
+                    {companyActivities.slice(0, 20).map((activity) => {
+                      const activityContact = activity.contactId
+                        ? contactById.get(activity.contactId)
+                        : null
+
+                      return (
+                        <div
+                          key={activity.id}
+                          className="p-3 rounded-lg border border-border bg-white/[0.02] space-y-1"
+                        >
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <Badge variant="muted">
+                              {getFrenchActivityType(activity.type)}
+                            </Badge>
+                            {activity.result && (
+                              <Badge variant="default">{activity.result}</Badge>
+                            )}
+                            <span className="text-text-muted text-xs">
+                              {new Date(activity.date).toLocaleString('fr-FR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                            <span className="text-text-muted text-xs">
+                              · {activity.owner}
+                            </span>
+                          </div>
+
+                          {activityContact && (
+                            <Link
+                              href={`/contacts/${activityContact.id}`}
+                              className="text-accent hover:underline text-sm"
+                            >
+                              {activityContact.firstName} {activityContact.lastName}
+                            </Link>
+                          )}
+
+                          {activity.notes && (
+                            <div className="text-sm whitespace-pre-wrap">
+                              {activity.notes}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {companyActivities.length > 20 && (
+                      <p className="text-xs text-text-muted">
+                        20 activités les plus récentes affichées.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Company Tasks */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  Tâches ({companyTasks.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {companyTasks.length === 0 ? (
+                  <p className="text-text-muted text-sm">Aucune tâche</p>
+                ) : (
+                  <div className="space-y-3">
+                    {companyTasks.map((task) => {
+                      const taskContact = task.contactId
+                        ? contactById.get(task.contactId)
+                        : null
+
+                      return (
+                        <div
+                          key={task.id}
+                          className="p-3 rounded-lg border border-border bg-white/[0.02] space-y-2"
+                        >
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant={task.status === 'TODO' ? 'accent' : 'muted'}>
+                                {task.status === 'TODO' ? 'À faire' : task.status}
+                              </Badge>
+                              <span className="text-sm font-medium">
+                                {getFrenchTaskType(task.type)}
+                              </span>
+                              {task.priority && (
+                                <span className="text-xs text-text-muted">
+                                  · {getFrenchPriority(task.priority)}
+                                </span>
+                              )}
+                            </div>
+
+                            {task.status === 'TODO' && (
+                              <CompanyTaskActions
+                                taskId={task.id}
+                                companyId={company.id}
+                              />
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-muted">
+                            {taskContact && (
+                              <Link
+                                href={`/contacts/${taskContact.id}`}
+                                className="text-accent hover:underline"
+                              >
+                                {taskContact.firstName} {taskContact.lastName}
+                              </Link>
+                            )}
+                            {task.dueAt && (
+                              <span>
+                                Échéance :{' '}
+                                {new Date(task.dueAt).toLocaleString('fr-FR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            )}
+                            <span>· {task.owner}</span>
+                          </div>
+
+                          {task.notes && (
+                            <div className="text-sm whitespace-pre-wrap">{task.notes}</div>
+                          )}
                         </div>
                       )
                     })}
