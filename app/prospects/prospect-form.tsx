@@ -2,7 +2,7 @@
 
 // Prospect creation/edit form (Phase 2.5)
 
-import { useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -69,6 +69,37 @@ export function ProspectForm({
   const [contactMode, setContactMode] = useState<'select' | 'create'>(
     defaultContactId || opportunity?.primaryContactId ? 'select' : 'create'
   )
+  const [selectedCompanyId, setSelectedCompanyId] = useState(
+    defaultCompanyId || opportunity?.companyId || ''
+  )
+  const [selectedContactId, setSelectedContactId] = useState(
+    defaultContactId || opportunity?.primaryContactId || ''
+  )
+
+  const filteredContacts = useMemo(
+    () =>
+      selectedCompanyId
+        ? contacts.filter((contact) => contact.companyId === selectedCompanyId)
+        : [],
+    [contacts, selectedCompanyId]
+  )
+
+  useEffect(() => {
+    if (companyMode !== 'select') return
+
+    if (!selectedCompanyId) {
+      setSelectedContactId('')
+      return
+    }
+
+    const selectedContactStillBelongsToCompany = filteredContacts.some(
+      (contact) => contact.id === selectedContactId
+    )
+
+    if (selectedContactStillBelongsToCompany) return
+
+    setSelectedContactId(filteredContacts.length === 1 ? filteredContacts[0].id : '')
+  }, [companyMode, filteredContacts, selectedCompanyId, selectedContactId])
 
   async function handleSubmit(formData: FormData) {
     setError(null)
@@ -291,7 +322,8 @@ export function ProspectForm({
               <label className="text-sm font-medium mb-1 block">Entreprise</label>
               <Select
                 name="companyId"
-                defaultValue={defaultCompanyId || opportunity?.companyId || ''}
+                value={selectedCompanyId}
+                onChange={(event) => setSelectedCompanyId(event.target.value)}
               >
                 <option value="">Aucune</option>
                 {companies.map((company) => (
@@ -345,10 +377,18 @@ export function ProspectForm({
               <label className="text-sm font-medium mb-1 block">Contact</label>
               <Select
                 name="contactId"
-                defaultValue={defaultContactId || opportunity?.primaryContactId || ''}
+                value={selectedContactId}
+                onChange={(event) => setSelectedContactId(event.target.value)}
+                disabled={!selectedCompanyId}
               >
-                <option value="">Aucun</option>
-                {contacts.map((contact) => (
+                <option value="">
+                  {selectedCompanyId
+                    ? filteredContacts.length > 0
+                      ? 'Aucun'
+                      : 'Aucun contact pour cette entreprise'
+                    : "Sélectionnez d'abord une entreprise"}
+                </option>
+                {filteredContacts.map((contact) => (
                   <option key={contact.id} value={contact.id}>
                     {contact.firstName} {contact.lastName}
                     {contact.jobTitle ? ` - ${contact.jobTitle}` : ''}
