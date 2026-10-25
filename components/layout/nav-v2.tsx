@@ -1,11 +1,8 @@
-// Main navigation component V2 - Responsive design for 13" screens
-// Clean, professional, compact header with dropdown menus
-
 'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronDown, Menu, MoreHorizontal } from 'lucide-react'
+import { ChevronDown, Menu } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { Button } from '@/components/ui/button'
 import { UserMenuV2 } from '@/components/layout/user-menu-v2'
@@ -13,78 +10,92 @@ import { CreateMenu } from '@/components/layout/create-menu'
 import {
   DropdownMenu,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
-// Opportunités submenu items
-const opportunitiesItems = [
+type NavLink = {
+  href: string
+  label: string
+}
+
+const dailyItems: NavLink[] = [
+  { href: '/today', label: "Aujourd'hui" },
+  { href: '/planning', label: 'Planning' },
+  { href: '/cold-call', label: 'Prospection' },
+]
+
+const opportunitiesItems: NavLink[] = [
   { href: '/pipeline', label: 'Vue Kanban' },
-  { href: '/prospects', label: 'Vue Liste' },
+  { href: '/prospects', label: 'Vue liste' },
 ]
 
-// Outils submenu items
-const toolsItems = [
-  { href: '/imports', label: 'Ajouter des prospects' },
-  { href: '/email-campaigns', label: 'Campagnes email' },
-  { href: '/email-campaigns/follow-up', label: 'Appels après campagne' },
-  { href: '/email-suppressions', label: 'Exclusions email' },
-  { href: '/privacy-requests', label: 'Demandes RGPD' },
-  { href: '/digital-cards', label: 'Cartes de visite' },
-  { href: '/digital-cards/vcards', label: 'vCards' },
-  { href: '/digital-cards/stats', label: 'Statistiques cartes' },
-  { href: '/settings/email', label: 'Paramètres messagerie' },
-]
-
-// Primary navigation items - always visible on desktop
-const primaryNavItems = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/today', label: 'Aujourd\'hui' },
-  { href: '/planning', label: 'Planning' },
-  { href: '/cold-call', label: 'Cold Call' },
-]
-
-// Secondary navigation items - in "Plus" dropdown on medium screens
-const secondaryNavItems = [
-  { href: '/analytics', label: 'Analytics' },
+const clientsItems: NavLink[] = [
   { href: '/companies', label: 'Entreprises' },
   { href: '/contacts', label: 'Contacts' },
-  { href: '/relationships', label: 'Relations' },
 ]
 
-// Compact navigation for medium screens (tablet/small laptop)
-// Shows only essential items, rest in "Plus"
-const compactNavItems = [
+const steeringItems: NavLink[] = [
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/planning', label: 'Planning' },
-  { href: '/cold-call', label: 'Cold Call' },
+  { href: '/analytics', label: 'Analytics' },
 ]
 
-const compactSecondaryItems = [
-  { href: '/today', label: 'Aujourd\'hui' },
-  { href: '/analytics', label: 'Analytics' },
-  { href: '/companies', label: 'Entreprises' },
-  { href: '/contacts', label: 'Contacts' },
-  { href: '/relationships', label: 'Relations' },
+const toolGroups: Array<{ label: string; items: NavLink[] }> = [
+  {
+    label: 'Prospection & campagnes',
+    items: [
+      { href: '/imports', label: 'Ajouter des prospects' },
+      { href: '/email-campaigns', label: 'Campagnes email' },
+      { href: '/email-campaigns/follow-up', label: 'Appels après campagne' },
+      { href: '/email-suppressions', label: 'Exclusions email' },
+    ],
+  },
+  {
+    label: 'Cartes & contacts',
+    items: [
+      { href: '/digital-cards', label: 'Cartes de visite' },
+      { href: '/digital-cards/vcards', label: 'vCards' },
+      { href: '/digital-cards/stats', label: 'Statistiques cartes' },
+    ],
+  },
+  {
+    label: 'Paramètres & conformité',
+    items: [
+      { href: '/settings/email', label: 'Paramètres messagerie' },
+      { href: '/privacy-requests', label: 'Demandes RGPD' },
+    ],
+  },
 ]
+
+const toolsItems = toolGroups.flatMap((group) => group.items)
 
 interface NavV2Props {
   userEmail?: string | null
   userName?: string | null
 }
 
+function pathMatches(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
 export function NavV2({ userEmail, userName }: NavV2Props = {}) {
   const pathname = usePathname()
 
-  // Check if current path is within Opportunités section
-  const isOpportunitiesActive = pathname === '/pipeline' || pathname === '/prospects'
-
-  // Check if current path is within Outils section
-  const isToolsActive = toolsItems.some(
-    (item) => pathname === item.href || pathname?.startsWith(`${item.href}/`)
+  const isOpportunitiesActive = opportunitiesItems.some((item) =>
+    pathMatches(pathname, item.href)
+  )
+  const isClientsActive = clientsItems.some((item) =>
+    pathMatches(pathname, item.href)
+  )
+  const isSteeringActive = steeringItems.some((item) =>
+    pathMatches(pathname, item.href)
+  )
+  const isToolsActive = toolsItems.some((item) =>
+    pathMatches(pathname, item.href)
   )
 
-  const NavItem = ({ href, label }: { href: string; label: string }) => {
-    const isActive = pathname === href || pathname?.startsWith(`${href}/`)
+  const NavItem = ({ href, label }: NavLink) => {
+    const isActive = pathMatches(pathname, href)
 
     return (
       <Link href={href}>
@@ -102,85 +113,90 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
     )
   }
 
-  const OpportunitesMenu = () => {
-    const trigger = (
-      <Button
-        variant={isOpportunitiesActive ? 'primary' : 'nav'}
-        size="sm"
-        className={cn(
-          'transition-all whitespace-nowrap',
-          isOpportunitiesActive && 'ring-2 ring-accent/20'
-        )}
-      >
-        Opportunités
-      </Button>
-    )
+  const DropdownLink = ({ item }: { item: NavLink }) => {
+    const isActive = pathMatches(pathname, item.href)
 
     return (
-      <DropdownMenu trigger={trigger} hoverEnabled={true}>
-        {opportunitiesItems.map((item) => (
-          <Link key={item.href} href={item.href}>
-            <DropdownMenuItem
-              className={cn(
-                'cursor-pointer',
-                pathname === item.href && 'bg-accent/10 text-accent font-medium'
-              )}
-            >
-              {item.label}
-            </DropdownMenuItem>
-          </Link>
-        ))}
-      </DropdownMenu>
+      <Link href={item.href}>
+        <DropdownMenuItem
+          className={cn(
+            'cursor-pointer',
+            isActive && 'bg-accent/10 text-accent font-medium'
+          )}
+        >
+          {item.label}
+        </DropdownMenuItem>
+      </Link>
     )
   }
 
-  const ToolsMenu = () => {
-    const trigger = (
-      <Button
-        variant={isToolsActive ? 'primary' : 'nav'}
-        size="sm"
-        className={cn(
-          'transition-all whitespace-nowrap',
-          isToolsActive && 'ring-2 ring-accent/20'
-        )}
-      >
-        Outils
-      </Button>
-    )
+  const SectionMenu = ({
+    label,
+    items,
+    active,
+  }: {
+    label: string
+    items: NavLink[]
+    active: boolean
+  }) => (
+    <DropdownMenu
+      hoverEnabled
+      trigger={
+        <Button
+          variant={active ? 'primary' : 'nav'}
+          size="sm"
+          className={cn(
+            'gap-1 whitespace-nowrap transition-all',
+            active && 'ring-2 ring-accent/20'
+          )}
+        >
+          {label}
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+      }
+    >
+      {items.map((item) => (
+        <DropdownLink key={item.href} item={item} />
+      ))}
+    </DropdownMenu>
+  )
 
-    return (
-      <DropdownMenu trigger={trigger} hoverEnabled={true}>
-        {toolsItems.map((item) => (
-          <Link key={item.href} href={item.href}>
-            <DropdownMenuItem
-              className={cn(
-                'cursor-pointer',
-                pathname === item.href && 'bg-accent/10 text-accent font-medium'
-              )}
-            >
-              {item.label}
-            </DropdownMenuItem>
-          </Link>
-        ))}
-      </DropdownMenu>
-    )
-  }
-
+  const ToolsMenu = () => (
+    <DropdownMenu
+      hoverEnabled
+      className="w-72"
+      trigger={
+        <Button
+          variant={isToolsActive ? 'primary' : 'nav'}
+          size="sm"
+          className={cn(
+            'gap-1 whitespace-nowrap transition-all',
+            isToolsActive && 'ring-2 ring-accent/20'
+          )}
+        >
+          Outils
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+      }
+    >
+      {toolGroups.map((group, index) => (
+        <div key={group.label}>
+          {index > 0 && <DropdownMenuSeparator />}
+          <div className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+            {group.label}
+          </div>
+          {group.items.map((item) => (
+            <DropdownLink key={item.href} item={item} />
+          ))}
+        </div>
+      ))}
+    </DropdownMenu>
+  )
 
   const MobileMenu = () => {
-    const mobileDirectItems = [...primaryNavItems, ...secondaryNavItems]
-
     const trigger = (
       <Button
-        variant={
-          isOpportunitiesActive ||
-          isToolsActive ||
-          mobileDirectItems.some(
-            (item) => pathname === item.href || pathname?.startsWith(`${item.href}/`)
-          )
-            ? 'primary'
-            : 'nav'
-        }
+        variant="nav"
         size="sm"
         className="gap-1.5 whitespace-nowrap"
       >
@@ -189,117 +205,83 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
       </Button>
     )
 
-    const renderMobileLink = (item: { href: string; label: string }) => {
-      const isActive =
-        pathname === item.href || pathname?.startsWith(`${item.href}/`)
-
-      return (
-        <Link key={item.href} href={item.href}>
-          <DropdownMenuItem
-            className={cn(
-              'cursor-pointer',
-              isActive && 'bg-accent/10 text-accent font-medium'
-            )}
-          >
-            {item.label}
-          </DropdownMenuItem>
-        </Link>
-      )
-    }
+    const MobileSection = ({
+      label,
+      items,
+      open = false,
+    }: {
+      label: string
+      items: NavLink[]
+      open?: boolean
+    }) => (
+      <details className="border-t border-border/70" open={open}>
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-medium">
+          <span>{label}</span>
+          <ChevronDown className="h-4 w-4" />
+        </summary>
+        <div className="border-t border-border/40 pl-3">
+          {items.map((item) => (
+            <DropdownLink key={item.href} item={item} />
+          ))}
+        </div>
+      </details>
+    )
 
     return (
       <DropdownMenu
         trigger={trigger}
         align="left"
-        className="w-[min(20rem,calc(100vw-1rem))]"
+        className="w-[min(21rem,calc(100vw-1rem))]"
       >
         <div className="py-1">
-          {primaryNavItems.map(renderMobileLink)}
+          {dailyItems.map((item) => (
+            <DropdownLink key={item.href} item={item} />
+          ))}
 
-          <details className="border-t border-border/70" open={isOpportunitiesActive}>
-            <summary
-              className={cn(
-                'flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm transition-colors hover:bg-accent/10',
-                isOpportunitiesActive && 'text-accent font-medium'
-              )}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <span>Opportunités</span>
-              <ChevronDown className="h-4 w-4" />
-            </summary>
-            <div className="border-t border-border/40 bg-white/[0.02] pl-3">
-              {opportunitiesItems.map(renderMobileLink)}
-            </div>
-          </details>
+          <MobileSection
+            label="Opportunités"
+            items={opportunitiesItems}
+            open={isOpportunitiesActive}
+          />
+
+          <div className="border-t border-border/70">
+            <DropdownLink item={{ href: '/relationships', label: 'Réseau' }} />
+          </div>
+
+          <MobileSection
+            label="Clients & contacts"
+            items={clientsItems}
+            open={isClientsActive}
+          />
+
+          <MobileSection
+            label="Pilotage"
+            items={steeringItems}
+            open={isSteeringActive}
+          />
 
           <details className="border-t border-border/70" open={isToolsActive}>
-            <summary
-              className={cn(
-                'flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm transition-colors hover:bg-accent/10',
-                isToolsActive && 'text-accent font-medium'
-              )}
-              onClick={(event) => event.stopPropagation()}
-            >
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-medium">
               <span>Outils</span>
               <ChevronDown className="h-4 w-4" />
             </summary>
-            <div className="border-t border-border/40 bg-white/[0.02] pl-3">
-              {toolsItems.map(renderMobileLink)}
+            <div className="border-t border-border/40 pb-1">
+              {toolGroups.map((group, index) => (
+                <div key={group.label}>
+                  {index > 0 && <DropdownMenuSeparator />}
+                  <div className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                    {group.label}
+                  </div>
+                  <div className="pl-3">
+                    {group.items.map((item) => (
+                      <DropdownLink key={item.href} item={item} />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </details>
-
-          <div className="border-t border-border/70">
-            {secondaryNavItems.map(renderMobileLink)}
-          </div>
         </div>
-      </DropdownMenu>
-    )
-  }
-
-  const MoreMenu = ({
-    items,
-    label = 'Plus',
-  }: {
-    items: typeof secondaryNavItems
-    label?: string
-  }) => {
-    const hasActiveItem = items.some(
-      (item) => pathname === item.href || pathname?.startsWith(`${item.href}/`)
-    )
-
-    const trigger = (
-      <Button
-        variant={hasActiveItem ? 'primary' : 'nav'}
-        size="sm"
-        className={cn(
-          'gap-1 whitespace-nowrap',
-          hasActiveItem && 'ring-2 ring-accent/20'
-        )}
-      >
-        <span>{label}</span>
-        <MoreHorizontal className="w-4 h-4" />
-      </Button>
-    )
-
-    return (
-      <DropdownMenu trigger={trigger}>
-        {items.map((item) => {
-          const isActive =
-            pathname === item.href || pathname?.startsWith(`${item.href}/`)
-
-          return (
-            <Link key={item.href} href={item.href}>
-              <DropdownMenuItem
-                className={cn(
-                  'cursor-pointer',
-                  isActive && 'bg-accent/10 text-accent font-medium'
-                )}
-              >
-                {item.label}
-              </DropdownMenuItem>
-            </Link>
-          )
-        })}
       </DropdownMenu>
     )
   }
@@ -307,52 +289,97 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
   return (
     <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
-        {/* Left: Logo */}
         <Link href="/" className="flex items-center shrink-0">
           <Logo size="md" />
         </Link>
 
-        {/* Center: Navigation */}
-        <div className="flex min-w-0 items-center gap-1.5 mx-1 sm:mx-3 lg:mx-8">
-          {/* Compact nav - visible on medium screens (768-1023px) */}
-          <div className="hidden md:flex lg:hidden items-center gap-1.5">
-            {compactNavItems.map((item) => (
+        <div className="flex min-w-0 items-center gap-1.5 mx-1 lg:mx-6">
+          <div className="hidden xl:flex items-center gap-1.5">
+            {dailyItems.map((item) => (
               <NavItem key={item.href} {...item} />
             ))}
-            <OpportunitesMenu />
+
+            <SectionMenu
+              label="Opportunités"
+              items={opportunitiesItems}
+              active={isOpportunitiesActive}
+            />
+
+            <NavItem href="/relationships" label="Réseau" />
+
+            <SectionMenu
+              label="Clients & contacts"
+              items={clientsItems}
+              active={isClientsActive}
+            />
+
+            <SectionMenu
+              label="Pilotage"
+              items={steeringItems}
+              active={isSteeringActive}
+            />
+
             <ToolsMenu />
-            <MoreMenu items={compactSecondaryItems} />
           </div>
 
-          {/* Primary nav + "Plus" - visible on large screens (1024-1535px) */}
-          <div className="hidden lg:flex 2xl:hidden items-center gap-1.5">
-            {primaryNavItems.map((item) => (
-              <NavItem key={item.href} {...item} />
-            ))}
-            <OpportunitesMenu />
-            <ToolsMenu />
-            <MoreMenu items={secondaryNavItems} />
+          <div className="hidden md:flex xl:hidden items-center gap-1.5">
+            <NavItem href="/today" label="Aujourd'hui" />
+            <NavItem href="/planning" label="Planning" />
+            <NavItem href="/cold-call" label="Prospection" />
+            <SectionMenu
+              label="Opportunités"
+              items={opportunitiesItems}
+              active={isOpportunitiesActive}
+            />
+            <DropdownMenu
+              trigger={
+                <Button
+                  variant={
+                    pathMatches(pathname, '/relationships') ||
+                    isClientsActive ||
+                    isSteeringActive ||
+                    isToolsActive
+                      ? 'primary'
+                      : 'nav'
+                  }
+                  size="sm"
+                  className="gap-1 whitespace-nowrap"
+                >
+                  Plus
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              }
+            >
+              <DropdownLink item={{ href: '/relationships', label: 'Réseau' }} />
+              <DropdownMenuSeparator />
+              <div className="px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                Clients & contacts
+              </div>
+              {clientsItems.map((item) => (
+                <DropdownLink key={item.href} item={item} />
+              ))}
+              <DropdownMenuSeparator />
+              <div className="px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                Pilotage
+              </div>
+              {steeringItems.map((item) => (
+                <DropdownLink key={item.href} item={item} />
+              ))}
+              <DropdownMenuSeparator />
+              <div className="px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                Outils
+              </div>
+              {toolsItems.map((item) => (
+                <DropdownLink key={item.href} item={item} />
+              ))}
+            </DropdownMenu>
           </div>
 
-          {/* All nav items - visible on very large screens (1536px+) */}
-          <div className="hidden 2xl:flex items-center gap-1.5">
-            {primaryNavItems.map((item) => (
-              <NavItem key={item.href} {...item} />
-            ))}
-            <OpportunitesMenu />
-            <ToolsMenu />
-            {secondaryNavItems.map((item) => (
-              <NavItem key={item.href} {...item} />
-            ))}
-          </div>
-
-          {/* Mobile: compact menu with desktop-like submenus */}
           <div className="md:hidden">
             <MobileMenu />
           </div>
         </div>
 
-        {/* Right: CTA + User menu */}
         <div className="flex items-center gap-3 shrink-0">
           <CreateMenu />
           <UserMenuV2 userEmail={userEmail} userName={userName} />
