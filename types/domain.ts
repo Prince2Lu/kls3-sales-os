@@ -159,6 +159,9 @@ export interface Company {
   country: string | null
   phone: string | null
   email: string | null
+  vatNumber: string | null
+  intraCommunityVatNumber: string | null
+  registryNumber: string | null
   notaryCount: number | null
   importBatchId: string | null
   companySize: string | null

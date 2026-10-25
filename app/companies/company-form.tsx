@@ -37,6 +37,9 @@ export function CompanyForm({ company, businessLines, mode = 'create' }: Company
       country: (formData.get('country') as string) || undefined,
       phone: (formData.get('phone') as string) || undefined,
       email: (formData.get('email') as string) || undefined,
+      vatNumber: (formData.get('vatNumber') as string) || undefined,
+      intraCommunityVatNumber: (formData.get('intraCommunityVatNumber') as string) || undefined,
+      registryNumber: (formData.get('registryNumber') as string) || undefined,
       companySize: (formData.get('companySize') as string) || undefined,
       linkedin: (formData.get('linkedin') as string) || undefined,
       notes: (formData.get('notes') as string) || undefined,
@@ -192,6 +195,41 @@ export function CompanyForm({ company, businessLines, mode = 'create' }: Company
               <p className="text-xs text-text-muted mt-1">
                 Utilisé comme email de secours si un contact n’a pas d’adresse nominative.
               </p>
+            </div>
+          </div>
+
+          <div className="pt-2 space-y-4">
+            <div className="text-sm font-semibold">Identification légale</div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium mb-1 block">N° TVA</label>
+                <Input
+                  name="vatNumber"
+                  defaultValue={company?.vatNumber || ''}
+                  placeholder="Ex: LU12345678"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">TVA intracommunautaire</label>
+                <Input
+                  name="intraCommunityVatNumber"
+                  defaultValue={company?.intraCommunityVatNumber || ''}
+                  placeholder="Ex: FR12 123456789"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                N° de registre (SIREN, RCS…)
+              </label>
+              <Input
+                name="registryNumber"
+                defaultValue={company?.registryNumber || ''}
+                placeholder="Ex: SIREN 123 456 789 / RCS Luxembourg B123456"
+              />
             </div>
           </div>
 
