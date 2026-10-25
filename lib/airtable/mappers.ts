@@ -375,6 +375,9 @@ export function mapUser(record: AirtableRecord<AirtableUserFields>): User {
   return {
     id: record.id,
     name: fields.Name,
+    firstName: fields['First Name'] ?? null,
+    lastName: fields['Last Name'] ?? null,
+    theme: (fields.Theme as User['theme'] | undefined) ?? 'dark',
     email: fields.Email,
     passwordHash: fields['Password Hash'],
     role: fields.Role as UserRole,
