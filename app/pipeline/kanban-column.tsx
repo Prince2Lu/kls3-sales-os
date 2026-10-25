@@ -96,7 +96,7 @@ export function KanbanColumn({
     : null
 
   return (
-    <div className="flex-shrink-0 w-[320px]">
+    <div className="flex-shrink-0 w-[min(20rem,calc(100vw-2rem))]">
       <div className="mb-3 sticky top-0 bg-background py-2 z-10">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">{stage}</h3>
