@@ -110,3 +110,24 @@ html[data-theme="dark"] {
     animation: slide-in-left 0.3s ease-out;
   }
 }
+
+
+@layer utilities {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-app-content {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-app-content {
+      padding-bottom: 0;
+    }
+  }
+}
