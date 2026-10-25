@@ -427,4 +427,5 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
         </div>
       )}
     </>
-  )}
+  )
+}
