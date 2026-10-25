@@ -661,6 +661,9 @@ export interface CreateCompanyInput {
   country?: string
   phone?: string
   email?: string
+  vatNumber?: string
+  intraCommunityVatNumber?: string
+  registryNumber?: string
   notaryCount?: number
   importBatchId?: string
   companySize?: string
@@ -689,6 +692,9 @@ export async function createCompany(
     Country: input.country,
     Phone: input.phone,
     Email: input.email,
+    'VAT Number': input.vatNumber,
+    'Intra-community VAT Number': input.intraCommunityVatNumber,
+    'Registry Number': input.registryNumber,
     'Notary Count': input.notaryCount,
     'Import Batch': input.importBatchId ? [input.importBatchId] : undefined,
     'Company Size': input.companySize,
@@ -732,6 +738,10 @@ export async function updateCompany(
   if (input.country !== undefined) fields.Country = input.country
   if (input.phone !== undefined) fields.Phone = input.phone
   if (input.email !== undefined) fields.Email = input.email
+  if (input.vatNumber !== undefined) fields['VAT Number'] = input.vatNumber
+  if (input.intraCommunityVatNumber !== undefined)
+    fields['Intra-community VAT Number'] = input.intraCommunityVatNumber
+  if (input.registryNumber !== undefined) fields['Registry Number'] = input.registryNumber
   if (input.notaryCount !== undefined) fields['Notary Count'] = input.notaryCount
   if (input.importBatchId !== undefined) fields['Import Batch'] = input.importBatchId ? [input.importBatchId] : []
   if (input.companySize !== undefined) fields['Company Size'] = input.companySize
