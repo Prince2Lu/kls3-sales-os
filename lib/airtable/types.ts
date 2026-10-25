@@ -39,6 +39,9 @@ export interface AirtableCompanyFields {
   Country?: string
   Phone?: string
   Email?: string
+  'VAT Number'?: string
+  'Intra-community VAT Number'?: string
+  'Registry Number'?: string
   'Notary Count'?: number
   'Import Batch'?: string[]
   'Company Size'?: string
