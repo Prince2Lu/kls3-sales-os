@@ -208,11 +208,11 @@ export function PlanningClient({ items }: PlanningClientProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
           <select
             value={ownerFilter}
             onChange={(event) => setOwnerFilter(event.target.value as OwnerFilter)}
-            className="px-3 py-2 bg-card border border-border rounded-lg text-sm"
+            className="w-full sm:w-auto px-3 py-2 bg-card border border-border rounded-lg text-sm"
           >
             <option value="ALL">Eric + Lilian</option>
             <option value="Eric">Eric</option>
@@ -222,19 +222,19 @@ export function PlanningClient({ items }: PlanningClientProps) {
           <select
             value={typeFilter}
             onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}
-            className="px-3 py-2 bg-card border border-border rounded-lg text-sm"
+            className="w-full sm:w-auto px-3 py-2 bg-card border border-border rounded-lg text-sm"
           >
             <option value="ALL">RDV + tâches</option>
             <option value="MEETING">RDV uniquement</option>
             <option value="TASK">Tâches uniquement</option>
           </select>
 
-          <div className="flex rounded-lg border border-border overflow-hidden">
+          <div className="flex w-full sm:w-auto rounded-lg border border-border overflow-hidden">
             <button
               type="button"
               onClick={() => setViewMode('week')}
               className={
-                'px-3 py-2 text-sm ' +
+                'flex-1 sm:flex-none px-3 py-2 text-sm ' +
                 (viewMode === 'week'
                   ? 'bg-accent text-white'
                   : 'bg-card text-text-primary')
@@ -246,7 +246,7 @@ export function PlanningClient({ items }: PlanningClientProps) {
               type="button"
               onClick={() => setViewMode('month')}
               className={
-                'px-3 py-2 text-sm ' +
+                'flex-1 sm:flex-none px-3 py-2 text-sm ' +
                 (viewMode === 'month'
                   ? 'bg-accent text-white'
                   : 'bg-card text-text-primary')
@@ -301,51 +301,101 @@ export function PlanningClient({ items }: PlanningClientProps) {
             })}
           </div>
         ) : (
-          <div className="grid grid-cols-7">
-            {WEEKDAYS.map((label) => (
-              <div
-                key={label}
-                className="px-2 py-2 text-center text-xs font-medium text-text-muted border-b border-border"
-              >
-                {label}
-              </div>
-            ))}
+          <>
+            <div className="md:hidden divide-y divide-border">
+              {monthDays
+                .filter(
+                  (day) =>
+                    day.getMonth() === cursor.getMonth() &&
+                    (itemsByDay.get(dateKey(day)) || []).length > 0
+                )
+                .map((day) => {
+                  const dayItems = itemsByDay.get(dateKey(day)) || []
+                  const isToday = sameDay(day, today)
 
-            {monthDays.map((day) => {
-              const dayItems = itemsByDay.get(dateKey(day)) || []
-              const inCurrentMonth = day.getMonth() === cursor.getMonth()
-              const isToday = sameDay(day, today)
+                  return (
+                    <div key={day.toISOString()} className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div
+                          className={
+                            'text-sm font-semibold capitalize ' +
+                            (isToday ? 'text-accent' : '')
+                          }
+                        >
+                          {day.toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                          })}
+                        </div>
+                        <Badge variant="muted">{dayItems.length}</Badge>
+                      </div>
+                      <div className="space-y-2">
+                        {dayItems.map((item) => (
+                          <ItemCard key={item.id} item={item} />
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
 
-              return (
+              {monthDays.filter(
+                (day) =>
+                  day.getMonth() === cursor.getMonth() &&
+                  (itemsByDay.get(dateKey(day)) || []).length > 0
+              ).length === 0 && (
+                <div className="p-8 text-center text-sm text-text-muted">
+                  Aucun élément planifié ce mois-ci.
+                </div>
+              )}
+            </div>
+
+            <div className="hidden md:grid grid-cols-7">
+              {WEEKDAYS.map((label) => (
                 <div
-                  key={day.toISOString()}
-                  className={
-                    'min-h-28 border-b border-r border-border p-1.5 sm:p-2 ' +
-                    (!inCurrentMonth ? 'opacity-45' : '')
-                  }
+                  key={label}
+                  className="px-2 py-2 text-center text-xs font-medium text-text-muted border-b border-border"
                 >
+                  {label}
+                </div>
+              ))}
+
+              {monthDays.map((day) => {
+                const dayItems = itemsByDay.get(dateKey(day)) || []
+                const inCurrentMonth = day.getMonth() === cursor.getMonth()
+                const isToday = sameDay(day, today)
+
+                return (
                   <div
+                    key={day.toISOString()}
                     className={
-                      'mb-1 text-xs font-medium ' + (isToday ? 'text-accent' : '')
+                      'min-h-28 border-b border-r border-border p-2 ' +
+                      (!inCurrentMonth ? 'opacity-45' : '')
                     }
                   >
-                    {day.getDate()}
-                  </div>
+                    <div
+                      className={
+                        'mb-1 text-xs font-medium ' + (isToday ? 'text-accent' : '')
+                      }
+                    >
+                      {day.getDate()}
+                    </div>
 
-                  <div className="space-y-1">
-                    {dayItems.slice(0, 3).map((item) => (
-                      <ItemCard key={item.id} item={item} compact />
-                    ))}
-                    {dayItems.length > 3 && (
-                      <div className="text-[11px] text-text-muted px-1">
-                        + {dayItems.length - 3} autre(s)
-                      </div>
-                    )}
+                    <div className="space-y-1">
+                      {dayItems.slice(0, 3).map((item) => (
+                        <ItemCard key={item.id} item={item} compact />
+                      ))}
+                      {dayItems.length > 3 && (
+                        <div className="text-[11px] text-text-muted px-1">
+                          + {dayItems.length - 3} autre(s)
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          </>
         )}
       </div>
 

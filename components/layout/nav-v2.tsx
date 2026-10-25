@@ -294,7 +294,7 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
         </Link>
 
         <div className="flex min-w-0 items-center gap-1.5 mx-1 lg:mx-6">
-          <div className="hidden xl:flex items-center gap-1.5">
+          <div className="hidden 2xl:flex items-center gap-1.5">
             {dailyItems.map((item) => (
               <NavItem key={item.href} {...item} />
             ))}
@@ -322,7 +322,7 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
             <ToolsMenu />
           </div>
 
-          <div className="hidden md:flex xl:hidden items-center gap-1.5">
+          <div className="hidden lg:flex 2xl:hidden items-center gap-1.5">
             <NavItem href="/today" label="Aujourd'hui" />
             <NavItem href="/planning" label="Planning" />
             <NavItem href="/cold-call" label="Prospection" />
@@ -375,7 +375,7 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
             </DropdownMenu>
           </div>
 
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <MobileMenu />
           </div>
         </div>
