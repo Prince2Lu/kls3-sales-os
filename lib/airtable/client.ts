@@ -1340,6 +1340,40 @@ export async function getUsers(options?: {
   return records.map(mapUser)
 }
 
+export async function updateUserPreferences(
+  id: string,
+  input: {
+    firstName?: string
+    lastName?: string
+    theme?: User['theme']
+  }
+): Promise<User> {
+  const fields: Partial<AirtableUserFields> = {
+    'Updated At': new Date().toISOString(),
+  }
+
+  if (input.firstName !== undefined) fields['First Name'] = input.firstName
+  if (input.lastName !== undefined) fields['Last Name'] = input.lastName
+  if (input.theme !== undefined) fields.Theme = input.theme
+
+  const record = await updateRecord<AirtableUserFields>(
+    TABLE_NAMES.USERS,
+    id,
+    fields
+  )
+  return mapUser(record)
+}
+
+export async function updateUserPasswordHash(
+  id: string,
+  passwordHash: string
+): Promise<void> {
+  await updateRecord<AirtableUserFields>(TABLE_NAMES.USERS, id, {
+    'Password Hash': passwordHash,
+    'Updated At': new Date().toISOString(),
+  })
+}
+
 // ============================================================================
 // COLD_CALL_TARGETS
 // ============================================================================
