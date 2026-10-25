@@ -415,7 +415,7 @@ export function ProspectsClient({
 
       {/* List View */}
       {view === 'list' && filteredAndSortedOpportunities.length > 0 && (
-        <div className="bg-card-bg border border-border rounded-2xl overflow-hidden">
+        <div className="bg-card-bg border border-border rounded-2xl overflow-x-auto">
           <table className="w-full">
             <thead className="border-b border-border">
               <tr className="text-left text-xs text-text-muted uppercase tracking-wide">
