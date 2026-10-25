@@ -215,7 +215,10 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
       open?: boolean
     }) => (
       <details className="border-t border-border/70" open={open}>
-        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-medium">
+        <summary
+          className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-medium"
+          onClick={(event) => event.stopPropagation()}
+        >
           <span>{label}</span>
           <ChevronDown className="h-4 w-4" />
         </summary>
@@ -261,7 +264,10 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
           />
 
           <details className="border-t border-border/70" open={isToolsActive}>
-            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-medium">
+            <summary
+              className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-medium"
+              onClick={(event) => event.stopPropagation()}
+            >
               <span>Outils</span>
               <ChevronDown className="h-4 w-4" />
             </summary>
