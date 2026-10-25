@@ -212,6 +212,41 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                 </div>
               )}
 
+              {(company.vatNumber ||
+                company.intraCommunityVatNumber ||
+                company.registryNumber) && (
+                <div className="space-y-3 pt-1">
+                  <div className="text-sm font-semibold">Identification légale</div>
+
+                  {company.vatNumber && (
+                    <div>
+                      <div className="text-text-muted text-xs mb-1">N° TVA</div>
+                      <div className="text-sm break-all">{company.vatNumber}</div>
+                    </div>
+                  )}
+
+                  {company.intraCommunityVatNumber && (
+                    <div>
+                      <div className="text-text-muted text-xs mb-1">
+                        TVA intracommunautaire
+                      </div>
+                      <div className="text-sm break-all">
+                        {company.intraCommunityVatNumber}
+                      </div>
+                    </div>
+                  )}
+
+                  {company.registryNumber && (
+                    <div>
+                      <div className="text-text-muted text-xs mb-1">
+                        N° de registre (SIREN, RCS…)
+                      </div>
+                      <div className="text-sm break-all">{company.registryNumber}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {company.companySize && (
                 <div>
                   <div className="text-text-muted text-xs mb-1">Taille</div>
