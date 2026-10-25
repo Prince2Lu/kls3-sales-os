@@ -405,6 +405,9 @@ export interface StageHistory {
 export interface User {
   id: string
   name: string
+  firstName: string | null
+  lastName: string | null
+  theme: 'dark' | 'light' | 'system'
   email: string
   passwordHash: string
   role: UserRole
