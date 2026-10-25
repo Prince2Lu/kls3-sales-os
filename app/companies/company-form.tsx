@@ -198,6 +198,41 @@ export function CompanyForm({ company, businessLines, mode = 'create' }: Company
             </div>
           </div>
 
+          <div className="pt-2 space-y-4">
+            <div className="text-sm font-semibold">Identification légale</div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium mb-1 block">N° TVA</label>
+                <Input
+                  name="vatNumber"
+                  defaultValue={company?.vatNumber || ''}
+                  placeholder="Ex: LU12345678"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">TVA intracommunautaire</label>
+                <Input
+                  name="intraCommunityVatNumber"
+                  defaultValue={company?.intraCommunityVatNumber || ''}
+                  placeholder="Ex: FR12 123456789"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                N° de registre (SIREN, RCS…)
+              </label>
+              <Input
+                name="registryNumber"
+                defaultValue={company?.registryNumber || ''}
+                placeholder="Ex: SIREN 123 456 789 / RCS Luxembourg B123456"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="text-sm font-medium mb-1 block">Taille</label>
             <Input
