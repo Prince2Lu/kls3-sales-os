@@ -73,7 +73,7 @@ export default async function RootLayout({
           userEmail={session?.user?.email}
           userName={displayName}
         />
-        <main className="container mx-auto min-w-0 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-8">{children}</main>
+        <main className="mobile-app-content container mx-auto min-w-0 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-8">{children}</main>
         <Analytics />
       </body>
     </html>
