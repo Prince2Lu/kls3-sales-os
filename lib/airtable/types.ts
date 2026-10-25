@@ -153,6 +153,9 @@ export interface AirtableStageHistoryFields {
 
 export interface AirtableUserFields {
   Name: string
+  'First Name'?: string
+  'Last Name'?: string
+  Theme?: string
   Email: string
   'Password Hash': string
   Role: string
