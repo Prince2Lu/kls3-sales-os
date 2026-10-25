@@ -4,7 +4,8 @@
 'use client'
 
 import { signOut } from 'next-auth/react'
-import { LogOut } from 'lucide-react'
+import Link from 'next/link'
+import { LogOut, Settings } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -56,6 +57,17 @@ export function UserMenuV2({ userEmail, userName }: UserMenuV2Props) {
           <div className="text-xs text-text-muted mt-0.5">{userEmail}</div>
         )}
       </div>
+
+      <Link href="/preferences">
+        <DropdownMenuItem>
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            <span>Préférences</span>
+          </div>
+        </DropdownMenuItem>
+      </Link>
+
+      <DropdownMenuSeparator />
 
       {/* Logout */}
       <DropdownMenuItem onClick={handleSignOut} destructive>
