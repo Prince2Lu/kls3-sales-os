@@ -17,6 +17,9 @@ interface CompanyFormData {
   country?: string
   phone?: string
   email?: string
+  vatNumber?: string
+  intraCommunityVatNumber?: string
+  registryNumber?: string
   companySize?: string
   linkedin?: string
   notes?: string
@@ -36,6 +39,9 @@ export async function createCompanyAction(data: CompanyFormData) {
       country: data.country,
       phone: data.phone,
       email: data.email,
+      vatNumber: data.vatNumber,
+      intraCommunityVatNumber: data.intraCommunityVatNumber,
+      registryNumber: data.registryNumber,
       companySize: data.companySize,
       linkedin: data.linkedin,
       notes: data.notes,
@@ -66,6 +72,9 @@ export async function updateCompanyAction(id: string, data: CompanyFormData) {
       country: data.country,
       phone: data.phone,
       email: data.email,
+      vatNumber: data.vatNumber,
+      intraCommunityVatNumber: data.intraCommunityVatNumber,
+      registryNumber: data.registryNumber,
       companySize: data.companySize,
       linkedin: data.linkedin,
       notes: data.notes,
