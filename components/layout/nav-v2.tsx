@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronDown, Menu } from 'lucide-react'
+import { useState } from 'react'
+import { CalendarDays, ChevronDown, CircleDot, Home, Menu, Target, X } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { Button } from '@/components/ui/button'
 import { UserMenuV2 } from '@/components/layout/user-menu-v2'
@@ -80,6 +81,7 @@ function pathMatches(pathname: string, href: string) {
 
 export function NavV2({ userEmail, userName }: NavV2Props = {}) {
   const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const isOpportunitiesActive = opportunitiesItems.some((item) =>
     pathMatches(pathname, item.href)
@@ -193,204 +195,236 @@ export function NavV2({ userEmail, userName }: NavV2Props = {}) {
     </DropdownMenu>
   )
 
-  const MobileMenu = () => {
-    const trigger = (
-      <Button
-        variant="nav"
-        size="sm"
-        className="gap-1.5 whitespace-nowrap"
-      >
-        <Menu className="w-4 h-4" />
-        <span>Menu</span>
-      </Button>
-    )
-
-    const MobileSection = ({
-      label,
-      items,
-      open = false,
-    }: {
-      label: string
-      items: NavLink[]
-      open?: boolean
-    }) => (
-      <details className="border-t border-border/70" open={open}>
-        <summary
-          className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-medium"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <span>{label}</span>
-          <ChevronDown className="h-4 w-4" />
-        </summary>
-        <div className="border-t border-border/40 pl-3">
-          {items.map((item) => (
-            <DropdownLink key={item.href} item={item} />
-          ))}
-        </div>
-      </details>
-    )
-
-    return (
-      <DropdownMenu
-        trigger={trigger}
-        align="left"
-        className="w-[min(21rem,calc(100vw-1rem))]"
-      >
-        <div className="py-1">
-          {dailyItems.map((item) => (
-            <DropdownLink key={item.href} item={item} />
-          ))}
-
-          <MobileSection
-            label="Opportunités"
-            items={opportunitiesItems}
-            open={isOpportunitiesActive}
-          />
-
-          <div className="border-t border-border/70">
-            <DropdownLink item={{ href: '/relationships', label: 'Réseau' }} />
-          </div>
-
-          <MobileSection
-            label="Clients & contacts"
-            items={clientsItems}
-            open={isClientsActive}
-          />
-
-          <MobileSection
-            label="Pilotage"
-            items={steeringItems}
-            open={isSteeringActive}
-          />
-
-          <details className="border-t border-border/70" open={isToolsActive}>
-            <summary
-              className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-sm font-medium"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <span>Outils</span>
-              <ChevronDown className="h-4 w-4" />
-            </summary>
-            <div className="border-t border-border/40 pb-1">
-              {toolGroups.map((group, index) => (
-                <div key={group.label}>
-                  {index > 0 && <DropdownMenuSeparator />}
-                  <div className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                    {group.label}
-                  </div>
-                  <div className="pl-3">
-                    {group.items.map((item) => (
-                      <DropdownLink key={item.href} item={item} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </details>
-        </div>
-      </DropdownMenu>
-    )
-  }
+  const mobilePrimaryItems = [
+    { href: '/today', label: "Aujourd'hui", icon: Home },
+    { href: '/planning', label: 'Planning', icon: CalendarDays },
+    { href: '/cold-call', label: 'Prospection', icon: Target },
+    { href: '/pipeline', label: 'Opportunités', icon: CircleDot },
+  ]
 
   return (
-    <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-      <div className="container mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
-        <Link href="/" className="flex items-center shrink-0">
-          <Logo size="md" />
-        </Link>
+    <>
+      <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 safe-top">
+        <div className="container mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <Link href="/" className="flex items-center shrink-0">
+            <Logo size="md" />
+          </Link>
 
-        <div className="flex min-w-0 items-center gap-1.5 mx-1 lg:mx-6">
-          <div className="hidden 2xl:flex items-center gap-1.5">
-            {dailyItems.map((item) => (
-              <NavItem key={item.href} {...item} />
-            ))}
+          <div className="hidden lg:flex min-w-0 items-center gap-1.5 mx-1 lg:mx-6">
+            <div className="hidden 2xl:flex items-center gap-1.5">
+              {dailyItems.map((item) => (
+                <NavItem key={item.href} {...item} />
+              ))}
 
-            <SectionMenu
-              label="Opportunités"
-              items={opportunitiesItems}
-              active={isOpportunitiesActive}
-            />
+              <SectionMenu
+                label="Opportunités"
+                items={opportunitiesItems}
+                active={isOpportunitiesActive}
+              />
 
-            <NavItem href="/relationships" label="Réseau" />
+              <NavItem href="/relationships" label="Réseau" />
 
-            <SectionMenu
-              label="Clients & contacts"
-              items={clientsItems}
-              active={isClientsActive}
-            />
+              <SectionMenu
+                label="Clients & contacts"
+                items={clientsItems}
+                active={isClientsActive}
+              />
 
-            <SectionMenu
-              label="Pilotage"
-              items={steeringItems}
-              active={isSteeringActive}
-            />
+              <SectionMenu
+                label="Pilotage"
+                items={steeringItems}
+                active={isSteeringActive}
+              />
 
-            <ToolsMenu />
+              <ToolsMenu />
+            </div>
+
+            <div className="hidden lg:flex 2xl:hidden items-center gap-1.5">
+              <NavItem href="/today" label="Aujourd'hui" />
+              <NavItem href="/planning" label="Planning" />
+              <NavItem href="/cold-call" label="Prospection" />
+              <SectionMenu
+                label="Opportunités"
+                items={opportunitiesItems}
+                active={isOpportunitiesActive}
+              />
+              <DropdownMenu
+                trigger={
+                  <Button
+                    variant={
+                      pathMatches(pathname, '/relationships') ||
+                      isClientsActive ||
+                      isSteeringActive ||
+                      isToolsActive
+                        ? 'primary'
+                        : 'nav'
+                    }
+                    size="sm"
+                    className="gap-1 whitespace-nowrap"
+                  >
+                    Plus
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                }
+              >
+                <DropdownLink item={{ href: '/relationships', label: 'Réseau' }} />
+                <DropdownMenuSeparator />
+                <div className="px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                  Clients & contacts
+                </div>
+                {clientsItems.map((item) => (
+                  <DropdownLink key={item.href} item={item} />
+                ))}
+                <DropdownMenuSeparator />
+                <div className="px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                  Pilotage
+                </div>
+                {steeringItems.map((item) => (
+                  <DropdownLink key={item.href} item={item} />
+                ))}
+                <DropdownMenuSeparator />
+                <div className="px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                  Outils
+                </div>
+                {toolsItems.map((item) => (
+                  <DropdownLink key={item.href} item={item} />
+                ))}
+              </DropdownMenu>
+            </div>
           </div>
 
-          <div className="hidden lg:flex 2xl:hidden items-center gap-1.5">
-            <NavItem href="/today" label="Aujourd'hui" />
-            <NavItem href="/planning" label="Planning" />
-            <NavItem href="/cold-call" label="Prospection" />
-            <SectionMenu
-              label="Opportunités"
-              items={opportunitiesItems}
-              active={isOpportunitiesActive}
-            />
-            <DropdownMenu
-              trigger={
-                <Button
-                  variant={
-                    pathMatches(pathname, '/relationships') ||
-                    isClientsActive ||
-                    isSteeringActive ||
-                    isToolsActive
-                      ? 'primary'
-                      : 'nav'
-                  }
-                  size="sm"
-                  className="gap-1 whitespace-nowrap"
-                >
-                  Plus
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              }
-            >
-              <DropdownLink item={{ href: '/relationships', label: 'Réseau' }} />
-              <DropdownMenuSeparator />
-              <div className="px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                Clients & contacts
-              </div>
-              {clientsItems.map((item) => (
-                <DropdownLink key={item.href} item={item} />
-              ))}
-              <DropdownMenuSeparator />
-              <div className="px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                Pilotage
-              </div>
-              {steeringItems.map((item) => (
-                <DropdownLink key={item.href} item={item} />
-              ))}
-              <DropdownMenuSeparator />
-              <div className="px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                Outils
-              </div>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <CreateMenu />
+            <UserMenuV2 userEmail={userEmail} userName={userName} />
+          </div>
+        </div>
+      </nav>
+
+      <nav className="lg:hidden fixed inset-x-0 bottom-0 z-[70] border-t border-border bg-card safe-bottom shadow-[0_-8px_24px_rgba(0,0,0,0.18)]">
+        <div className="grid grid-cols-5">
+          {mobilePrimaryItems.map((item) => {
+            const Icon = item.icon
+            const active =
+              item.href === '/pipeline'
+                ? isOpportunitiesActive
+                : pathMatches(pathname, item.href)
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  'flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] transition-colors',
+                  active ? 'text-accent' : 'text-text-muted'
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="truncate max-w-full">{item.label}</span>
+              </Link>
+            )
+          })}
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className={cn(
+              'flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] transition-colors',
+              mobileMenuOpen ||
+                pathMatches(pathname, '/relationships') ||
+                isClientsActive ||
+                isSteeringActive ||
+                isToolsActive
+                ? 'text-accent'
+                : 'text-text-muted'
+            )}
+            aria-expanded={mobileMenuOpen}
+            aria-label="Ouvrir le menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <span>Menu</span>
+          </button>
+        </div>
+      </nav>
+
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Fermer le menu"
+          />
+          <div className="absolute inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] max-h-[70dvh] overflow-y-auto rounded-t-2xl border border-border bg-card p-4 shadow-2xl">
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" />
+
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/prospects"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl border border-border bg-background p-3 text-sm font-medium"
+              >
+                Opportunités · Liste
+              </Link>
+              <Link
+                href="/relationships"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl border border-border bg-background p-3 text-sm font-medium"
+              >
+                Réseau
+              </Link>
+              <Link
+                href="/companies"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl border border-border bg-background p-3 text-sm font-medium"
+              >
+                Entreprises
+              </Link>
+              <Link
+                href="/contacts"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl border border-border bg-background p-3 text-sm font-medium"
+              >
+                Contacts
+              </Link>
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl border border-border bg-background p-3 text-sm font-medium"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/analytics"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-xl border border-border bg-background p-3 text-sm font-medium"
+              >
+                Analytics
+              </Link>
+            </div>
+
+            <div className="mt-5 text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Outils
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-1">
               {toolsItems.map((item) => (
-                <DropdownLink key={item.href} item={item} />
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    'rounded-lg px-3 py-2 text-sm',
+                    pathMatches(pathname, item.href)
+                      ? 'bg-accent/10 text-accent font-medium'
+                      : 'hover:bg-accent/10'
+                  )}
+                >
+                  {item.label}
+                </Link>
               ))}
-            </DropdownMenu>
-          </div>
-
-          <div className="lg:hidden">
-            <MobileMenu />
+            </div>
           </div>
         </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          <CreateMenu />
-          <UserMenuV2 userEmail={userEmail} userName={userName} />
-        </div>
-      </div>
-    </nav>
-  )
-}
+      )}
+    </>
+  )}
