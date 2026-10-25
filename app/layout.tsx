@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Syne, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
@@ -6,6 +6,7 @@ import { ConditionalNav } from '@/components/layout/conditional-nav'
 import { auth } from '@/auth'
 import { getUserByEmail } from '@/lib/airtable'
 import { ThemeController } from '@/components/theme/theme-controller'
+import { PwaRegister } from '@/components/pwa/pwa-register'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -22,6 +23,26 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'KLS3 Sales OS',
   description: 'Internal Sales Operating System for KLS3',
+  applicationName: 'KLS3 Sales OS',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'KLS3',
+    statusBarStyle: 'black-translucent',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f5f7fb' },
+    { media: '(prefers-color-scheme: dark)', color: '#0d0d0d' },
+  ],
 }
 
 export default async function RootLayout({
@@ -47,6 +68,7 @@ export default async function RootLayout({
     >
       <body className="font-inter min-h-screen">
         <ThemeController preference={themePreference} />
+        <PwaRegister />
         <ConditionalNav
           userEmail={session?.user?.email}
           userName={displayName}
