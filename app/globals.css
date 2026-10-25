@@ -122,12 +122,20 @@ html[data-theme="dark"] {
   }
 
   .mobile-app-content {
+    padding-top: calc(1rem + env(safe-area-inset-top));
     padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) and (max-width: 1023px) {
+    .mobile-app-content {
+      padding-top: calc(2rem + env(safe-area-inset-top));
+    }
   }
 
   @media (min-width: 1024px) {
     .mobile-app-content {
-      padding-bottom: 0;
+      padding-top: 2rem;
+      padding-bottom: 2rem;
     }
   }
 }
