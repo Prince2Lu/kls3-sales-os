@@ -39,6 +39,7 @@ const toolsItems = [
 const primaryNavItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/today', label: 'Aujourd\'hui' },
+  { href: '/planning', label: 'Planning' },
   { href: '/cold-call', label: 'Cold Call' },
 ]
 
@@ -54,6 +55,7 @@ const secondaryNavItems = [
 // Shows only essential items, rest in "Plus"
 const compactNavItems = [
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/planning', label: 'Planning' },
   { href: '/cold-call', label: 'Cold Call' },
 ]
 
