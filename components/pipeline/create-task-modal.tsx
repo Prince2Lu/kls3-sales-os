@@ -16,6 +16,8 @@ interface CreateTaskModalProps {
     notes?: string
   }) => void
   onCancel: () => void
+  error?: string
+  pending?: boolean
   initialType?: TaskType
 }
 
@@ -23,7 +25,7 @@ const TASK_TYPES: { value: TaskType; label: string }[] = [
   { value: 'CALL', label: 'Appel' },
   { value: 'EMAIL', label: 'Email' },
   { value: 'LINKEDIN', label: 'LinkedIn' },
-  { value: 'MEETING', label: 'Réunion' },
+  { value: 'MEETING', label: 'Rendez-vous' },
   { value: 'DEMO', label: 'Démo' },
   { value: 'PROPOSAL', label: 'Préparer proposition' },
   { value: 'DOCUMENT', label: 'Envoyer document' },
@@ -38,7 +40,7 @@ const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 'LOW', label: 'Basse' },
 ]
 
-export function CreateTaskModal({ onConfirm, onCancel, initialType }: CreateTaskModalProps) {
+export function CreateTaskModal({ onConfirm, onCancel, initialType, pending = false, error }: CreateTaskModalProps) {
   const [type, setType] = useState<TaskType>(initialType || 'CALL')
   const [dueDate, setDueDate] = useState('')
   const [dueTime, setDueTime] = useState('')
@@ -48,6 +50,7 @@ export function CreateTaskModal({ onConfirm, onCancel, initialType }: CreateTask
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
+    if (pending) return
     if (!dueDate) {
       alert('Date obligatoire')
       return
@@ -69,13 +72,14 @@ export function CreateTaskModal({ onConfirm, onCancel, initialType }: CreateTask
     <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
       <Card className="max-w-md w-full p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div>
-          <h3 className="text-lg font-bold font-syne">Créer une tâche</h3>
+          <h3 className="text-lg font-bold font-syne">{type === 'MEETING' ? 'Planifier un rendez-vous' : 'Créer une tâche'}</h3>
           <p className="text-xs text-text-muted mt-1">
             Planifier une prochaine action
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
           {/* Task Type */}
           <div>
             <label className="text-sm font-medium text-text-primary">
@@ -111,9 +115,10 @@ export function CreateTaskModal({ onConfirm, onCancel, initialType }: CreateTask
           {/* Due Time */}
           <div>
             <label className="text-sm font-medium text-text-primary">
-              Heure (optionnel)
+              Heure (Paris)
             </label>
             <input
+              required={type === 'MEETING'}
               type="time"
               value={dueTime}
               onChange={(e) => setDueTime(e.target.value)}
@@ -159,10 +164,10 @@ export function CreateTaskModal({ onConfirm, onCancel, initialType }: CreateTask
 
           {/* Actions */}
           <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3 pt-2">
-            <Button type="submit" className="flex-1">
-              Créer
+            <Button type="submit" disabled={pending} className="flex-1">
+              {pending ? 'Enregistrement…' : 'Créer'}
             </Button>
-            <Button type="button" onClick={onCancel} variant="ghost" className="flex-1">
+            <Button type="button" onClick={onCancel} disabled={pending} variant="ghost" className="flex-1">
               Annuler
             </Button>
           </div>

@@ -1047,7 +1047,7 @@ export async function createActivity(
 
 export async function updateActivity(
   id: string,
-  input: Partial<CreateActivityInput>
+  input: Omit<Partial<CreateActivityInput>, 'result' | 'durationMinutes'> & { result?: string; durationMinutes?: number | null }
 ): Promise<Activity> {
   const fields: Partial<AirtableActivityFields> = {}
 

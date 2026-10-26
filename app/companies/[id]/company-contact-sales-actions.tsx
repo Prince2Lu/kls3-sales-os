@@ -143,14 +143,11 @@ export function CompanyContactSalesActions({
     priority: Priority
     notes?: string
   }) {
-    if (!target) return
-    setShowTaskModal(false)
-    setTaskInitialType(undefined)
     setIsSaving(true)
 
     const response = await createManualTask({
-      coldCallTargetId: target.id,
-      opportunityId: target.opportunityId || undefined,
+      coldCallTargetId: target?.id,
+      opportunityId: target?.opportunityId || undefined,
       contactId: contact.id,
       ...data,
     })
@@ -162,22 +159,21 @@ export function CompanyContactSalesActions({
       return
     }
 
+    setShowTaskModal(false)
+    setTaskInitialType(undefined)
     router.refresh()
   }
 
   return (
     <div className="space-y-2">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button size="sm" variant="ghost" onClick={() => setShowActivityModal(true)} disabled={isSaving}>+ Activité réalisée</Button>
+        <Button size="sm" variant="ghost" onClick={() => { setTaskInitialType('MEETING'); setShowTaskModal(true) }} disabled={isSaving}>Planifier un rendez-vous</Button>
+        <Button size="sm" variant="ghost" onClick={() => setShowTaskModal(true)} disabled={isSaving}>+ Tâche</Button>
+      </div>
       {target ? (
         <>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowActivityModal(true)}
-              disabled={isSaving}
-            >
-              + Activité
-            </Button>
             <Badge variant="muted">{target.callStatus}</Badge>
             {openTasks.length > 0 && (
               <span className="text-xs text-text-muted">📋 {openTasks.length}</span>
@@ -276,7 +272,7 @@ export function CompanyContactSalesActions({
         />
       )}
 
-      {showTaskModal && target && (
+      {showTaskModal && (
         <CreateTaskModal
           onConfirm={handleCreateTask}
           onCancel={() => {
@@ -284,6 +280,7 @@ export function CompanyContactSalesActions({
             setTaskInitialType(undefined)
           }}
           initialType={taskInitialType}
+          pending={isSaving}
         />
       )}
 

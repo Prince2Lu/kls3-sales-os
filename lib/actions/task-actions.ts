@@ -4,12 +4,12 @@
 
 import { createTask } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
-import { revalidatePath } from 'next/cache'
+import { revalidateCrmContext } from './crm-revalidation'
 import type { TaskType, Priority } from '@/types/domain'
 
 /**
  * Create a manual task
- * Links to either coldCallTargetId or opportunityId
+ * Links to a contact, prospecting target or opportunity
  */
 export async function createManualTask(data: {
   coldCallTargetId?: string
@@ -24,13 +24,17 @@ export async function createManualTask(data: {
     // Get owner server-side from session
     const owner = await getCurrentOwner()
 
-    // Must have either coldCallTargetId or opportunityId
-    if (!data.coldCallTargetId && !data.opportunityId) {
+    // A contact is sufficient; planning must not require prospecting or an opportunity.
+    if (!data.coldCallTargetId && !data.opportunityId && !data.contactId) {
       return {
         success: false,
-        error: 'coldCallTargetId or opportunityId required',
+        error: 'Choisissez un contact, une opportunité ou une cible de prospection.',
       }
     }
+
+    if (!Number.isFinite(Date.parse(data.dueAt))) throw new Error('Échéance invalide.')
+    if (!['CALL','EMAIL','LINKEDIN','MEETING','DEMO','PROPOSAL','DOCUMENT','FOLLOW_UP','OTHER'].includes(data.type)) throw new Error('Type de tâche invalide.')
+    if (!['LOW','MEDIUM','HIGH','URGENT'].includes(data.priority)) throw new Error('Priorité invalide.')
 
     // Create task with status TODO
     await createTask({
@@ -45,13 +49,7 @@ export async function createManualTask(data: {
       owner,
     })
 
-    // Revalidate relevant paths
-    revalidatePath('/cold-call')
-    revalidatePath('/pipeline')
-    revalidatePath('/today')
-    if (data.opportunityId) {
-      revalidatePath(`/prospects/${data.opportunityId}`)
-    }
+    await revalidateCrmContext()
 
     return { success: true }
   } catch (error: any) {
