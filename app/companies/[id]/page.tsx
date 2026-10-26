@@ -20,6 +20,8 @@ import { notFound } from 'next/navigation'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { AddToProspectingButton } from './add-to-prospecting-button'
 import { CompanyContactSalesActions } from './company-contact-sales-actions'
+import { ContactWorkActions } from '@/components/crm/contact-work-actions'
+import { EditActivityButton } from '@/components/crm/edit-activity-button'
 import { CompanyTaskActions } from './company-task-actions'
 import { getFrenchActivityType, getFrenchTaskType, getFrenchPriority } from '@/lib/utils/french-labels'
 
@@ -128,6 +130,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <ContactWorkActions contacts={contacts} />
             <AddToProspectingButton
               companyId={company.id}
               companyName={company.name}
@@ -422,6 +425,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                             )}
                             <span className="text-text-muted text-xs">
                               {new Date(activity.date).toLocaleString('fr-FR', {
+                                timeZone: 'Europe/Paris',
                                 day: '2-digit',
                                 month: '2-digit',
                                 year: 'numeric',
@@ -443,6 +447,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                             </Link>
                           )}
 
+                          <EditActivityButton activity={activity} />
                           {activity.notes && (
                             <div className="text-sm whitespace-pre-wrap">
                               {activity.notes}

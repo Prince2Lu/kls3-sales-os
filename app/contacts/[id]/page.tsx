@@ -18,7 +18,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { AddToProspectingButton } from './add-to-prospecting-button'
-import { CreateContactActivityButton } from './create-contact-activity-button'
+import { ContactWorkActions } from '@/components/crm/contact-work-actions'
+import { EditActivityButton } from '@/components/crm/edit-activity-button'
+import { getContactHistory } from '@/lib/utils/contact-history'
+import { getFrenchActivityType, getFrenchTaskType } from '@/lib/utils/french-labels'
 
 interface ContactPageProps {
   params: Promise<{ id: string }>
@@ -30,18 +33,21 @@ export default async function ContactPage({ params }: ContactPageProps) {
   try {
     const contact = await getContactById(id)
 
-    const [company, opportunities, activities, tasks, businessLines, currentOwner, relationshipsResult, prospectingTargets] = await Promise.all([
+    const [company, opportunities, allActivities, allTasks, businessLines, currentOwner, relationshipsResult, prospectingTargets] = await Promise.all([
       contact.companyId
         ? getCompanyById(contact.companyId).catch(() => null)
         : Promise.resolve(null),
-      getOpportunities({ maxRecords: 100 }),
-      getActivities({ contactId: id }),
-      getTasks({ contactId: id, status: 'TODO' }),
+      getOpportunities(),
+      getActivities(),
+      getTasks({ status: 'TODO' }),
       getBusinessLines(),
       getCurrentOwner(),
       loadContactRelationships(id),
-      getColdCallTargets({ maxRecords: 500 }),
+      getColdCallTargets({ includeArchived: true }),
     ])
+
+    const activities = getContactHistory(allActivities, id, prospectingTargets, opportunities)
+    const tasks = getContactHistory(allTasks, id, prospectingTargets, opportunities)
 
     const relationships = relationshipsResult.success ? relationshipsResult.data : []
 
@@ -49,13 +55,6 @@ export default async function ContactPage({ params }: ContactPageProps) {
     const contactOpportunities = opportunities.filter(
       (opp) => opp.primaryContactId === id
     )
-
-    const activeTarget =
-      prospectingTargets.find(
-        (target) =>
-          target.contactId === id &&
-          ['À appeler', 'À rappeler', 'Email Flow', 'Échange', 'Qualifié', 'Mauvais numéro', 'Pas intéressé'].includes(target.callStatus)
-      ) || null
 
     return (
       <div className="space-y-8">
@@ -90,11 +89,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <CreateContactActivityButton
-              contactId={contact.id}
-              opportunityId={contactOpportunities[0]?.id}
-              coldCallTargetId={activeTarget?.id}
-            />
+            <ContactWorkActions contacts={[contact]} />
             {(contact.email || company?.email) && (
               <Link href={`/contacts/${id}/email`}>
                 <Button>Envoyer un mail</Button>
@@ -143,7 +138,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
 
               {!contact.email && company?.email && (
                 <div>
-                  <div className="text-text-muted text-xs mb-1">Email de l’étude</div>
+                  <div className="text-text-muted text-xs mb-1">Email de l’entreprise</div>
                   <a
                     href={`mailto:${company.email}`}
                     className="text-accent hover:underline text-sm break-all"
@@ -192,7 +187,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
           {company && (
             <Card className="lg:col-span-1">
               <CardHeader>
-                <CardTitle className="text-lg">Étude</CardTitle>
+                <CardTitle className="text-lg">Entreprise</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -214,7 +209,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
 
                 {company.phone && (
                   <div>
-                    <div className="text-text-muted text-xs mb-1">Standard étude</div>
+                    <div className="text-text-muted text-xs mb-1">Standard entreprise</div>
                     <a
                       href={`tel:${company.phone}`}
                       className="text-accent hover:underline text-sm"
@@ -359,11 +354,12 @@ export default async function ContactPage({ params }: ContactPageProps) {
                         className="p-3 rounded-lg bg-white/5 space-y-1"
                       >
                         <div className="flex items-center gap-2 text-sm">
-                          <Badge variant="muted">{activity.type}</Badge>
+                          <Badge variant="muted">{getFrenchActivityType(activity.type)}</Badge>
                           <span className="text-text-muted">
-                            {new Date(activity.date).toLocaleDateString('fr-FR')}
+                            {new Date(activity.date).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' })}
                           </span>
                         </div>
+                        <EditActivityButton activity={activity} />
                         {activity.result && (
                           <div className="text-sm text-text-muted">
                             Résultat : {activity.result}
@@ -395,10 +391,10 @@ export default async function ContactPage({ params }: ContactPageProps) {
                         className="p-3 rounded-lg border border-accent/30 bg-accent/5 space-y-1"
                       >
                         <div className="flex items-center gap-2">
-                          <Badge variant="accent">{task.type}</Badge>
+                          <Badge variant="accent">{getFrenchTaskType(task.type)}</Badge>
                           {task.dueAt && (
                             <span className="text-sm text-text-muted">
-                              {new Date(task.dueAt).toLocaleDateString('fr-FR')}
+                              {new Date(task.dueAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'short' })}
                             </span>
                           )}
                         </div>

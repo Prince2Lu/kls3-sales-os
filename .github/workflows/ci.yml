@@ -28,5 +28,8 @@ jobs:
       - name: Type check
         run: npm run type-check
 
+      - name: CRM regression tests
+        run: node scripts/test-crm-workflows.mjs
+
       - name: Build
         run: npm run build

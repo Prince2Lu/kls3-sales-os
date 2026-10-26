@@ -120,6 +120,10 @@ export function TaskCard({
             </div>
           )}
 
+          {!opportunityName && !companyName && contactName && task.contactId && (
+            <Link href={`/contacts/${task.contactId}`} className="text-sm text-accent hover:underline">{contactName}</Link>
+          )}
+
           {/* Fourth line: Notes (if present) */}
           {task.notes && (
             <div className="text-sm text-text-muted line-clamp-2">

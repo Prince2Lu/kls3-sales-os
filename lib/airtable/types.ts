@@ -101,7 +101,7 @@ export interface AirtableActivityFields {
   Result?: string
   Notes?: string
   Owner: string
-  'Duration Minutes'?: number
+  'Duration Minutes'?: number | null
   'Created At': string
 }
 
