@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url)
 async function load(entry, mocks = {}) {
   const result = await build({
     entryPoints: [entry], bundle: true, platform: 'node', format: 'cjs', write: false,
+    external: ['react', 'react/jsx-runtime', 'react-dom/server'],
     plugins: [{ name: 'fixtures', setup(b) {
       b.onResolve({ filter: /./ }, args => args.path in mocks ? { path: args.path, namespace: 'fixture' } : undefined)
       b.onLoad({ filter: /./, namespace: 'fixture' }, args => ({ contents: mocks[args.path], loader: 'js' }))
@@ -93,5 +94,25 @@ await test('Paris form dates round-trip across winter, summer and UTC midnight',
     assert.equal(form.date, date); assert.equal(form.time, time)
     assert.equal(timezone.createISOFromParisDateTime(form.date, form.time), instant)
   }
+})
+const { renderToStaticMarkup } = require('react-dom/server')
+const today = await load('app/today/today-tasks-section.tsx', {
+  '@/lib/airtable': `export async function getOpportunities() { return [] }
+    export async function getCompanies() { return [{id: 'c1', name: 'SIE Groupe'}] }
+    export async function getContacts() { return [{id: 'brice', firstName: 'Brice', lastName: 'Miotto', companyId: 'c1', businessLineIds: []}, {id: 'solo', firstName: 'Contact', lastName: 'Solo', businessLineIds: []}] }
+    export async function getColdCallTargets() { return [] }`,
+  'next/navigation': `export function useRouter() { return { refresh() {} } }`,
+  'next/link': `const React = require('react'); export default function Link({href, children, ...props}) { return React.createElement('a', {href, ...props}, children) }`,
+  './actions': `export async function completeTaskAction() {} export async function cancelTaskAction() {}`,
+})
+await test('Today shows the company and contact for a standalone meeting', async () => {
+  const tree = await today.TodayTasksSection({ tasks: [{id: 'm1', type: 'MEETING', contactId: 'brice', status: 'TODO', owner: 'Eric'}], businessLineMap: {} })
+  const html = renderToStaticMarkup(tree)
+  assert.match(html, /SIE Groupe/); assert.match(html, /Brice Miotto/)
+})
+await test('Today still identifies a contact with no company', async () => {
+  const tree = await today.TodayTasksSection({ tasks: [{id: 'm2', type: 'MEETING', contactId: 'solo', status: 'TODO', owner: 'Eric'}], businessLineMap: {} })
+  const html = renderToStaticMarkup(tree)
+  assert.match(html, /Contact Solo/); assert.match(html, /href="\/contacts\/solo"/)
 })
 console.log(`${tests} CRM regression tests passed`)

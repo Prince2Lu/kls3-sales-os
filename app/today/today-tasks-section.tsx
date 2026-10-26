@@ -65,15 +65,13 @@ export async function TodayTasksSection({
                 ? opportunityMap[task.opportunityId]
                 : undefined
               const target = task.coldCallTargetId ? targetMap[task.coldCallTargetId] : undefined
-              const companyId = opportunity?.companyId ?? target?.companyId
+              const contact = task.contactId ? contactMap[task.contactId] : undefined
+              const companyId = opportunity?.companyId ?? target?.companyId ?? contact?.companyId
               const company =
                 companyId
                   ? companyMap[companyId]
                   : undefined
-              const contact = task.contactId
-                ? contactMap[task.contactId]
-                : undefined
-              const businessLineId = opportunity?.businessLineId ?? target?.businessLineId
+              const businessLineId = opportunity?.businessLineId ?? target?.businessLineId ?? contact?.businessLineIds[0]
               const businessLine = businessLineId
                 ? businessLineMap[businessLineId]
                 : undefined
