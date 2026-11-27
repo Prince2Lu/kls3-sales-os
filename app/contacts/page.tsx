@@ -7,9 +7,9 @@ import { ContactsClient } from './contacts-client'
 
 export default async function ContactsPage() {
   const [contacts, companies, opportunities, businessLines] = await Promise.all([
-    getContacts({ maxRecords: 500 }),
-    getCompanies({ maxRecords: 500 }),
-    getOpportunities({ maxRecords: 500 }),
+    getContacts(),
+    getCompanies(),
+    getOpportunities(),
     getBusinessLines(),
   ])
 

@@ -19,8 +19,8 @@ export async function createManualSuppressionAction(input: {
   if (!REASONS.includes(input.reason)) return { success: false, error: 'Motif invalide.' }
 
   const [companies, contacts] = await Promise.all([
-    getCompanies({ maxRecords: 2000 }),
-    getContacts({ maxRecords: 5000 }),
+    getCompanies(),
+    getContacts(),
   ])
   const company = input.companyId ? companies.find((item) => item.id === input.companyId) : undefined
   const contact = input.contactId ? contacts.find((item) => item.id === input.contactId) : undefined

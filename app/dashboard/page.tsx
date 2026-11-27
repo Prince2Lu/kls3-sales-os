@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       getTasks(), // No limit - all tasks
       getCompanies(), // No limit - all companies
       getContacts(), // No limit - all contacts
-      getColdCallTargets({ maxRecords: 500 }),
+      getColdCallTargets(),
     ])
 
   return (

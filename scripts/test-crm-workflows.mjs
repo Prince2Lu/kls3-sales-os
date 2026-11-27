@@ -95,6 +95,19 @@ await test('Paris form dates round-trip across winter, summer and UTC midnight',
     assert.equal(timezone.createISOFromParisDateTime(form.date, form.time), instant)
   }
 })
+await test('no CRM read is silently capped (maxRecords) except the recent import batches list', async () => {
+  const { readFileSync, readdirSync, statSync } = await import('node:fs')
+  const walk = (dir) => readdirSync(dir).flatMap((name) => {
+    const path = `${dir}/${name}`
+    return statSync(path).isDirectory() ? walk(path) : /\.tsx?$/.test(name) ? [path] : []
+  })
+  const allowed = ['getImportBatches({ maxRecords: 50 })']
+  const offenders = [...walk('app'), ...walk('lib')].flatMap((file) =>
+    readFileSync(file, 'utf8').split('\n')
+      .filter((line) => /maxRecords: \d{2,}/.test(line) && !allowed.some((ok) => line.includes(ok)))
+      .map((line) => `${file}: ${line.trim()}`))
+  assert.equal(offenders.length, 0, offenders.join('\n'))
+})
 const focusState = { target: null, statusChanges: [], conversions: [], created: [], updatedOpps: [], updatedTasks: [] }
 state.focus = focusState
 const focus = await load('app/focus/actions.ts', {

@@ -305,7 +305,7 @@ export async function cancelTaskAction(taskId: string) {
 
 export async function searchCompanies(query: string) {
   try {
-    const companies = await getCompanies({ maxRecords: 50 })
+    const companies = await getCompanies()
     return companies
       .filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
       .slice(0, 10)
@@ -319,7 +319,6 @@ export async function searchContacts(query: string, companyId?: string) {
   try {
     const contacts = await getContacts({
       companyId,
-      maxRecords: 50,
     })
     const fullName = (c: { firstName: string; lastName: string }) =>
       `${c.firstName} ${c.lastName}`.toLowerCase()

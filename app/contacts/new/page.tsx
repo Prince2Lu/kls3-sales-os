@@ -13,7 +13,7 @@ export default async function NewContactPage({
 }: NewContactPageProps) {
   const params = await searchParams
   const [companies, businessLines] = await Promise.all([
-    getCompanies({ maxRecords: 500 }),
+    getCompanies(),
     getBusinessLines(),
   ])
 

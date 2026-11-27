@@ -49,7 +49,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
       getBusinessLines(),
       getCurrentOwner(),
       loadCompanyRelationships(id),
-      getColdCallTargets({ maxRecords: 500, includeArchived: true }),
+      getColdCallTargets({ includeArchived: true }),
       getActivities(),
       getTasks(),
     ])

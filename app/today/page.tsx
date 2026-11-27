@@ -62,7 +62,7 @@ export default async function TodayPage(props: {
     getColdCallTargets(), // No limit - all targets for work blocks
     getCompanies(), // No limit - all companies for display
     getContacts(), // No limit - all contacts for display
-    getRelationships({ maxRecords: 1000 }), // All relationships for current owner
+    getRelationships(), // All relationships for current owner
   ])
 
   // Filter by Business Line

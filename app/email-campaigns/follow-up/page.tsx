@@ -7,7 +7,7 @@ import { FollowUpClient } from './follow-up-client'
 export default async function EmailFollowUpPage() {
   const currentOwner = await getCurrentOwner()
   const [{ rows }, companies, contacts] = await Promise.all([
-    loadEmailFollowUp(), getCompanies({ maxRecords: 2000 }), getContacts({ maxRecords: 5000 }),
+    loadEmailFollowUp(), getCompanies(), getContacts(),
   ])
   const companyNames = new Map(companies.map((item) => [item.id, item.name]))
   const contactNames = new Map(contacts.map((item) => [item.id, `${item.firstName} ${item.lastName}`.trim()]))

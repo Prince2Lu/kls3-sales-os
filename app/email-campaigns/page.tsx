@@ -9,8 +9,8 @@ export default async function EmailCampaignsPage() {
   const [campaigns, recipients, allCompanies, contacts, suppressions, businessLine, targets, activities] = await Promise.all([
     getEmailCampaigns(),
     getEmailRecipients(),
-    getCompanies({ maxRecords: 2000 }),
-    getContacts({ maxRecords: 5000 }),
+    getCompanies(),
+    getContacts(),
     getEmailSuppressions(),
     getBusinessLineByCode('KLS3_NOTAIRES'),
     getColdCallTargets(), getActivities(),

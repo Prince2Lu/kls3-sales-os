@@ -195,8 +195,8 @@ export async function convertProspectingTargetToOpportunity(params: {
     // IMPORTANT: Filter by coldCallTargetId directly (not contactId)
     // This ensures targets without contact are handled correctly
     const [allTasks, allActivities] = await Promise.all([
-      getTasks({ maxRecords: 1000 }),
-      getActivities({ maxRecords: 1000 }),
+      getTasks(),
+      getActivities(),
     ])
 
     // Link TASKS that were created for THIS exact target

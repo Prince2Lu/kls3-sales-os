@@ -83,8 +83,8 @@ export async function importNotaryPilotAction(candidates: NotaryDirectoryCandida
 
   try {
     const [initialCompanies, initialContacts, suppressions] = await Promise.all([
-      getCompanies({ maxRecords: 2000 }),
-      getContacts({ maxRecords: 5000 }),
+      getCompanies(),
+      getContacts(),
       getEmailSuppressions(),
     ])
     const companies = [...initialCompanies]
@@ -207,12 +207,12 @@ async function buildImportRollbackPreview(batchId?: string): Promise<ImportRollb
   if (!batch) return null
 
   const [companies, contacts, allContacts, opportunities, targets, relationships, recipients] = await Promise.all([
-    getCompanies({ importBatchId: batch.id, maxRecords: 5000 }),
-    getContacts({ importBatchId: batch.id, maxRecords: 10000 }),
-    getContacts({ maxRecords: 10000 }),
-    getOpportunities({ maxRecords: 5000 }),
-    getColdCallTargets({ includeArchived: true, maxRecords: 10000 }),
-    getRelationships({ maxRecords: 5000 }),
+    getCompanies({ importBatchId: batch.id }),
+    getContacts({ importBatchId: batch.id }),
+    getContacts(),
+    getOpportunities(),
+    getColdCallTargets({ includeArchived: true }),
+    getRelationships(),
     getEmailRecipients(),
   ])
 
@@ -311,8 +311,8 @@ export async function rollbackLastImportAction(batchId: string) {
   }
 
   const [contacts, companies] = await Promise.all([
-    getContacts({ importBatchId: batchId, maxRecords: 10000 }),
-    getCompanies({ importBatchId: batchId, maxRecords: 5000 }),
+    getContacts({ importBatchId: batchId }),
+    getCompanies({ importBatchId: batchId }),
   ])
 
   for (const contact of contacts) {

@@ -16,9 +16,9 @@ export async function TodayMeetingsSection({
 }: TodayMeetingsSectionProps) {
   // Fetch related data
   const [opportunities, companies, contacts] = await Promise.all([
-    getOpportunities({ maxRecords: 500 }),
-    getCompanies({ maxRecords: 500 }),
-    getContacts({ maxRecords: 500 }),
+    getOpportunities(),
+    getCompanies(),
+    getContacts(),
   ])
 
   // Create lookup maps

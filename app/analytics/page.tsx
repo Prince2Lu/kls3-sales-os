@@ -70,11 +70,11 @@ export default async function AnalyticsPage(props: {
   // Fetch all data (add activities and valueEvents for Phase 7D)
   const [allStageHistory, allOpportunities, businessLines, allActivities, allValueEvents] =
     await Promise.all([
-      getStageHistory({ maxRecords: 5000 }),
-      getOpportunities({ maxRecords: 1000 }),
+      getStageHistory(),
+      getOpportunities(),
       getBusinessLines(),
-      getActivities({ maxRecords: 5000 }),
-      getValueEvents({ maxRecords: 1000 }),
+      getActivities(),
+      getValueEvents(),
     ])
 
   // Get period date range

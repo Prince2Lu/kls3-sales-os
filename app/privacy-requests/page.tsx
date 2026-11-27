@@ -2,7 +2,7 @@ import { getContacts } from '@/lib/airtable'
 import { PrivacyExportClient } from './privacy-export-client'
 
 export default async function PrivacyRequestsPage() {
-  const contacts = await getContacts({ maxRecords: 5000 })
+  const contacts = await getContacts()
   return <div className="space-y-8">
     <div>
       <h1 className="text-3xl sm:text-4xl font-bold font-syne">Demandes RGPD</h1>

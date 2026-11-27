@@ -14,8 +14,8 @@ export default async function NewRelationshipPage({
 }: NewRelationshipPageProps) {
   const params = await searchParams
   const [companies, contacts, currentOwner] = await Promise.all([
-    getCompanies({ maxRecords: 500 }),
-    getContacts({ maxRecords: 500 }),
+    getCompanies(),
+    getContacts(),
     getCurrentOwner(),
   ])
 

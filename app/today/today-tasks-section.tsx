@@ -16,10 +16,10 @@ export async function TodayTasksSection({
 }: TodayTasksSectionProps) {
   // Fetch related data
   const [opportunities, companies, contacts, targets] = await Promise.all([
-    getOpportunities({ maxRecords: 500 }),
-    getCompanies({ maxRecords: 500 }),
-    getContacts({ maxRecords: 500 }),
-    getColdCallTargets({ maxRecords: 1000 }),
+    getOpportunities(),
+    getCompanies(),
+    getContacts(),
+    getColdCallTargets(),
   ])
 
   // Create lookup maps

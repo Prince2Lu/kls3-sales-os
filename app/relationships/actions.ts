@@ -225,9 +225,9 @@ export async function loadRelationshipDetail(id: string) {
 
     // Load related activities, tasks, opportunities
     const [allActivities, allTasks, opportunities] = await Promise.all([
-      getActivities({ maxRecords: 10000 }),
-      getTasks({ maxRecords: 10000 }),
-      getOpportunities({ maxRecords: 1000 }),
+      getActivities(),
+      getTasks(),
+      getOpportunities(),
     ])
 
     // Filter by relationshipId manually
@@ -297,8 +297,8 @@ export async function loadCompanyRelationships(companyId: string) {
   try {
     const [relationships, activities, tasks] = await Promise.all([
       getRelationships({ companyId }),
-      getActivities({ maxRecords: 1000 }), // Load all activities
-      getTasks({ maxRecords: 1000 }), // Load all tasks
+      getActivities(), // Load all activities
+      getTasks(), // Load all tasks
     ])
 
     const enriched = enrichRelationshipsWithInteractions(

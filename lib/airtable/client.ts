@@ -1710,7 +1710,7 @@ export async function createRelationship(
   // Anti-duplicate check
   // Logical identity: (Contact OR Company) + Type
   // Excludes "Clos" status from duplicate detection (allows reactivation)
-  const existingRelationships = await getRelationships({ maxRecords: 1000 })
+  const existingRelationships = await getRelationships()
 
   const activeDuplicate = existingRelationships.find((r) => {
     // Exclude closed relationships from duplicate detection

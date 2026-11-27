@@ -16,8 +16,8 @@ export default async function NewProspectPage({
 
   const [businessLines, companies, contacts] = await Promise.all([
     getBusinessLines(),
-    getCompanies({ maxRecords: 200 }),
-    getContacts({ maxRecords: 200 }),
+    getCompanies(),
+    getContacts(),
   ])
 
   return (
