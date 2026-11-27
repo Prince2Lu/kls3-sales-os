@@ -152,6 +152,26 @@ await test('Focus booked meeting still converts the prospect at stage RDV', asyn
   assert.equal(focusState.conversions.length, 1)
   assert.equal(focusState.conversions[0].initialStage, 'RDV'); assert.equal(focusState.conversions[0].activityResult, 'MEETING_BOOKED')
 })
+const early = await load('lib/prospecting/early-opportunities.ts')
+await test('early opportunities are classified A (meeting), B (conversation only), C (economic signal)', async () => {
+  const opp = (id, stage, extra = {}) => ({ id, stage, businessLineId: 'bl', owner: 'Lilian', createdAt: `2026-10-0${id.length}`, potentialValue: null, ...extra })
+  const rows = early.classifyEarlyOpportunities({
+    opportunities: [opp('a', 'Échange'), opp('bb', 'Échange'), opp('ccc', 'Qualifié', { potentialValue: 12000 }), opp('dddd', 'RDV'), opp('eeeee', 'Contacté')],
+    activities: [
+      { opportunityId: 'a', type: 'CALL', result: 'MEETING_BOOKED' },
+      { opportunityId: 'bb', type: 'CALL', result: 'CONVERSATION' },
+      { opportunityId: 'bb', type: 'CALL', result: 'CONVERSATION' },
+    ],
+    tasks: [{ opportunityId: 'bb', type: 'FOLLOW_UP', status: 'TODO' }, { opportunityId: 'eeeee', type: 'MEETING', status: 'CANCELLED' }],
+    valueEvents: [],
+    targets: [{ opportunityId: 'bb', callStatus: 'Converti' }],
+  })
+  assert.equal(rows.map((r) => `${r.id}:${r.group}`).join(' '), 'a:A bb:B ccc:C eeeee:B', 'RDV stage excluded, cancelled meeting ignored')
+  const b = rows.find((r) => r.id === 'bb')
+  assert.equal(b.activityResults.CONVERSATION, 2); assert.equal(b.hasTodoTask, true); assert.equal(b.linkedTargetStatuses[0], 'Converti')
+  const summary = early.summarizeEarlyOpportunities(rows)
+  assert.equal(summary.total, 4); assert.equal(summary.byGroup.B, 2)
+})
 const { renderToStaticMarkup } = require('react-dom/server')
 const today = await load('app/today/today-tasks-section.tsx', {
   '@/lib/airtable': `export async function getOpportunities() { return [] }
