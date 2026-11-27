@@ -49,8 +49,8 @@ export async function previewCampaignEmailAction(input: { templateId: string | n
   try {
     const template = await requireActiveTemplate(input.templateId)
     const [companies, contacts, suppressions] = await Promise.all([
-      getCompanies({ maxRecords: 2000 }),
-      getContacts({ maxRecords: 5000 }),
+      getCompanies(),
+      getContacts(),
       getEmailSuppressions(),
     ])
     const company = companies.find((item) => item.id === input.companyId)
@@ -127,7 +127,7 @@ export async function createCampaignDraftAction(input: { name: string; subject: 
   if (!businessLine) return { success: false, error: 'Business line KLS3_NOTAIRES introuvable.' }
 
   const [companies, contacts, suppressions, targets, activities, recipients, campaigns] = await Promise.all([
-    getCompanies({ maxRecords: 2000 }), getContacts({ maxRecords: 5000 }), getEmailSuppressions(),
+    getCompanies(), getContacts(), getEmailSuppressions(),
     getColdCallTargets(), getActivities(), getEmailRecipients(), getEmailCampaigns(),
   ])
   const audience = buildCampaignAudience({ companies, contacts, suppressions, targets, activities, recipients, campaigns,
@@ -192,7 +192,7 @@ export async function markCampaignReplyAction(recipientId: string) {
   })
 
   const marker = `[BREVO_REPLY:${recipient.id}]`
-  const activities = await getActivities({ maxRecords: 5000 })
+  const activities = await getActivities()
   if (!activities.some((activity) => activity.notes?.includes(marker))) {
     await createActivity({
       opportunityId: target.opportunityId ?? undefined,
@@ -251,7 +251,7 @@ export async function sendCampaignAction(campaignId: string) {
   const allRecipients = await getEmailRecipients()
   const readyRecipients = allRecipients.filter((item) => item.campaignId === campaignId && item.status === 'READY')
   const [suppressions, companies, contacts, targets, activities, campaigns] = await Promise.all([
-    getEmailSuppressions(), getCompanies({ maxRecords: 2000 }), getContacts({ maxRecords: 5000 }),
+    getEmailSuppressions(), getCompanies(), getContacts(),
     getColdCallTargets(), getActivities(), getEmailCampaigns(),
   ])
   const audience = buildCampaignAudience({ companies, contacts, suppressions, targets, activities, recipients: allRecipients,

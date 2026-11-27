@@ -10,12 +10,12 @@ import { RelationshipsClient } from './relationships-client'
 export default async function RelationshipsPage() {
   // Load relationships with related data
   const [relationships, activities, tasks, opportunities, contacts, companies] = await Promise.all([
-    getRelationships({ maxRecords: 1000 }),
-    getActivities({ maxRecords: 10000 }),
-    getTasks({ maxRecords: 10000 }),
-    getOpportunities({ maxRecords: 1000 }),
-    getContacts({ maxRecords: 1000 }),
-    getCompanies({ maxRecords: 1000 }),
+    getRelationships(),
+    getActivities(),
+    getTasks(),
+    getOpportunities(),
+    getContacts(),
+    getCompanies(),
   ])
 
   // Enrich with last interaction and next action

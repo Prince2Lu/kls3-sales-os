@@ -79,8 +79,8 @@ export default async function CardStatsPage({
     listCardEvents(),
     getEmailRecipients(),
     listDirectEmails(),
-    getContacts({ maxRecords: 5000 }),
-    getCompanies({ maxRecords: 2000 }),
+    getContacts(),
+    getCompanies(),
   ])
 
   const recipientByRef = new Map(

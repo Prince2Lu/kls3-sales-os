@@ -22,8 +22,8 @@ export default async function EditRelationshipPage({
   try {
     const [relationship, companies, contacts, currentOwner] = await Promise.all([
       getRelationshipById(id),
-      getCompanies({ maxRecords: 500 }),
-      getContacts({ maxRecords: 500 }),
+      getCompanies(),
+      getContacts(),
       getCurrentOwner(),
     ])
 

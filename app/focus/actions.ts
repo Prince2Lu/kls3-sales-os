@@ -44,7 +44,7 @@ function shouldTransitionToRDV(currentStage: Stage | null | undefined): boolean 
 async function hasExistingTodoTask(opportunityId: string | null): Promise<boolean> {
   if (!opportunityId) return false
 
-  const tasks = await getTasks({ maxRecords: 100 })
+  const tasks = await getTasks()
   const todoTasks = tasks.filter(
     (t) => t.opportunityId === opportunityId && t.status === 'TODO'
   )

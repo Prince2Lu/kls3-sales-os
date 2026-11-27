@@ -4,8 +4,8 @@ import { SuppressionsClient } from './suppressions-client'
 export default async function EmailSuppressionsPage() {
   const [suppressions, companies, contacts] = await Promise.all([
     getEmailSuppressions({ activeOnly: false }),
-    getCompanies({ maxRecords: 2000 }),
-    getContacts({ maxRecords: 5000 }),
+    getCompanies(),
+    getContacts(),
   ])
 
   return <div className="space-y-8">

@@ -22,8 +22,8 @@ export default async function EditProspectPage({
     const [opportunity, businessLines, companies, contacts] = await Promise.all([
       getOpportunityById(id),
       getBusinessLines(),
-      getCompanies({ maxRecords: 200 }),
-      getContacts({ maxRecords: 200 }),
+      getCompanies(),
+      getContacts(),
     ])
 
     return (

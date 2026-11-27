@@ -28,7 +28,7 @@ async function checkDuplicate(
   eventType: EventType
 ): Promise<{ isDuplicate: boolean; existingEvent?: any }> {
   // Fetch all VALUE_EVENTS for this opportunity
-  const allValueEvents = await getValueEvents({ maxRecords: 1000 })
+  const allValueEvents = await getValueEvents()
   const opportunityEvents = allValueEvents.filter(
     (ve) => ve.opportunityId === opportunityId && ve.eventType === eventType
   )
@@ -87,7 +87,7 @@ export async function updateValueEventAction(
 ): Promise<UpdateValueEventResult> {
   try {
     // 1. Load existing VALUE_EVENT
-    const allValueEvents = await getValueEvents({ maxRecords: 1000 })
+    const allValueEvents = await getValueEvents()
     const existingEvent = allValueEvents.find((ve) => ve.id === input.valueEventId)
 
     if (!existingEvent) {

@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ignored: true, reason: 'missing_required_field' })
   }
 
-  const campaigns = await getEmailCampaigns({ maxRecords: 100 })
+  const campaigns = await getEmailCampaigns()
   const campaign = campaigns.find((item) => item.brevoCampaignId === brevoCampaignId)
   if (!campaign) return NextResponse.json({ ignored: true, reason: 'campaign' })
   const recipients = await getEmailRecipients({ campaignId: campaign.id })

@@ -13,11 +13,11 @@ import { ProspectsClient } from './prospects-client'
 
 export default async function ProspectsPage() {
   const [opportunities, businessLines, companies, contacts, tasks] = await Promise.all([
-    getOpportunities({ maxRecords: 500 }),
+    getOpportunities(),
     getBusinessLines(),
-    getCompanies({ maxRecords: 500 }),
-    getContacts({ maxRecords: 500 }),
-    getTasks({ maxRecords: 500 }),
+    getCompanies(),
+    getContacts(),
+    getTasks(),
   ])
 
   return (

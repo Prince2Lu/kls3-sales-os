@@ -19,10 +19,10 @@ export default async function ColdCallPage() {
   // No maxRecords limits to ensure complete call counts and task counts
   const [targets, businessLines, companies, contacts, activities, tasks] =
     await Promise.all([
-      getColdCallTargets({ maxRecords: 500 }), // Cold call targets are limited scope
+      getColdCallTargets(),
       getBusinessLines(),
-      getCompanies({ maxRecords: 500 }),
-      getContacts({ maxRecords: 500 }),
+      getCompanies(),
+      getContacts(),
       getActivities(), // No limit - complete call history
       getTasks({ status: 'TODO' }), // No limit - all TODO tasks
     ])

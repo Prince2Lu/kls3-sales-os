@@ -7,9 +7,9 @@ import { CompaniesClient } from './companies-client'
 
 export default async function CompaniesPage() {
   const [companies, contacts, opportunities, businessLines] = await Promise.all([
-    getCompanies({ maxRecords: 500 }),
-    getContacts({ maxRecords: 500 }),
-    getOpportunities({ maxRecords: 500 }),
+    getCompanies(),
+    getContacts(),
+    getOpportunities(),
     getBusinessLines(),
   ])
 

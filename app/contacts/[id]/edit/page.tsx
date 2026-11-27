@@ -18,7 +18,7 @@ export default async function EditContactPage({ params }: PageProps) {
   }
 
   const [companies, businessLines] = await Promise.all([
-    getCompanies({ maxRecords: 500 }),
+    getCompanies(),
     getBusinessLines(),
   ])
 

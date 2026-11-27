@@ -20,12 +20,12 @@ export default async function PipelinePage() {
   // No maxRecords limits on activities/tasks to ensure complete counts
   const [opportunities, businessLines, allTasks, stageHistory, companies, contacts, activities] =
     await Promise.all([
-      getOpportunities({ maxRecords: 500 }),
+      getOpportunities(),
       getBusinessLines(),
       getTasks({ status: 'TODO' }), // No limit - all TODO tasks
-      getStageHistory({ maxRecords: 1000 }), // History can be limited
-      getCompanies({ maxRecords: 500 }),
-      getContacts({ maxRecords: 500 }),
+      getStageHistory(),
+      getCompanies(),
+      getContacts(),
       getActivities(), // No limit - complete call history
     ])
 
