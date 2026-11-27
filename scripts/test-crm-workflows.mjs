@@ -320,4 +320,31 @@ await test('Airtable never runs more than 4 requests at once', async () => {
   await Promise.all(Array.from({ length: 12 }, (_, index) => airtable.airtableFetch(`https://api.airtable.test/v0/base/T${index}`)))
   assert.equal(http.calls.length, 12); assert.equal(http.maxActive, 4)
 })
+const callQueue = await load('lib/prospecting/call-queue.ts')
+await test('call queue: explainable fixed order, follow-ups first, clicks only raise priority', () => {
+  const now = new Date('2026-11-27T10:00:00Z')
+  const t = (id, callStatus, extra = {}) => ({ id, companyId: `c-${id}`, contactId: `p-${id}`, businessLineId: 'bl', owner: 'Lilian', callStatus,
+    opportunityId: null, archived: false, createdAt: '2026-10-01T09:00:00Z', updatedAt: '2026-11-01T09:00:00Z', ...extra })
+  const targets = [
+    t('never', 'À appeler'), t('old', 'Échange'), t('late', 'À rappeler'), t('today', 'À appeler'),
+    t('later', 'À appeler'), t('click', 'À appeler'), t('callback', 'À rappeler'), t('wrong', 'Mauvais numéro'),
+    t('converted', 'Qualifié', { opportunityId: 'opp' }), t('newer', 'À appeler', { createdAt: '2026-11-20T09:00:00Z' }),
+  ]
+  const task = (target, dueAt) => ({ id: `task-${target}`, coldCallTargetId: target, opportunityId: null, contactId: null, type: 'CALL', status: 'TODO', dueAt })
+  const tasks = [task('late', '2026-11-24T09:00:00Z'), task('today', '2026-11-27T15:00:00Z'), task('later', '2026-12-02T09:00:00Z')]
+  const call = (target, date) => ({ id: `a-${target}`, coldCallTargetId: target, type: 'CALL', date })
+  const activities = [call('old', '2026-11-10T09:00:00Z'), call('callback', '2026-11-20T09:00:00Z')]
+  const signals = [{ businessLineId: 'bl', companyId: 'c-click', contactId: 'p-click', priority: 'HIGH', state: 'AVAILABLE', reason: '1 clic(s) sur le CTA', lastSignalAt: '2026-11-26T08:00:00Z' }]
+  const queue = callQueue.buildCallQueue({ targets, tasks, activities, signals, now })
+  assert.equal(queue.map((item) => item.targetId).join(','), 'late,today,click,callback,never,newer,old')
+  assert.equal(queue.map((item) => item.rule).join(','), 'OVERDUE_TASK,TASK_TODAY,CAMPAIGN_CLICK,CALLBACK_NO_DATE,NEVER_CALLED,NEVER_CALLED,OLDEST_CONTACT')
+  assert.match(queue[0].reason, /3 jours de retard/)
+  assert.match(queue[1].reason, /16:00/, 'times are shown in Paris time')
+  assert.match(queue[6].reason, /il y a 17 jours/)
+  assert.ok(queue.every((item) => item.reason), 'every prospect shows its reason')
+  assert.equal(callQueue.buildCallQueue({ targets: [...targets].reverse(), tasks, activities, signals, now }).map((item) => item.targetId).join(','),
+    queue.map((item) => item.targetId).join(','), 'order is reproducible')
+  const calledAfterClick = callQueue.buildCallQueue({ targets: [targets[5]], tasks: [], activities: [call('click', '2026-11-26T12:00:00Z')], signals, now })
+  assert.equal(calledAfterClick[0].rule, 'OLDEST_CONTACT', 'a click already followed by a call no longer jumps the queue')
+})
 console.log(`${tests} CRM regression tests passed`)
