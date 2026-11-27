@@ -107,6 +107,7 @@ await test('no CRM read is silently capped (maxRecords) except the recent import
       .filter((line) => /maxRecords: \d{2,}/.test(line) && !allowed.some((ok) => line.includes(ok)))
       .map((line) => `${file}: ${line.trim()}`))
   assert.equal(offenders.length, 0, offenders.join('\n'))
+})
 const focusState = { target: null, statusChanges: [], conversions: [], created: [], updatedOpps: [], updatedTasks: [] }
 state.focus = focusState
 const focus = await load('app/focus/actions.ts', {
