@@ -1,4 +1,5 @@
-import { getHeaders, getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
+import { getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
+import { airtableFetch } from '@/lib/airtable/client'
 
 export type DigitalCardProject = {
   label: string
@@ -113,15 +114,11 @@ function mapRecord(record: AirtableRecord): DigitalCard {
   }
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      ...getHeaders(),
-      ...(init?.headers || {}),
-    },
-    cache: 'no-store',
-  })
+async function request<T>(
+  url: string,
+  init?: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: string }
+): Promise<T> {
+  const response = await airtableFetch(url, { ...init, cache: 'no-store' })
 
   if (!response.ok) {
     const body = await response.text()
@@ -224,16 +221,12 @@ export async function uploadDigitalCardMedia(
     }
   )
 
-  const { token, baseId } = (await import('@/lib/airtable/config')).config
+  const { baseId } = (await import('@/lib/airtable/config')).config
   const uploadUrl =
     `https://content.airtable.com/v0/${baseId}/${current.id}/${encodeURIComponent(fieldName)}/uploadAttachment`
 
-  const response = await fetch(uploadUrl, {
+  const response = await airtableFetch(uploadUrl, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({
       contentType: file.type,
       filename: file.name,

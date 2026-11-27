@@ -1,5 +1,6 @@
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
-import { getHeaders, getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
+import { getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
+import { airtableFetch } from '@/lib/airtable/client'
 import type { Owner } from '@/types/domain'
 import { formulaString } from '@/lib/airtable/formula'
 
@@ -139,10 +140,7 @@ export async function getMailSettings(owner: Owner): Promise<MailSettings> {
   url.searchParams.set('maxRecords', '1')
   url.searchParams.set('filterByFormula', `{Owner}=${formulaString(owner)}`)
 
-  const response = await fetch(url, {
-    headers: getHeaders(),
-    cache: 'no-store',
-  })
+  const response = await airtableFetch(url.toString(), { cache: 'no-store' })
 
   if (!response.ok) {
     throw new Error(
@@ -188,13 +186,12 @@ export async function saveMailSettings(
     'Updated At': now,
   }
 
-  const response = await fetch(
+  const response = await airtableFetch(
     existing.id
       ? `${getTableUrl(TABLE_NAMES.MAIL_SETTINGS)}/${encodeURIComponent(existing.id)}`
       : getTableUrl(TABLE_NAMES.MAIL_SETTINGS),
     {
       method: existing.id ? 'PATCH' : 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(
         existing.id
           ? { fields }
