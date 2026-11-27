@@ -31,6 +31,8 @@ import { WorkBlocksSection } from './work-blocks-section'
 import { RelationshipsSection } from './relationships-section'
 import type { CallStatus, Stage, Owner } from '@/types/domain'
 import { enrichRelationshipsWithInteractions } from '@/lib/relationships/helpers'
+import { findForgottenFiles } from '@/lib/prospecting/forgotten-files'
+import { ForgottenFilesSection } from './forgotten-files-section'
 import { enrichWithPriority, getActionableToday } from '@/lib/relationships/scoring'
 
 export default async function TodayPage(props: {
@@ -282,6 +284,21 @@ export default async function TodayPage(props: {
   const businessLineMap = Object.fromEntries(
     businessLines.map((bl) => [bl.id, bl])
   )
+  // Dossiers oubliés (Trello #63): engaged prospects of the current owner,
+  // on the selected Business Line, with no open task and no recent action.
+  const selectedBusinessLineId = selectedBusinessLineCode
+    ? businessLines.find((bl) => bl.code === selectedBusinessLineCode)?.id ?? null
+    : null
+  const forgottenFiles = findForgottenFiles({
+    targets: selectedBusinessLineId
+      ? allTargets.filter((target) => target.businessLineId === selectedBusinessLineId)
+      : allTargets,
+    tasks: allTasks,
+    activities: allActivities,
+    owner: currentOwner,
+    now: today,
+  })
+
   const companyMap = Object.fromEntries(companies.map((c) => [c.id, c]))
   const contactMap = Object.fromEntries(contacts.map((c) => [c.id, c]))
 
@@ -342,6 +359,14 @@ export default async function TodayPage(props: {
           currentOwner={currentOwner}
         />
 
+        {/* 7. Dossiers oubliés (Trello #63) */}
+        <ForgottenFilesSection
+          files={forgottenFiles}
+          businessLineMap={businessLineMap}
+          companyMap={companyMap}
+          contactMap={contactMap}
+        />
+
         {/* Legacy: Opportunities without next action (replaced by Watchlist logic but kept for other stages) */}
         {opportunitiesWithoutNextAction.filter(
           (opp) => !WATCHLIST_STAGES.includes(opp.stage)
@@ -361,6 +386,7 @@ export default async function TodayPage(props: {
           actionableRelationships.length === 0 &&
           watchlistOpportunities.length === 0 &&
           workBlocks.length === 0 &&
+          forgottenFiles.length === 0 &&
           opportunitiesWithoutNextAction.filter(
             (opp) => !WATCHLIST_STAGES.includes(opp.stage)
           ).length === 0 && (
