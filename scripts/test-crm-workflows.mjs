@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import assert from 'node:assert/strict'
 const require = createRequire(import.meta.url)
 
-async function load(entry, mocks = {}) {
+async function load(entry, mocks = {}, globals = {}) {
   const result = await build({
     entryPoints: [entry], bundle: true, platform: 'node', format: 'cjs', write: false,
     external: ['react', 'react/jsx-runtime', 'react-dom/server'],
@@ -15,7 +15,7 @@ async function load(entry, mocks = {}) {
     } }],
   })
   const module = { exports: {} }
-  vm.runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require, console, Date, Intl, Set, Map, state })
+  vm.runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require, console, Date, Intl, Set, Map, state, ...globals })
   return module.exports
 }
 const state = { owner: 'Eric', created: [], updated: [], invalidations: [], activity: null }
@@ -177,6 +177,29 @@ await test('a session ends within 15 minutes once the user is deactivated, and s
   assert.equal(await sessionCheck.recheckSessionUser(stale, outage, now), stale)
   const refreshed = await sessionCheck.recheckSessionUser(stale, async () => ({ name: 'Lilian S', role: 'SALES_DIRECTOR', active: true }), now)
   assert.equal(refreshed.role, 'SALES_DIRECTOR'); assert.equal(refreshed.name, 'Lilian S'); assert.equal(refreshed.checkedAt, now)
+})
+const formula = await load('lib/airtable/formula.ts')
+await test('values put in Airtable formulas cannot break out of the string', async () => {
+  assert.equal(formula.formulaString('eric@kls3.test'), '"eric@kls3.test"')
+  assert.equal(formula.formulaString('x" OR "1"="1'), '"x\\" OR \\"1\\"=\\"1"')
+  assert.equal(formula.formulaString('a\\'), '"a\\\\"')
+  assert.equal(formula.formulaString(null), '""')
+})
+const rateLimit = await load('lib/auth/rate-limit.ts')
+await test('public card events are limited per visitor and card', async () => {
+  const t0 = 1_000_000
+  for (let i = 0; i < 60; i++) assert.equal(rateLimit.allowRequest('k', 60, 60000, t0), true)
+  assert.equal(rateLimit.allowRequest('k', 60, 60000, t0 + 1), false)
+  assert.equal(rateLimit.allowRequest('other', 60, 60000, t0 + 1), true)
+  assert.equal(rateLimit.allowRequest('k', 60, 60000, t0 + 60000), true)
+})
+const roleState = { session: null }
+const roles = await load('lib/auth/roles.ts', { '@/auth': `export async function auth() { return globalThis.roleState.session }` }, { globalThis: { roleState } })
+await test('sensitive actions are reserved to ADMIN and SALES_DIRECTOR roles', async () => {
+  roleState.session = { user: { name: 'Eric', role: 'ADMIN' } }; assert.equal(await roles.denyUnlessRole(), null)
+  roleState.session = { user: { name: 'Lilian', role: 'SALES_DIRECTOR' } }; assert.equal(await roles.denyUnlessRole(), null)
+  roleState.session = { user: { name: 'Camille', role: 'SALES' } }; assert.match(await roles.denyUnlessRole(), /réservée/)
+  roleState.session = null; assert.match(await roles.denyUnlessRole(), /réservée/)
 })
 const { renderToStaticMarkup } = require('react-dom/server')
 const today = await load('app/today/today-tasks-section.tsx', {

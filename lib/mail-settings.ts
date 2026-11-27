@@ -1,6 +1,7 @@
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { getHeaders, getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
 import type { Owner } from '@/types/domain'
+import { formulaString } from '@/lib/airtable/formula'
 
 export type MailSettings = {
   id: string | null
@@ -136,7 +137,7 @@ export function defaultMailSettings(owner: Owner): MailSettings {
 export async function getMailSettings(owner: Owner): Promise<MailSettings> {
   const url = new URL(getTableUrl(TABLE_NAMES.MAIL_SETTINGS))
   url.searchParams.set('maxRecords', '1')
-  url.searchParams.set('filterByFormula', `{Owner}="${owner}"`)
+  url.searchParams.set('filterByFormula', `{Owner}=${formulaString(owner)}`)
 
   const response = await fetch(url, {
     headers: getHeaders(),

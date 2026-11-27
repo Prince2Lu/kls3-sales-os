@@ -3,6 +3,7 @@
 // NEVER import this in client components
 
 import { config, getTableUrl, getHeaders, TABLE_NAMES } from './config'
+import { formulaString } from './formula'
 import type {
   AirtableRecord,
   AirtableListResponse,
@@ -210,7 +211,7 @@ export async function getBusinessLineByCode(
   const records = await fetchRecords<AirtableBusinessLineFields>(
     TABLE_NAMES.BUSINESS_LINES,
     {
-      filterByFormula: `{Code} = "${code}"`,
+      filterByFormula: `{Code} = ${formulaString(code)}`,
       maxRecords: 1,
     }
   )
@@ -309,11 +310,11 @@ export async function getOpportunities(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   if (options?.stage) {
-    filters.push(`{Stage} = "${options.stage}"`)
+    filters.push(`{Stage} = ${formulaString(options.stage)}`)
   }
 
   const filterByFormula =
@@ -417,11 +418,11 @@ export async function getTasks(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.status) {
-    filters.push(`{Status} = "${options.status}"`)
+    filters.push(`{Status} = ${formulaString(options.status)}`)
   }
 
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   const filterByFormula =
@@ -479,7 +480,7 @@ export async function getValueEvents(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.status) {
-    filters.push(`{Status} = "${options.status}"`)
+    filters.push(`{Status} = ${formulaString(options.status)}`)
   }
 
   const filterByFormula =
@@ -1315,7 +1316,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
   const records = await fetchRecords<AirtableUserFields>(TABLE_NAMES.USERS, {
     // Use exact email match in formula
-    filterByFormula: `LOWER(TRIM({Email})) = "${normalizedEmail}"`,
+    filterByFormula: `LOWER(TRIM({Email})) = ${formulaString(normalizedEmail)}`,
     maxRecords: 1,
   })
 
@@ -1394,11 +1395,11 @@ export async function getColdCallTargets(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   if (options?.callStatus) {
-    filters.push(`{Call Status} = "${options.callStatus}"`)
+    filters.push(`{Call Status} = ${formulaString(options.callStatus)}`)
   }
 
   const filterByFormula =
@@ -1643,11 +1644,11 @@ export async function getRelationships(options?: {
   const filters: string[] = []
 
   if (options?.status) {
-    filters.push(`{Status} = "${options.status}"`)
+    filters.push(`{Status} = ${formulaString(options.status)}`)
   }
 
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   const filterByFormula = filters.length > 0 ? `AND(${filters.join(', ')})` : undefined
@@ -2004,7 +2005,7 @@ export async function getEmailEvents(): Promise<EmailEvent[]> {
 
 export async function getEmailEventByKey(eventKey: string): Promise<EmailEvent | null> {
   const records = await fetchRecords<AirtableEmailEventFields>(TABLE_NAMES.EMAIL_EVENTS, {
-    filterByFormula: `{Event Key} = "${eventKey}"`,
+    filterByFormula: `{Event Key} = ${formulaString(eventKey)}`,
     maxRecords: 1,
   })
   return records[0] ? mapEmailEvent(records[0]) : null

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { allowRequest, clientIp } from '@/lib/auth/rate-limit'
 import {
   CARD_EVENT_TYPES,
   recordCardEvent,
@@ -23,6 +24,10 @@ export async function POST(
 ) {
   try {
     const { slug } = await params
+    // Public endpoint: at most 60 events per minute per visitor IP and card
+    if (!allowRequest(`card-events:${clientIp(request)}:${slug}`, 60, 60_000)) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: corsHeaders })
+    }
     const body = (await request.json()) as {
       eventType?: string
       visitorId?: string
