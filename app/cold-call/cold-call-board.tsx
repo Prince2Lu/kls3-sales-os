@@ -452,6 +452,8 @@ export function ColdCallBoard({
           contactsMap={contactsMap}
           blMap={blMap}
           activitiesByTargetId={activitiesByTargetId}
+          activities={activities}
+          tasks={tasks}
           onExit={() => setSeriesRunning(false)}
         />
       ) : view === 'queue' ? (

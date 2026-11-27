@@ -8,7 +8,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { Activity, ActivityResult, BusinessLine, ColdCallTarget, Company, Contact } from '@/types/domain'
+import type { Activity, ActivityResult, ActivityType, BusinessLine, ColdCallTarget, Company, Contact, Task } from '@/types/domain'
 import type { CallQueueItem } from '@/lib/prospecting/call-queue'
 import {
   FOLLOW_UP_CHOICES,
@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { ContactInfo } from '@/components/pipeline/contact-info'
 import { createManualTask } from '@/lib/actions/task-actions'
 import { recordCallActivity } from './actions'
+import { buildCallBriefing } from '@/lib/prospecting/call-briefing'
 
 const RESULTS: Array<{ value: ActivityResult; label: string; primary?: boolean }> = [
   { value: 'NO_ANSWER', label: 'Pas de réponse', primary: true },
@@ -36,7 +37,29 @@ const RESULTS: Array<{ value: ActivityResult; label: string; primary?: boolean }
   { value: 'WRONG_NUMBER', label: 'Mauvais numéro' },
 ]
 
-const RESULT_LABELS = Object.fromEntries(RESULTS.map((item) => [item.value, item.label])) as Record<ActivityResult, string>
+const RESULT_LABELS = {
+  ...Object.fromEntries(RESULTS.map((item) => [item.value, item.label])),
+  EMAIL_SENT: 'Email envoyé',
+  EMAIL_REPLY: 'Réponse email',
+  LINKEDIN_SENT: 'Message LinkedIn',
+  LINKEDIN_REPLY: 'Réponse LinkedIn',
+} as Record<ActivityResult, string>
+
+const TYPE_LABELS: Partial<Record<ActivityType, string>> = {
+  CALL: 'Appel',
+  EMAIL: 'Email',
+  LINKEDIN: 'LinkedIn',
+  MEETING: 'RDV',
+  DEMO: 'Démo',
+  PROPOSAL: 'Proposition',
+  NOTE: 'Note',
+}
+
+function activityLabel(activity: Activity) {
+  const type = TYPE_LABELS[activity.type] ?? activity.type
+  const result = activity.result ? RESULT_LABELS[activity.result] ?? activity.result : ''
+  return result ? `${type} · ${result}` : type
+}
 
 interface CallSeriesProps {
   items: CallQueueItem[]
@@ -45,6 +68,9 @@ interface CallSeriesProps {
   contactsMap: Record<string, Contact>
   blMap: Record<string, BusinessLine>
   activitiesByTargetId: Record<string, Activity[]>
+  /** All activities and TODO tasks, for the briefing (Trello #64). */
+  activities: Activity[]
+  tasks: Task[]
   onExit: () => void
 }
 
@@ -59,7 +85,7 @@ function formatDateTime(value: string) {
   return new Date(value).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-export function CallSeries({ items, targetsById, companiesMap, contactsMap, blMap, activitiesByTargetId, onExit }: CallSeriesProps) {
+export function CallSeries({ items, targetsById, companiesMap, contactsMap, blMap, activitiesByTargetId, activities, tasks, onExit }: CallSeriesProps) {
   const router = useRouter()
   // Frozen at start: refreshing data after each call must not reorder the series.
   const [queue] = useState(() => items.map((item) => item))
@@ -75,12 +101,10 @@ export function CallSeries({ items, targetsById, companiesMap, contactsMap, blMa
   const target = item ? targetsById[item.targetId] : undefined
   const company = target ? companiesMap[target.companyId] : undefined
   const contact = target?.contactId ? contactsMap[target.contactId] ?? null : null
-  const lastCall = useMemo(() => {
+  const briefing = useMemo(() => {
     if (!target) return null
-    return (activitiesByTargetId[target.id] || [])
-      .filter((activity) => activity.type === 'CALL')
-      .sort((a, b) => b.date.localeCompare(a.date))[0] ?? null
-  }, [activitiesByTargetId, target])
+    return buildCallBriefing({ targetId: target.id, contactId: target.contactId, activities, tasks })
+  }, [activities, tasks, target])
 
   function advance() {
     setNotes('')
@@ -203,11 +227,7 @@ export function CallSeries({ items, targetsById, companiesMap, contactsMap, blMa
           </Link>
           {contact?.jobTitle && <p className="text-sm text-text-muted">{contact.jobTitle}</p>}
           <ContactInfo contact={contact} company={company} />
-          <p className="text-xs text-text-muted">
-            {lastCall
-              ? `Dernier appel : ${formatDateTime(lastCall.date)}${lastCall.result ? ` · ${RESULT_LABELS[lastCall.result] ?? lastCall.result}` : ''}${lastCall.notes ? ` · ${lastCall.notes}` : ''}`
-              : 'Jamais appelé'}
-          </p>
+          {briefing && <CallBriefingPanel briefing={briefing} />}
         </div>
 
         {step.kind === 'call' ? (
@@ -261,5 +281,53 @@ export function CallSeries({ items, targetsById, companiesMap, contactsMap, blMa
         {error && <p className="text-xs text-red-400" role="alert">{error}</p>}
       </Card>
     </div>
+  )
+}
+
+function CallBriefingPanel({ briefing }: { briefing: NonNullable<ReturnType<typeof buildCallBriefing>> }) {
+  const touches = [
+    briefing.calls ? `${briefing.calls} appel${briefing.calls > 1 ? 's' : ''}` : null,
+    briefing.emails ? `${briefing.emails} email${briefing.emails > 1 ? 's' : ''}` : null,
+    briefing.linkedin ? `${briefing.linkedin} LinkedIn` : null,
+  ].filter(Boolean)
+
+  if (touches.length === 0 && !briefing.openTask) {
+    return <p className="text-xs text-text-muted">Premier contact : aucun historique.</p>
+  }
+
+  return (
+    <section aria-label="Briefing avant appel" className="rounded-2xl border border-border p-4 space-y-2 text-sm">
+      <div className="flex items-center gap-3">
+        <div className="h-px w-7 bg-accent" />
+        <h3 className="text-xs uppercase tracking-wide text-accent font-medium">Avant d&apos;appeler</h3>
+      </div>
+      {touches.length > 0 && <p className="text-text-muted">Historique : {touches.join(' · ')}</p>}
+      {briefing.lastExchange && (
+        <p>
+          <span className="text-text-muted">Dernier échange : </span>
+          {formatDateTime(briefing.lastExchange.date)} · {activityLabel(briefing.lastExchange)}
+        </p>
+      )}
+      {briefing.lastNote?.notes && (
+        <p className="whitespace-pre-line">
+          <span className="text-text-muted">Dernière note ({formatDateTime(briefing.lastNote.date)}) : </span>
+          {briefing.lastNote.notes}
+        </p>
+      )}
+      {briefing.openTask && (
+        <p>
+          <span className="text-text-muted">Prochaine action prévue : </span>
+          {briefing.openTask.notes || briefing.openTask.type}
+          {briefing.openTask.dueAt ? ` · ${formatDateTime(briefing.openTask.dueAt)}` : ''}
+        </p>
+      )}
+      {briefing.recent.length > 0 && (
+        <ul className="text-xs text-text-muted space-y-0.5">
+          {briefing.recent.map((activity) => (
+            <li key={activity.id}>{formatDateTime(activity.date)} · {activityLabel(activity)}</li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
