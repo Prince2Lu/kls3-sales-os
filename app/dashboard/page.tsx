@@ -10,13 +10,25 @@ import {
   getCompanies,
   getContacts,
   getColdCallTargets,
+  getGoals,
 } from '@/lib/airtable'
+import type { Goal } from '@/types/domain'
+
+// Goals are optional configuration: a failure must not break the Dashboard.
+async function loadGoals(): Promise<{ goals: Goal[]; goalsError: boolean }> {
+  try {
+    return { goals: await getGoals(), goalsError: false }
+  } catch (error) {
+    console.error('Dashboard goals unavailable', error instanceof Error ? error.message : 'unknown error')
+    return { goals: [], goalsError: true }
+  }
+}
 import { DashboardClient } from './dashboard-client'
 
 export default async function DashboardPage() {
   // Fetch all required data in parallel (TEAM VIEW - no owner filtering)
   // NO LIMITS - Airtable pagination handles large datasets automatically
-  const [businessLines, valueEvents, opportunities, activities, tasks, companies, contacts, coldCallTargets] =
+  const [businessLines, valueEvents, opportunities, activities, tasks, companies, contacts, coldCallTargets, goalsResult] =
     await Promise.all([
       getBusinessLines(),
       getValueEvents(), // No limit - all value events
@@ -26,6 +38,7 @@ export default async function DashboardPage() {
       getCompanies(), // No limit - all companies
       getContacts(), // No limit - all contacts
       getColdCallTargets(),
+      loadGoals(),
     ])
 
   return (
@@ -39,6 +52,8 @@ export default async function DashboardPage() {
         companies={companies}
         contacts={contacts}
         coldCallTargets={coldCallTargets}
+        goals={goalsResult.goals}
+        goalsError={goalsResult.goalsError}
       />
     </div>
   )
