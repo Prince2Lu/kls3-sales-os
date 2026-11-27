@@ -1081,16 +1081,13 @@ Ce sont des champs dateTime standards gérés par l'application.
 
 **Owner :**
 
-Pour la V1, Owner reste volontairement simple.
+Owner reste un champ contrôlé (Single Select Airtable contenant le prénom), jamais du texte libre.
 
-Valeurs initiales :
+Depuis le 27/11/2026 (Trello #53, validé par Eric), la liste des owners possibles vient des utilisateurs actifs de la table USERS (créée pour l'authentification), plus du code : `lib/users/owners.ts`.
 
-- Eric
-- Lilian
+Ajouter un commercial = créer sa ligne active dans USERS + ajouter son nom comme option des Single Select Owner / Changed By / Created By dans Airtable. Aucun changement de code.
 
-Utiliser un champ contrôlé et non du texte libre.
-
-Ne pas créer de table USERS en V1.
+Ne jamais coder de logique sur un prénom : utiliser le rôle (ADMIN, SALES_DIRECTOR, SALES).
 
 **Important — Next Action :**
 

@@ -4,6 +4,7 @@ import { getOpportunityById, getContactById } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { TaskForm } from './task-form'
 import { notFound } from 'next/navigation'
+import { getActiveOwners } from '@/lib/users/owners'
 
 interface NewTaskPageProps {
   params: Promise<{ id: string }>
@@ -35,6 +36,7 @@ export default async function NewTaskPage({
         </div>
 
         <TaskForm
+          owners={await getActiveOwners()}
           opportunityId={id}
           contactId={contact?.id}
           currentOwner={currentOwner}

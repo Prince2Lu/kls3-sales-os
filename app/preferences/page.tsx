@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
-import { getUserByEmail } from '@/lib/airtable'
+import { getUserProfileByEmail } from '@/lib/airtable'
 import { PreferencesForm } from './preferences-form'
 
 export default async function PreferencesPage() {
@@ -8,7 +8,7 @@ export default async function PreferencesPage() {
   const email = session?.user?.email
   if (!email) redirect('/login')
 
-  const user = await getUserByEmail(email)
+  const user = await getUserProfileByEmail(email)
   if (!user) redirect('/login')
 
   return (

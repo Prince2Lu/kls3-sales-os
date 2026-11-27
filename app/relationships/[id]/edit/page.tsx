@@ -9,6 +9,7 @@ import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { RelationshipForm } from '../../relationship-form'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getActiveOwners } from '@/lib/users/owners'
 
 interface EditRelationshipPageProps {
   params: Promise<{ id: string }>
@@ -47,6 +48,7 @@ export default async function EditRelationshipPage({
           companies={companies}
           contacts={contacts}
           currentOwner={currentOwner}
+          owners={await getActiveOwners()}
           relationship={relationship}
           mode="edit"
         />

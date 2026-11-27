@@ -140,6 +140,11 @@ export function PlanningClient({ items }: PlanningClientProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [cursor, setCursor] = useState(() => new Date())
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('ALL')
+  // Owners present in the planning (no hardcoded names: Trello #53)
+  const planningOwners = useMemo(
+    () => [...new Set(items.map((item) => item.owner).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr')),
+    [items]
+  )
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL')
 
   const filteredItems = useMemo(
@@ -214,9 +219,10 @@ export function PlanningClient({ items }: PlanningClientProps) {
             onChange={(event) => setOwnerFilter(event.target.value as OwnerFilter)}
             className="w-full sm:w-auto px-3 py-2 bg-card border border-border rounded-lg text-sm"
           >
-            <option value="ALL">Eric + Lilian</option>
-            <option value="Eric">Eric</option>
-            <option value="Lilian">Lilian</option>
+            <option value="ALL">Tous</option>
+            {planningOwners.map((owner) => (
+              <option key={owner} value={owner}>{owner}</option>
+            ))}
           </select>
 
           <select

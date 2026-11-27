@@ -3,6 +3,7 @@
 import { getBusinessLines, getCompanies, getContacts } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { ProspectForm } from '../prospect-form'
+import { getActiveOwners } from '@/lib/users/owners'
 
 interface NewProspectPageProps {
   searchParams: Promise<{ companyId?: string; contactId?: string }>
@@ -30,6 +31,7 @@ export default async function NewProspectPage({
       </div>
 
       <ProspectForm
+        owners={await getActiveOwners()}
         businessLines={businessLines}
         companies={companies}
         contacts={contacts}

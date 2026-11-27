@@ -8,11 +8,13 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { Company, Contact, Relationship, Owner } from '@/types/domain'
 import { createRelationshipAction, updateRelationshipAction } from './actions'
+import { ownerOptions } from '@/lib/users/owner-options'
 
 interface RelationshipFormProps {
   companies: Company[]
   contacts: Contact[]
   currentOwner: Owner
+  owners: string[]
   defaultCompanyId?: string
   defaultContactId?: string
   relationship?: Relationship
@@ -23,6 +25,7 @@ export function RelationshipForm({
   companies,
   contacts,
   currentOwner,
+  owners,
   defaultCompanyId,
   defaultContactId,
   relationship,
@@ -208,8 +211,9 @@ export function RelationshipForm({
               required
               className="w-full px-3 py-2 bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent"
             >
-              <option value="Eric">Eric</option>
-              <option value="Lilian">Lilian</option>
+              {ownerOptions(owners, relationship?.owner, currentOwner).map((owner) => (
+                <option key={owner} value={owner}>{owner}</option>
+              ))}
             </select>
           </div>
 

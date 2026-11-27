@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import assert from 'node:assert/strict'
 const require = createRequire(import.meta.url)
 
-async function load(entry, mocks = {}) {
+async function load(entry, mocks = {}, globals = {}) {
   const result = await build({
     entryPoints: [entry], bundle: true, platform: 'node', format: 'cjs', write: false,
     external: ['react', 'react/jsx-runtime', 'react-dom/server'],
@@ -15,7 +15,7 @@ async function load(entry, mocks = {}) {
     } }],
   })
   const module = { exports: {} }
-  vm.runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require, console, Date, Intl, Set, Map, state })
+  vm.runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require, console, Date, Intl, Set, Map, state, ...globals })
   return module.exports
 }
 const state = { owner: 'Eric', created: [], updated: [], invalidations: [], activity: null }
@@ -172,6 +172,77 @@ await test('early opportunities are classified A (meeting), B (conversation only
   const summary = early.summarizeEarlyOpportunities(rows)
   assert.equal(summary.total, 4); assert.equal(summary.byGroup.B, 2)
 })
+const ownerOptionsLib = await load('lib/users/owner-options.ts')
+const ownerState = { users: [] }
+const ownersLib = await load('lib/users/owners.ts', { '@/lib/airtable': `export async function getUsers() { return globalThis.ownerState.users }` }, { globalThis: { ownerState } })
+await test('owners come from active USERS, a third salesperson works without code change', async () => {
+  ownerState.users = [
+    { name: 'Lilian', active: true, passwordHash: 'x' }, { name: 'Eric', active: true, passwordHash: 'x' },
+    { name: 'Camille', active: true, passwordHash: 'x' }, { name: 'Ancien', active: false, passwordHash: 'x' },
+  ]
+  assert.equal((await ownersLib.getActiveOwners()).join(','), 'Camille,Eric,Lilian')
+  assert.equal(await ownersLib.isValidOwner('Camille'), true)
+  assert.equal(await ownersLib.isValidOwner('Ancien'), false)
+  await ownersLib.assertValidOwner(undefined)
+  await assert.rejects(ownersLib.assertValidOwner('Inconnu'), /utilisateur actif/)
+  assert.equal(ownerOptionsLib.ownerOptions(['Eric', 'Lilian'], 'Ancien', 'Eric', null).join(','), 'Eric,Lilian,Ancien', 'a stored inactive owner stays selectable')
+})
+const currentOwnerLib = await load('lib/utils/current-owner.ts', { '@/auth': `export async function auth() { return globalThis.ownerState.session }` }, { globalThis: { ownerState }, process: { env: { NODE_ENV: 'production' } } })
+await test('the current owner is the signed-in user name, whatever the name', async () => {
+  ownerState.session = { user: { name: 'Camille' } }
+  assert.equal(await currentOwnerLib.getCurrentOwner(), 'Camille')
+  ownerState.session = null
+  await assert.rejects(currentOwnerLib.getCurrentOwner(), /No authenticated user session/)
+})
+const throttle = await load('lib/auth/login-throttle.ts')
+await test('login is refused after 5 failures for 15 minutes, then allowed again', async () => {
+  const t0 = Date.UTC(2026, 10, 27, 9, 0)
+  for (let i = 0; i < 5; i++) { assert.equal(throttle.isLoginBlocked('x@kls3.test', t0), false); throttle.recordLoginFailure('x@kls3.test', t0) }
+  assert.equal(throttle.isLoginBlocked('x@kls3.test', t0 + 60000), true)
+  assert.equal(throttle.isLoginBlocked('other@kls3.test', t0), false, 'other accounts are not affected')
+  assert.equal(throttle.isLoginBlocked('x@kls3.test', t0 + 15 * 60000), false)
+  throttle.recordLoginFailure('y@kls3.test', t0); throttle.clearLoginFailures('y@kls3.test')
+  assert.equal(throttle.isLoginBlocked('y@kls3.test', t0), false)
+})
+const sessionCheck = await load('lib/auth/session-check.ts')
+await test('a session ends within 15 minutes once the user is deactivated, and survives an Airtable outage', async () => {
+  const now = Date.UTC(2026, 10, 27, 9, 0)
+  const token = { email: 'lilian@kls3.test', name: 'Lilian', role: 'SALES', checkedAt: now - 60000 }
+  let reads = 0
+  const inactive = async () => { reads++; return { name: 'Lilian', role: 'SALES', active: false } }
+  assert.equal(await sessionCheck.recheckSessionUser(token, inactive, now), token, 'checked less than 15 min ago: no read')
+  assert.equal(reads, 0)
+  const stale = { ...token, checkedAt: now - 16 * 60000 }
+  assert.equal(await sessionCheck.recheckSessionUser(stale, inactive, now), null)
+  assert.equal(await sessionCheck.recheckSessionUser(stale, async () => null, now), null, 'removed user')
+  const outage = async () => { throw new Error('Airtable down') }
+  assert.equal(await sessionCheck.recheckSessionUser(stale, outage, now), stale)
+  const refreshed = await sessionCheck.recheckSessionUser(stale, async () => ({ name: 'Lilian S', role: 'SALES_DIRECTOR', active: true }), now)
+  assert.equal(refreshed.role, 'SALES_DIRECTOR'); assert.equal(refreshed.name, 'Lilian S'); assert.equal(refreshed.checkedAt, now)
+})
+const formula = await load('lib/airtable/formula.ts')
+await test('values put in Airtable formulas cannot break out of the string', async () => {
+  assert.equal(formula.formulaString('eric@kls3.test'), '"eric@kls3.test"')
+  assert.equal(formula.formulaString('x" OR "1"="1'), '"x\\" OR \\"1\\"=\\"1"')
+  assert.equal(formula.formulaString('a\\'), '"a\\\\"')
+  assert.equal(formula.formulaString(null), '""')
+})
+const rateLimit = await load('lib/auth/rate-limit.ts')
+await test('public card events are limited per visitor and card', async () => {
+  const t0 = 1_000_000
+  for (let i = 0; i < 60; i++) assert.equal(rateLimit.allowRequest('k', 60, 60000, t0), true)
+  assert.equal(rateLimit.allowRequest('k', 60, 60000, t0 + 1), false)
+  assert.equal(rateLimit.allowRequest('other', 60, 60000, t0 + 1), true)
+  assert.equal(rateLimit.allowRequest('k', 60, 60000, t0 + 60000), true)
+})
+const roleState = { session: null }
+const roles = await load('lib/auth/roles.ts', { '@/auth': `export async function auth() { return globalThis.roleState.session }` }, { globalThis: { roleState } })
+await test('sensitive actions are reserved to ADMIN and SALES_DIRECTOR roles', async () => {
+  roleState.session = { user: { name: 'Eric', role: 'ADMIN' } }; assert.equal(await roles.denyUnlessRole(), null)
+  roleState.session = { user: { name: 'Lilian', role: 'SALES_DIRECTOR' } }; assert.equal(await roles.denyUnlessRole(), null)
+  roleState.session = { user: { name: 'Camille', role: 'SALES' } }; assert.match(await roles.denyUnlessRole(), /réservée/)
+  roleState.session = null; assert.match(await roles.denyUnlessRole(), /réservée/)
+})
 const { renderToStaticMarkup } = require('react-dom/server')
 const today = await load('app/today/today-tasks-section.tsx', {
   '@/lib/airtable': `export async function getOpportunities() { return [] }
@@ -191,5 +262,62 @@ await test('Today still identifies a contact with no company', async () => {
   const tree = await today.TodayTasksSection({ tasks: [{id: 'm2', type: 'MEETING', contactId: 'solo', status: 'TODO', owner: 'Eric'}], businessLineMap: {} })
   const html = renderToStaticMarkup(tree)
   assert.match(html, /Contact Solo/); assert.match(html, /href="\/contacts\/solo"/)
+})
+// Airtable HTTP layer: fetch mocked, retry delays recorded instead of awaited
+const http = { calls: [], responses: [], delays: [], active: 0, maxActive: 0 }
+function airtableResponse(status, body = {}, headers = {}) {
+  return new Response(JSON.stringify(body), { status, headers })
+}
+const airtable = await load('lib/airtable/client.ts', {
+  './config': `export const TABLE_NAMES = new Proxy({}, { get: (_, name) => name })
+    export function getTableUrl(table) { return 'https://api.airtable.test/v0/base/' + table }
+    export function getHeaders() { return { Authorization: 'Bearer test', 'Content-Type': 'application/json' } }`,
+  'next/cache': `export function unstable_cache(fn) { return fn }`,
+}, {
+  process: { env: {} }, URL, Response,
+  setTimeout: (resolve, ms) => { http.delays.push(ms); setImmediate(resolve) },
+  fetch: async (url, init) => {
+    http.calls.push({ url, method: init.method })
+    http.active++; http.maxActive = Math.max(http.maxActive, http.active)
+    await new Promise(resolve => setImmediate(resolve))
+    http.active--
+    const next = http.responses.shift()
+    return typeof next === 'function' ? next() : next ?? airtableResponse(200, { records: [] })
+  },
+})
+const silentWarn = async (run) => { const warn = console.warn; console.warn = () => {}; try { await run() } finally { console.warn = warn } }
+function resetHttp(responses) { Object.assign(http, { calls: [], responses, delays: [], active: 0, maxActive: 0 }) }
+const goalRecord = { id: 'g1', fields: { 'Business Line': ['bl1'], Metric: 'PAID_MEETINGS', Target: 8 } }
+await test('Airtable read retries after 429 and returns the data', () => silentWarn(async () => {
+  resetHttp([airtableResponse(429), airtableResponse(200, { records: [goalRecord] })])
+  const goals = await airtable.getGoals()
+  assert.equal(goals.length, 1); assert.equal(goals[0].id, 'g1')
+  assert.equal(http.calls.length, 2); assert.deepEqual(http.delays, [1000])
+  assert.match(http.calls[0].url, /pageSize=100/)
+}))
+await test('Airtable 429 on every attempt throws AirtableError after 3 retries', () => silentWarn(async () => {
+  resetHttp([429, 429, 429, 429, 429].map(status => () => airtableResponse(status)))
+  await assert.rejects(airtable.getTasks(), error => error.name === 'AirtableError' && error.statusCode === 429)
+  assert.equal(http.calls.length, 4); assert.deepEqual(http.delays, [1000, 2000, 4000])
+}))
+await test('Airtable honours Retry-After', () => silentWarn(async () => {
+  resetHttp([airtableResponse(429, {}, { 'Retry-After': '30' }), airtableResponse(200, { records: [] })])
+  await airtable.getContacts()
+  assert.deepEqual(http.delays, [30000])
+}))
+await test('Airtable write receiving 500 is not replayed', () => silentWarn(async () => {
+  resetHttp([airtableResponse(500), airtableResponse(200, { id: 't1', fields: {} })])
+  await assert.rejects(airtable.createTask({ type: 'CALL', dueAt: '2026-12-01T09:00:00Z', priority: 'MEDIUM', status: 'TODO', owner: 'Eric' }), error => error.statusCode === 500)
+  assert.equal(http.calls.length, 1); assert.equal(http.calls[0].method, 'POST'); assert.deepEqual(http.delays, [])
+}))
+await test('Airtable write is retried on 429 only', () => silentWarn(async () => {
+  resetHttp([airtableResponse(429), airtableResponse(200, { id: 't1', fields: {} })])
+  await airtable.deleteTask('t1')
+  assert.deepEqual(http.calls.map(call => call.method), ['DELETE', 'DELETE'])
+}))
+await test('Airtable never runs more than 4 requests at once', async () => {
+  resetHttp([])
+  await Promise.all(Array.from({ length: 12 }, (_, index) => airtable.airtableFetch(`https://api.airtable.test/v0/base/T${index}`)))
+  assert.equal(http.calls.length, 12); assert.equal(http.maxActive, 4)
 })
 console.log(`${tests} CRM regression tests passed`)

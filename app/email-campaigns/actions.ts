@@ -11,6 +11,7 @@ import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/
 import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
 import { emailReplyFollowUpDueParis } from '@/lib/utils/business-day'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
+import { denyUnlessRole } from '@/lib/auth/roles'
 
 async function inBatches<T>(items: T[], size: number, operation: (item: T) => Promise<unknown>): Promise<void> {
   for (let index = 0; index < items.length; index += size) {
@@ -242,6 +243,8 @@ export async function markCampaignReplyAction(recipientId: string) {
 
 export async function sendCampaignAction(campaignId: string) {
   await getCurrentOwner()
+  const denied = await denyUnlessRole()
+  if (denied) return { success: false, error: denied }
   const sendMode = getBrevoSendMode()
   if (sendMode === 'disabled') {
     return { success: false, error: "Envoi Brevo verrouillé. Activez d’abord le mode test dans la configuration." }

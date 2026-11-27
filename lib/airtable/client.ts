@@ -2,7 +2,10 @@
 // Provides server-side data access functions
 // NEVER import this in client components
 
-import { config, getTableUrl, getHeaders, TABLE_NAMES } from './config'
+import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
+import { getTableUrl, getHeaders, TABLE_NAMES } from './config'
+import { formulaString } from './formula'
 import type {
   AirtableRecord,
   AirtableListResponse,
@@ -91,14 +94,12 @@ export class AirtableError extends Error {
 
 async function handleAirtableResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    let errorBody
     let errorDetails: any = {}
     try {
-      errorBody = await response.text()
-      const parsed = JSON.parse(errorBody)
+      const parsed = JSON.parse(await response.text())
       errorDetails = parsed.error || parsed
-    } catch (e) {
-      errorBody = await response.text()
+    } catch {
+      // Body is not JSON (or unreadable): keep empty details
     }
 
     throw new AirtableError(
@@ -108,6 +109,138 @@ async function handleAirtableResponse<T>(response: Response): Promise<T> {
     )
   }
   return response.json()
+}
+
+// ============================================================================
+// HTTP LAYER (rate limit: 5 req/s per base, 429 then 30 s lockout)
+// ============================================================================
+
+const MAX_CONCURRENT_REQUESTS = 4
+const RETRY_DELAYS_MS = [1000, 2000, 4000]
+const MAX_RETRY_AFTER_MS = 30000
+
+let activeRequests = 0
+const waitingRequests: Array<() => void> = []
+
+async function acquireRequestSlot(): Promise<void> {
+  if (activeRequests < MAX_CONCURRENT_REQUESTS) {
+    activeRequests++
+    return
+  }
+  // The slot is handed over directly by releaseRequestSlot
+  await new Promise<void>((resolve) => waitingRequests.push(resolve))
+}
+
+function releaseRequestSlot(): void {
+  const next = waitingRequests.shift()
+  if (next) next()
+  else activeRequests--
+}
+
+function getRetryDelayMs(response: Response, attempt: number): number {
+  const retryAfter = response.headers.get('Retry-After')
+  if (retryAfter) {
+    const seconds = Number(retryAfter)
+    const delay = Number.isFinite(seconds)
+      ? seconds * 1000
+      : Date.parse(retryAfter) - Date.now()
+    if (Number.isFinite(delay)) {
+      return Math.min(Math.max(delay, 0), MAX_RETRY_AFTER_MS)
+    }
+  }
+  return RETRY_DELAYS_MS[attempt]
+}
+
+/**
+ * Single entry point for every HTTP call to Airtable.
+ * - At most MAX_CONCURRENT_REQUESTS in flight per server instance
+ * - Retries 429 (any method) and 5xx (GET only: a failed write may have
+ *   been applied, replaying it could create duplicates)
+ * Never logs the URL (formulas may contain emails), headers or bodies.
+ */
+export async function airtableFetch(
+  url: string,
+  init: {
+    method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+    body?: string
+    cache?: RequestCache
+  } = {}
+): Promise<Response> {
+  const method = init.method ?? 'GET'
+
+  for (let attempt = 0; ; attempt++) {
+    await acquireRequestSlot()
+    let response: Response
+    try {
+      response = await fetch(url, { ...init, method, headers: getHeaders() })
+    } finally {
+      releaseRequestSlot()
+    }
+
+    const retryable =
+      response.status === 429 || (method === 'GET' && response.status >= 500)
+    if (!retryable || attempt >= RETRY_DELAYS_MS.length) {
+      return response
+    }
+
+    const delay = getRetryDelayMs(response, attempt)
+    await response.body?.cancel().catch(() => {})
+    console.warn(
+      `[airtable] ${method} ${response.status}, retry ${attempt + 1}/${RETRY_DELAYS_MS.length} in ${delay}ms`
+    )
+    await new Promise((resolve) => setTimeout(resolve, delay))
+  }
+}
+
+// ============================================================================
+// READ CACHING
+// ============================================================================
+
+/**
+ * Deduplicates identical reads within one server render (React.cache scope).
+ * Keyed on serialized arguments because callers pass fresh option objects.
+ * Outside a render (Server Actions, Route Handlers, scripts) it is a no-op.
+ */
+function dedupeRead<TArgs extends unknown[], TResult>(
+  read: (...args: TArgs) => Promise<TResult>
+): (...args: TArgs) => Promise<TResult> {
+  const getRenderStore = cache(() => new Map<string, Promise<TResult>>())
+  return (...args) => {
+    const store = getRenderStore()
+    const key = JSON.stringify(args)
+    let pending = store.get(key)
+    if (!pending) {
+      pending = read(...args)
+      store.set(key, pending)
+    }
+    return pending
+  }
+}
+
+export const AIRTABLE_CACHE_TAGS = {
+  BUSINESS_LINES: 'airtable:business-lines',
+  GOALS: 'airtable:goals',
+  USERS: 'airtable:users',
+} as const
+
+const REFERENCE_CACHE_SECONDS = 300
+
+/**
+ * Cross-request cache (5 min + tag) for reference tables only.
+ * Operational tables must never go through this.
+ * Falls back to a direct read outside the Next.js runtime (tsx scripts),
+ * where the incremental cache does not exist.
+ */
+function cacheReference<TArgs extends unknown[], TResult>(
+  read: (...args: TArgs) => Promise<TResult>,
+  keyParts: string[],
+  tag: string
+): (...args: TArgs) => Promise<TResult> {
+  if (!process.env.NEXT_RUNTIME) return read
+  return unstable_cache(read, keyParts, {
+    revalidate: REFERENCE_CACHE_SECONDS,
+    tags: [tag],
+  })
 }
 
 // ============================================================================
@@ -143,14 +276,13 @@ async function fetchRecords<TFields>(
       url.searchParams.set('maxRecords', options.maxRecords.toString())
     }
 
+    url.searchParams.set('pageSize', '100')
+
     if (offset) {
       url.searchParams.set('offset', offset)
     }
 
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: getHeaders(),
-    })
+    const response = await airtableFetch(url.toString())
 
     const data =
       await handleAirtableResponse<AirtableListResponse<TFields>>(response)
@@ -174,10 +306,7 @@ async function fetchRecordById<TFields>(
 ): Promise<AirtableRecord<TFields>> {
   const url = `${getTableUrl(tableName)}/${recordId}`
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: getHeaders(),
-  })
+  const response = await airtableFetch(url)
 
   return handleAirtableResponse<AirtableRecord<TFields>>(response)
 }
@@ -186,7 +315,7 @@ async function fetchRecordById<TFields>(
 // BUSINESS_LINES
 // ============================================================================
 
-export async function getBusinessLines(): Promise<BusinessLine[]> {
+async function getBusinessLinesUncached(): Promise<BusinessLine[]> {
   const records = await fetchRecords<AirtableBusinessLineFields>(
     TABLE_NAMES.BUSINESS_LINES,
     {
@@ -195,33 +324,42 @@ export async function getBusinessLines(): Promise<BusinessLine[]> {
   )
   return records.map(mapBusinessLine)
 }
+export const getBusinessLines = dedupeRead(
+  cacheReference(getBusinessLinesUncached, ['airtable', 'business-lines'], AIRTABLE_CACHE_TAGS.BUSINESS_LINES)
+)
 
-export async function getBusinessLineById(id: string): Promise<BusinessLine> {
+async function getBusinessLineByIdUncached(id: string): Promise<BusinessLine> {
   const record = await fetchRecordById<AirtableBusinessLineFields>(
     TABLE_NAMES.BUSINESS_LINES,
     id
   )
   return mapBusinessLine(record)
 }
+export const getBusinessLineById = dedupeRead(
+  cacheReference(getBusinessLineByIdUncached, ['airtable', 'business-line-by-id'], AIRTABLE_CACHE_TAGS.BUSINESS_LINES)
+)
 
-export async function getBusinessLineByCode(
+async function getBusinessLineByCodeUncached(
   code: string
 ): Promise<BusinessLine | null> {
   const records = await fetchRecords<AirtableBusinessLineFields>(
     TABLE_NAMES.BUSINESS_LINES,
     {
-      filterByFormula: `{Code} = "${code}"`,
+      filterByFormula: `{Code} = ${formulaString(code)}`,
       maxRecords: 1,
     }
   )
   return records.length > 0 ? mapBusinessLine(records[0]) : null
 }
+export const getBusinessLineByCode = dedupeRead(
+  cacheReference(getBusinessLineByCodeUncached, ['airtable', 'business-line-by-code'], AIRTABLE_CACHE_TAGS.BUSINESS_LINES)
+)
 
 // ============================================================================
 // COMPANIES
 // ============================================================================
 
-export async function getCompanies(options?: {
+async function getCompaniesUncached(options?: {
   importBatchId?: string
   maxRecords?: number
 }): Promise<Company[]> {
@@ -241,20 +379,22 @@ export async function getCompanies(options?: {
 
   return filteredRecords.map(mapCompany)
 }
+export const getCompanies = dedupeRead(getCompaniesUncached)
 
-export async function getCompanyById(id: string): Promise<Company> {
+async function getCompanyByIdUncached(id: string): Promise<Company> {
   const record = await fetchRecordById<AirtableCompanyFields>(
     TABLE_NAMES.COMPANIES,
     id
   )
   return mapCompany(record)
 }
+export const getCompanyById = dedupeRead(getCompanyByIdUncached)
 
 // ============================================================================
 // CONTACTS
 // ============================================================================
 
-export async function getContacts(options?: {
+async function getContactsUncached(options?: {
   companyId?: string
   importBatchId?: string
   maxRecords?: number
@@ -285,20 +425,22 @@ export async function getContacts(options?: {
 
   return filteredRecords.map(mapContact)
 }
+export const getContacts = dedupeRead(getContactsUncached)
 
-export async function getContactById(id: string): Promise<Contact> {
+async function getContactByIdUncached(id: string): Promise<Contact> {
   const record = await fetchRecordById<AirtableContactFields>(
     TABLE_NAMES.CONTACTS,
     id
   )
   return mapContact(record)
 }
+export const getContactById = dedupeRead(getContactByIdUncached)
 
 // ============================================================================
 // OPPORTUNITIES
 // ============================================================================
 
-export async function getOpportunities(options?: {
+async function getOpportunitiesUncached(options?: {
   businessLineId?: string
   companyId?: string
   owner?: string
@@ -309,11 +451,11 @@ export async function getOpportunities(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   if (options?.stage) {
-    filters.push(`{Stage} = "${options.stage}"`)
+    filters.push(`{Stage} = ${formulaString(options.stage)}`)
   }
 
   const filterByFormula =
@@ -347,20 +489,22 @@ export async function getOpportunities(options?: {
 
   return filteredRecords.map(mapOpportunity)
 }
+export const getOpportunities = dedupeRead(getOpportunitiesUncached)
 
-export async function getOpportunityById(id: string): Promise<Opportunity> {
+async function getOpportunityByIdUncached(id: string): Promise<Opportunity> {
   const record = await fetchRecordById<AirtableOpportunityFields>(
     TABLE_NAMES.OPPORTUNITIES,
     id
   )
   return mapOpportunity(record)
 }
+export const getOpportunityById = dedupeRead(getOpportunityByIdUncached)
 
 // ============================================================================
 // ACTIVITIES
 // ============================================================================
 
-export async function getActivities(options?: {
+async function getActivitiesUncached(options?: {
   opportunityId?: string
   contactId?: string
   maxRecords?: number
@@ -392,20 +536,22 @@ export async function getActivities(options?: {
 
   return filteredRecords.map(mapActivity)
 }
+export const getActivities = dedupeRead(getActivitiesUncached)
 
-export async function getActivityById(id: string): Promise<Activity> {
+async function getActivityByIdUncached(id: string): Promise<Activity> {
   const record = await fetchRecordById<AirtableActivityFields>(
     TABLE_NAMES.ACTIVITIES,
     id
   )
   return mapActivity(record)
 }
+export const getActivityById = dedupeRead(getActivityByIdUncached)
 
 // ============================================================================
 // TASKS
 // ============================================================================
 
-export async function getTasks(options?: {
+async function getTasksUncached(options?: {
   opportunityId?: string
   contactId?: string
   coldCallTargetId?: string
@@ -417,11 +563,11 @@ export async function getTasks(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.status) {
-    filters.push(`{Status} = "${options.status}"`)
+    filters.push(`{Status} = ${formulaString(options.status)}`)
   }
 
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   const filterByFormula =
@@ -456,20 +602,22 @@ export async function getTasks(options?: {
 
   return filteredRecords.map(mapTask)
 }
+export const getTasks = dedupeRead(getTasksUncached)
 
-export async function getTaskById(id: string): Promise<Task> {
+async function getTaskByIdUncached(id: string): Promise<Task> {
   const record = await fetchRecordById<AirtableTaskFields>(
     TABLE_NAMES.TASKS,
     id
   )
   return mapTask(record)
 }
+export const getTaskById = dedupeRead(getTaskByIdUncached)
 
 // ============================================================================
 // VALUE_EVENTS
 // ============================================================================
 
-export async function getValueEvents(options?: {
+async function getValueEventsUncached(options?: {
   businessLineId?: string
   opportunityId?: string
   status?: string
@@ -479,7 +627,7 @@ export async function getValueEvents(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.status) {
-    filters.push(`{Status} = "${options.status}"`)
+    filters.push(`{Status} = ${formulaString(options.status)}`)
   }
 
   const filterByFormula =
@@ -513,20 +661,22 @@ export async function getValueEvents(options?: {
 
   return filteredRecords.map(mapValueEvent)
 }
+export const getValueEvents = dedupeRead(getValueEventsUncached)
 
-export async function getValueEventById(id: string): Promise<ValueEvent> {
+async function getValueEventByIdUncached(id: string): Promise<ValueEvent> {
   const record = await fetchRecordById<AirtableValueEventFields>(
     TABLE_NAMES.VALUE_EVENTS,
     id
   )
   return mapValueEvent(record)
 }
+export const getValueEventById = dedupeRead(getValueEventByIdUncached)
 
 // ============================================================================
 // GOALS
 // ============================================================================
 
-export async function getGoals(options?: {
+async function getGoalsUncached(options?: {
   businessLineId?: string
 }): Promise<Goal[]> {
   const records = await fetchRecords<AirtableGoalFields>(TABLE_NAMES.GOALS, {})
@@ -543,20 +693,26 @@ export async function getGoals(options?: {
 
   return filteredRecords.map(mapGoal)
 }
+export const getGoals = dedupeRead(
+  cacheReference(getGoalsUncached, ['airtable', 'goals'], AIRTABLE_CACHE_TAGS.GOALS)
+)
 
-export async function getGoalById(id: string): Promise<Goal> {
+async function getGoalByIdUncached(id: string): Promise<Goal> {
   const record = await fetchRecordById<AirtableGoalFields>(
     TABLE_NAMES.GOALS,
     id
   )
   return mapGoal(record)
 }
+export const getGoalById = dedupeRead(
+  cacheReference(getGoalByIdUncached, ['airtable', 'goal-by-id'], AIRTABLE_CACHE_TAGS.GOALS)
+)
 
 // ============================================================================
 // STAGE_HISTORY
 // ============================================================================
 
-export async function getStageHistory(options?: {
+async function getStageHistoryUncached(options?: {
   opportunityId?: string
   maxRecords?: number
 }): Promise<StageHistory[]> {
@@ -582,8 +738,9 @@ export async function getStageHistory(options?: {
   // Filter them out before returning
   return filteredRecords.map(mapStageHistory).filter((sh): sh is StageHistory => sh !== null)
 }
+export const getStageHistory = dedupeRead(getStageHistoryUncached)
 
-export async function getStageHistoryById(id: string): Promise<StageHistory> {
+async function getStageHistoryByIdUncached(id: string): Promise<StageHistory> {
   const record = await fetchRecordById<AirtableStageHistoryFields>(
     TABLE_NAMES.STAGE_HISTORY,
     id
@@ -596,6 +753,7 @@ export async function getStageHistoryById(id: string): Promise<StageHistory> {
 
   return mapped
 }
+export const getStageHistoryById = dedupeRead(getStageHistoryByIdUncached)
 
 // ============================================================================
 // WRITE OPERATIONS
@@ -609,9 +767,8 @@ async function createRecord<TFields>(
 ): Promise<AirtableRecord<TFields>> {
   const url = getTableUrl(tableName)
 
-  const response = await fetch(url, {
+  const response = await airtableFetch(url, {
     method: 'POST',
-    headers: getHeaders(),
     body: JSON.stringify({
       fields,
       ...(options?.typecast ? { typecast: true } : {}),
@@ -636,9 +793,8 @@ async function updateRecord<TFields>(
 ): Promise<AirtableRecord<TFields>> {
   const url = `${getTableUrl(tableName)}/${recordId}`
 
-  const response = await fetch(url, {
+  const response = await airtableFetch(url, {
     method: 'PATCH',
-    headers: getHeaders(),
     body: JSON.stringify({ fields }),
   })
 
@@ -1263,10 +1419,7 @@ export async function createStageHistory(
 async function deleteRecord(tableName: string, recordId: string): Promise<void> {
   const url = `${getTableUrl(tableName)}/${recordId}`
 
-  const response = await fetch(url, {
-    method: 'DELETE',
-    headers: getHeaders(),
-  })
+  const response = await airtableFetch(url, { method: 'DELETE' })
 
   await handleAirtableResponse<{ deleted: boolean; id: string }>(response)
 }
@@ -1309,13 +1462,13 @@ export async function deleteStageHistory(id: string): Promise<void> {
  * Returns null if user not found
  * Server-side only - NEVER expose password hash to client
  */
-export async function getUserByEmail(email: string): Promise<User | null> {
+async function getUserByEmailUncached(email: string): Promise<User | null> {
   // Normalize email exactly as auth flow does
   const normalizedEmail = email.trim().toLowerCase()
 
   const records = await fetchRecords<AirtableUserFields>(TABLE_NAMES.USERS, {
     // Use exact email match in formula
-    filterByFormula: `LOWER(TRIM({Email})) = "${normalizedEmail}"`,
+    filterByFormula: `LOWER(TRIM({Email})) = ${formulaString(normalizedEmail)}`,
     maxRecords: 1,
   })
 
@@ -1325,12 +1478,36 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
   return mapUser(records[0])
 }
+export const getUserByEmail = dedupeRead(getUserByEmailUncached)
+
+export type UserProfile = Omit<User, 'passwordHash'>
+
+async function getUserProfileByEmailUncached(
+  email: string
+): Promise<UserProfile | null> {
+  const user = await getUserByEmailUncached(email)
+  if (!user) return null
+  const { passwordHash: _passwordHash, ...profile } = user
+  return profile
+}
+/**
+ * Display-only user read (name, theme), cached 5 min across requests.
+ * Never use for authentication: the password hash is stripped and the
+ * active flag may be up to 5 min stale. Use getUserByEmail for auth.
+ */
+export const getUserProfileByEmail = dedupeRead(
+  cacheReference(
+    getUserProfileByEmailUncached,
+    ['airtable', 'user-profile-by-email'],
+    AIRTABLE_CACHE_TAGS.USERS
+  )
+)
 
 /**
  * Get all users
  * Server-side only - used for admin/preview operations
  */
-export async function getUsers(options?: {
+async function getUsersUncached(options?: {
   maxRecords?: number
 }): Promise<User[]> {
   const records = await fetchRecords<AirtableUserFields>(TABLE_NAMES.USERS, {
@@ -1339,6 +1516,7 @@ export async function getUsers(options?: {
 
   return records.map(mapUser)
 }
+export const getUsers = dedupeRead(getUsersUncached)
 
 export async function updateUserPreferences(
   id: string,
@@ -1378,7 +1556,7 @@ export async function updateUserPasswordHash(
 // COLD_CALL_TARGETS
 // ============================================================================
 
-export async function getColdCallTargets(options?: {
+async function getColdCallTargetsUncached(options?: {
   businessLineId?: string
   owner?: string
   callStatus?: string
@@ -1394,11 +1572,11 @@ export async function getColdCallTargets(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   if (options?.callStatus) {
-    filters.push(`{Call Status} = "${options.callStatus}"`)
+    filters.push(`{Call Status} = ${formulaString(options.callStatus)}`)
   }
 
   const filterByFormula =
@@ -1425,8 +1603,9 @@ export async function getColdCallTargets(options?: {
 
   return filteredRecords.map(mapColdCallTarget)
 }
+export const getColdCallTargets = dedupeRead(getColdCallTargetsUncached)
 
-export async function getColdCallTargetById(
+async function getColdCallTargetByIdUncached(
   id: string
 ): Promise<ColdCallTarget> {
   const record = await fetchRecordById<AirtableColdCallTargetFields>(
@@ -1435,6 +1614,7 @@ export async function getColdCallTargetById(
   )
   return mapColdCallTarget(record)
 }
+export const getColdCallTargetById = dedupeRead(getColdCallTargetByIdUncached)
 
 // ============================================================================
 // COLD_CALL_TARGETS - WRITE
@@ -1599,7 +1779,7 @@ export interface GetCallStatusHistoryOptions {
   maxRecords?: number
 }
 
-export async function getCallStatusHistory(
+async function getCallStatusHistoryUncached(
   options: GetCallStatusHistoryOptions = {}
 ): Promise<CallStatusHistory[]> {
   const { coldCallTargetId, maxRecords } = options
@@ -1628,12 +1808,13 @@ export async function getCallStatusHistory(
 
   return filteredRecords.map(mapCallStatusHistory).filter((h): h is CallStatusHistory => h !== null)
 }
+export const getCallStatusHistory = dedupeRead(getCallStatusHistoryUncached)
 
 // ============================================================================
 // RELATIONSHIPS
 // ============================================================================
 
-export async function getRelationships(options?: {
+async function getRelationshipsUncached(options?: {
   companyId?: string
   contactId?: string
   owner?: Owner
@@ -1643,11 +1824,11 @@ export async function getRelationships(options?: {
   const filters: string[] = []
 
   if (options?.status) {
-    filters.push(`{Status} = "${options.status}"`)
+    filters.push(`{Status} = ${formulaString(options.status)}`)
   }
 
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   const filterByFormula = filters.length > 0 ? `AND(${filters.join(', ')})` : undefined
@@ -1683,14 +1864,16 @@ export async function getRelationships(options?: {
 
   return filteredRecords.map(mapRelationship)
 }
+export const getRelationships = dedupeRead(getRelationshipsUncached)
 
-export async function getRelationshipById(id: string): Promise<Relationship> {
+async function getRelationshipByIdUncached(id: string): Promise<Relationship> {
   const record = await fetchRecordById<AirtableRelationshipFields>(
     TABLE_NAMES.RELATIONSHIPS,
     id
   )
   return mapRelationship(record)
 }
+export const getRelationshipById = dedupeRead(getRelationshipByIdUncached)
 
 export interface CreateRelationshipInput {
   name: string
@@ -1814,13 +1997,14 @@ export interface CreateImportBatchInput {
   errors?: number
 }
 
-export async function getImportBatches(options?: { maxRecords?: number }): Promise<ImportBatch[]> {
+async function getImportBatchesUncached(options?: { maxRecords?: number }): Promise<ImportBatch[]> {
   const records = await fetchRecords<AirtableImportBatchFields>(TABLE_NAMES.IMPORT_BATCHES, {
     sort: [{ field: 'Created At', direction: 'desc' }],
     maxRecords: options?.maxRecords,
   })
   return records.map(mapImportBatch)
 }
+export const getImportBatches = dedupeRead(getImportBatchesUncached)
 
 export async function createImportBatch(input: CreateImportBatchInput): Promise<ImportBatch> {
   const now = new Date().toISOString()
@@ -1874,13 +2058,14 @@ export async function markImportBatchRolledBack(
   return mapImportBatch(record)
 }
 
-export async function getEmailSuppressions(options?: { activeOnly?: boolean }): Promise<EmailSuppression[]> {
+async function getEmailSuppressionsUncached(options?: { activeOnly?: boolean }): Promise<EmailSuppression[]> {
   const records = await fetchRecords<AirtableEmailSuppressionFields>(TABLE_NAMES.EMAIL_SUPPRESSIONS, {
     filterByFormula: options?.activeOnly === false ? undefined : '{Active} = TRUE()',
     sort: [{ field: 'Created At', direction: 'desc' }],
   })
   return records.map(mapEmailSuppression)
 }
+export const getEmailSuppressions = dedupeRead(getEmailSuppressionsUncached)
 
 export async function createEmailSuppression(input: {
   email: string
@@ -1936,16 +2121,18 @@ export async function isEmailSuppressed(email: string, companyId?: string, conta
   )
 }
 
-export async function getEmailCampaigns(options?: { maxRecords?: number }): Promise<EmailCampaign[]> {
+async function getEmailCampaignsUncached(options?: { maxRecords?: number }): Promise<EmailCampaign[]> {
   const records = await fetchRecords<AirtableEmailCampaignFields>(TABLE_NAMES.EMAIL_CAMPAIGNS, {
     sort: [{ field: 'Created At', direction: 'desc' }], maxRecords: options?.maxRecords,
   })
   return records.map(mapEmailCampaign)
 }
+export const getEmailCampaigns = dedupeRead(getEmailCampaignsUncached)
 
-export async function getEmailCampaignById(id: string): Promise<EmailCampaign> {
+async function getEmailCampaignByIdUncached(id: string): Promise<EmailCampaign> {
   return mapEmailCampaign(await fetchRecordById<AirtableEmailCampaignFields>(TABLE_NAMES.EMAIL_CAMPAIGNS, id))
 }
+export const getEmailCampaignById = dedupeRead(getEmailCampaignByIdUncached)
 
 export async function createEmailCampaign(input: {
   name: string; businessLineId: string; subject: string; templateId?: string; senderName: string; senderEmail: string; replyTo?: string; recipientCount: number; createdBy: Owner
@@ -1967,10 +2154,11 @@ export async function updateEmailCampaign(id: string, input: { brevoCampaignId?:
   return mapEmailCampaign(await updateRecord<AirtableEmailCampaignFields>(TABLE_NAMES.EMAIL_CAMPAIGNS, id, fields))
 }
 
-export async function getEmailRecipients(options?: { campaignId?: string }): Promise<EmailRecipient[]> {
+async function getEmailRecipientsUncached(options?: { campaignId?: string }): Promise<EmailRecipient[]> {
   const records = await fetchRecords<AirtableEmailRecipientFields>(TABLE_NAMES.EMAIL_RECIPIENTS, { sort: [{ field: 'Created At', direction: 'desc' }] })
   return records.filter((record) => !options?.campaignId || record.fields.Campaign?.includes(options.campaignId)).map(mapEmailRecipient)
 }
+export const getEmailRecipients = dedupeRead(getEmailRecipientsUncached)
 
 export async function createEmailRecipient(input: {
   name: string; campaignId: string; companyId: string; contactId?: string; email: string; recipientType: 'COMPANY' | 'CONTACT'; status?: EmailRecipientStatus; exclusionReason?: string
@@ -1998,17 +2186,19 @@ export async function updateEmailRecipient(id: string, input: {
   return mapEmailRecipient(await updateRecord<AirtableEmailRecipientFields>(TABLE_NAMES.EMAIL_RECIPIENTS, id, fields))
 }
 
-export async function getEmailEvents(): Promise<EmailEvent[]> {
+async function getEmailEventsUncached(): Promise<EmailEvent[]> {
   return (await fetchRecords<AirtableEmailEventFields>(TABLE_NAMES.EMAIL_EVENTS)).map(mapEmailEvent)
 }
+export const getEmailEvents = dedupeRead(getEmailEventsUncached)
 
-export async function getEmailEventByKey(eventKey: string): Promise<EmailEvent | null> {
+async function getEmailEventByKeyUncached(eventKey: string): Promise<EmailEvent | null> {
   const records = await fetchRecords<AirtableEmailEventFields>(TABLE_NAMES.EMAIL_EVENTS, {
-    filterByFormula: `{Event Key} = "${eventKey}"`,
+    filterByFormula: `{Event Key} = ${formulaString(eventKey)}`,
     maxRecords: 1,
   })
   return records[0] ? mapEmailEvent(records[0]) : null
 }
+export const getEmailEventByKey = dedupeRead(getEmailEventByKeyUncached)
 
 export async function createEmailEvent(input: Omit<EmailEvent, 'id' | 'createdAt'>): Promise<EmailEvent> {
   return mapEmailEvent(await createRecord<AirtableEmailEventFields>(TABLE_NAMES.EMAIL_EVENTS, {
