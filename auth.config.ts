@@ -5,6 +5,8 @@ import type { NextAuthConfig } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { getUserByEmail } from '@/lib/airtable'
+import { clearLoginFailures, isLoginBlocked, recordLoginFailure } from '@/lib/auth/login-throttle'
+import { recheckSessionUser } from '@/lib/auth/session-check'
 
 export const authConfig = {
   providers: [
@@ -23,6 +25,13 @@ export const authConfig = {
         const password = String(credentials.password)
         const email = String(credentials.email).trim().toLowerCase()
 
+        // Too many recent failures: refuse without touching Airtable or bcrypt.
+        // The login page shows the same generic error, so nothing reveals
+        // whether the email exists.
+        if (isLoginBlocked(email)) {
+          return null
+        }
+
         // Fetch user from Airtable USERS table
         let user
         try {
@@ -31,22 +40,13 @@ export const authConfig = {
           return null
         }
 
-        // User not found
-        if (!user) {
+        // User not found, inactive, or wrong password: same answer, counted as a failure
+        if (!user || !user.active || !(await bcrypt.compare(password, user.passwordHash))) {
+          recordLoginFailure(email)
           return null
         }
 
-        // User not active
-        if (!user.active) {
-          return null
-        }
-
-        // Verify password with bcrypt
-        const isValidPassword = await bcrypt.compare(password, user.passwordHash)
-
-        if (!isValidPassword) {
-          return null
-        }
+        clearLoginFailures(email)
 
         // Return user object (without password hash)
         // Include role for session
@@ -86,8 +86,11 @@ export const authConfig = {
         token.email = user.email
         token.name = user.name
         token.role = user.role
+        token.checkedAt = Date.now()
+        return token
       }
-      return token
+      // Later requests: a user deactivated in USERS loses access within 15 minutes
+      return recheckSessionUser(token, getUserByEmail)
     },
   },
   session: {
