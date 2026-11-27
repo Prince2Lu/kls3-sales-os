@@ -1,9 +1,10 @@
 'use server'
 
 import bcrypt from 'bcryptjs'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { auth } from '@/auth'
 import {
+  AIRTABLE_CACHE_TAGS,
   getUserByEmail,
   updateUserPasswordHash,
   updateUserPreferences,
@@ -32,6 +33,7 @@ export async function updatePreferencesAction(data: {
       lastName: data.lastName.trim(),
       theme: data.theme,
     })
+    updateTag(AIRTABLE_CACHE_TAGS.USERS)
 
     revalidatePath('/')
     revalidatePath('/preferences')
@@ -70,6 +72,7 @@ export async function changePasswordAction(data: {
 
     const newPasswordHash = await bcrypt.hash(data.newPassword, 12)
     await updateUserPasswordHash(user.id, newPasswordHash)
+    updateTag(AIRTABLE_CACHE_TAGS.USERS)
 
     return { success: true }
   } catch (error) {
