@@ -2,7 +2,7 @@
 // Determine when a ProspectingTarget should be converted to an Opportunity
 // Based on ActivityResult, not ProspectingStatus
 
-import type { ActivityResult, Stage } from '@/types/domain'
+import type { ActivityResult, ProspectingStatus, Stage } from '@/types/domain'
 
 /**
  * Check if an activity result requires Opportunity conversion
@@ -89,4 +89,17 @@ export function getConvertedProspectingStatus(result: ActivityResult): 'RDV book
     default:
       return 'Converti'
   }
+}
+
+/**
+ * Whether a real conversation should move a prospecting target to 'Échange'.
+ *
+ * RÈGLE MÉTIER:
+ * - Une conversation reste en prospection (aucune Opportunity).
+ * - Elle fait avancer une cible pas encore en échange : À appeler, À rappeler, Email Flow.
+ * - Elle ne fait jamais reculer une cible déjà Échange, Qualifié, RDV booké ou Converti,
+ *   et ne réactive pas silencieusement une cible Mauvais numéro / Pas intéressé.
+ */
+export function shouldMoveToExchangeAfterConversation(status: ProspectingStatus): boolean {
+  return status === 'À appeler' || status === 'À rappeler' || status === 'Email Flow'
 }
