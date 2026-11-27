@@ -107,6 +107,49 @@ await test('no CRM read is silently capped (maxRecords) except the recent import
       .filter((line) => /maxRecords: \d{2,}/.test(line) && !allowed.some((ok) => line.includes(ok)))
       .map((line) => `${file}: ${line.trim()}`))
   assert.equal(offenders.length, 0, offenders.join('\n'))
+const focusState = { target: null, statusChanges: [], conversions: [], created: [], updatedOpps: [], updatedTasks: [] }
+state.focus = focusState
+const focus = await load('app/focus/actions.ts', {
+  '@/lib/airtable': `export async function createActivity(data) { state.focus.created.push({ kind: 'activity', ...data }) }
+    export async function createTask(data) { state.focus.created.push({ kind: 'task', ...data }) }
+    export async function updateTask(id, data) { state.focus.updatedTasks.push({ id, data }) }
+    export async function updateOpportunity(id, data) { state.focus.updatedOpps.push({ id, data }) }
+    export async function createStageHistory() {}
+    export async function getTasks() { return [] }
+    export async function getColdCallTargetById() { return state.focus.target }`,
+  '@/lib/cold-call/status-manager': `export async function changeColdCallStatus(params) { state.focus.statusChanges.push(params); return { success: true, statusChanged: true } }`,
+  '@/lib/prospecting/opportunity-converter': `export async function convertProspectingTargetToOpportunity(params) { state.focus.conversions.push(params); return { success: true, opportunityId: 'opp-new' } }`,
+  'next/cache': `export function revalidatePath() {}`,
+})
+const focusConversation = (overrides = {}) => focus.processConversation({ taskId: 'task1', opportunityId: null, contactId: 'c1', coldCallTargetId: 't1', owner: 'Lilian', currentStage: null, ...overrides })
+await test('Focus conversation keeps the prospect in prospecting: no Opportunity, status Échange', async () => {
+  focusState.target = { id: 't1', callStatus: 'À appeler' }
+  assert.equal((await focusConversation()).success, true)
+  assert.equal(focusState.conversions.length, 0)
+  assert.equal(focusState.statusChanges.at(-1).targetId, 't1'); assert.equal(focusState.statusChanges.at(-1).toStatus, 'Échange')
+  const activity = focusState.created.find((item) => item.kind === 'activity')
+  assert.equal(activity.result, 'CONVERSATION'); assert.equal(activity.coldCallTargetId, 't1'); assert.equal(activity.opportunityId, undefined)
+  assert.equal(focusState.updatedTasks.at(-1).data.status, 'DONE')
+})
+await test('Focus conversation never moves a qualified or converted prospect backwards', async () => {
+  for (const callStatus of ['Échange', 'Qualifié', 'RDV booké', 'Converti', 'Pas intéressé', 'Mauvais numéro']) {
+    const before = focusState.statusChanges.length
+    focusState.target = { id: 't1', callStatus }
+    await focusConversation()
+    assert.equal(focusState.statusChanges.length, before, callStatus)
+  }
+  assert.equal(focusState.conversions.length, 0)
+})
+await test('Focus conversation on an existing Opportunity keeps its links and creates nothing new', async () => {
+  const before = focusState.statusChanges.length
+  await focusConversation({ opportunityId: 'o1', currentStage: 'RDV' })
+  assert.equal(focusState.conversions.length, 0); assert.equal(focusState.statusChanges.length, before)
+  assert.equal(focusState.created.at(-1).opportunityId, 'o1'); assert.equal(focusState.updatedOpps.length, 0)
+})
+await test('Focus booked meeting still converts the prospect at stage RDV', async () => {
+  await focus.processMeetingBooked({ taskId: 'task2', opportunityId: null, contactId: 'c1', coldCallTargetId: 't1', owner: 'Lilian', currentStage: null, meetingDate: '2026-12-01', meetingTime: '10:00' })
+  assert.equal(focusState.conversions.length, 1)
+  assert.equal(focusState.conversions[0].initialStage, 'RDV'); assert.equal(focusState.conversions[0].activityResult, 'MEETING_BOOKED')
 })
 const { renderToStaticMarkup } = require('react-dom/server')
 const today = await load('app/today/today-tasks-section.tsx', {

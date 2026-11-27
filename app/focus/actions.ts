@@ -11,7 +11,10 @@ import {
   updateOpportunity,
   createStageHistory,
   getTasks,
+  getColdCallTargetById,
 } from '@/lib/airtable'
+import { changeColdCallStatus } from '@/lib/cold-call/status-manager'
+import { shouldMoveToExchangeAfterConversation } from '@/lib/prospecting/conversion-rules'
 import type { Owner, Stage, TaskType, ActivityResult } from '@/types/domain'
 
 // ============================================================================
@@ -146,23 +149,16 @@ export async function processConversation(input: {
     notes,
   } = input
 
-  let opportunityId = initialOpportunityId
+  const opportunityId = initialOpportunityId
 
-  // CONVERSION: If no Opportunity exists but task has coldCallTargetId, convert
+  // A real conversation is still prospecting: it never creates an Opportunity.
+  // Only a booked meeting (processMeetingBooked) or an explicit manual conversion does.
+  // Without an Opportunity, move the prospecting target forward to 'Échange' (never backwards).
   if (!opportunityId && coldCallTargetId) {
-    const { convertProspectingTargetToOpportunity } = await import('@/lib/prospecting/opportunity-converter')
-    const conversionResult = await convertProspectingTargetToOpportunity({
-      targetId: coldCallTargetId,
-      initialStage: 'Échange',
-      source: 'Cold Call',
-      owner,
-      activityResult: 'CONVERSATION',
-    })
-
-    if (conversionResult.success) {
-      opportunityId = conversionResult.opportunityId!
+    const target = await getColdCallTargetById(coldCallTargetId)
+    if (shouldMoveToExchangeAfterConversation(target.callStatus)) {
+      await changeColdCallStatus({ targetId: coldCallTargetId, toStatus: 'Échange' })
     }
-    // Continue even if conversion fails (activity/task will be created without opportunity)
   }
 
   // 1. Create ACTIVITY
@@ -195,8 +191,7 @@ export async function processConversation(input: {
     })
   }
 
-  // 3. Stage transition if appropriate (early stage → Échange)
-  // Note: If conversion just happened, stage is already 'Échange', transition will be skipped
+  // 3. Legacy: an existing early-stage Opportunity moves to Échange (no Opportunity is created here)
   if (opportunityId && shouldTransitionToEchange(currentStage)) {
     await updateOpportunity(opportunityId, {
       stage: 'Échange',
@@ -221,6 +216,7 @@ export async function processConversation(input: {
   revalidatePath('/today')
   revalidatePath('/prospects')
   revalidatePath('/pipeline')
+  revalidatePath('/cold-call')
   if (relationshipId) {
     revalidatePath(`/relationships/${relationshipId}`)
   }
