@@ -42,7 +42,7 @@ interface PipelineBoardProps {
   contacts: Contact[]
   activities: Activity[]
   stages: readonly Stage[]
-  currentOwner: 'Eric' | 'Lilian'
+  currentOwner: string
 }
 
 export function PipelineBoard({

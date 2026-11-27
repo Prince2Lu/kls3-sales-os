@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { updateTaskAction } from '../../../actions'
 import type { Task } from '@/types/domain'
+import { ownerOptions } from '@/lib/users/owner-options'
 
 const TASK_TYPES = [
   'CALL',
@@ -30,13 +31,13 @@ const STATUSES = [
   { value: 'CANCELLED', label: 'Annulée' },
 ] as const
 
-const OWNERS = ['Eric', 'Lilian'] as const
 
 interface TaskEditFormProps {
   taskId: string
   opportunityId: string
   task: Task
-  currentOwner: 'Eric' | 'Lilian'
+  currentOwner: string
+  owners: string[]
 }
 
 export function TaskEditForm({
@@ -44,6 +45,7 @@ export function TaskEditForm({
   opportunityId,
   task,
   currentOwner,
+  owners,
 }: TaskEditFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -155,7 +157,7 @@ export function TaskEditForm({
               Owner <span className="text-red-500">*</span>
             </label>
             <Select name="owner" required defaultValue={task.owner}>
-              {OWNERS.map((owner) => (
+              {ownerOptions(owners, task.owner).map((owner) => (
                 <option key={owner} value={owner}>
                   {owner}
                 </option>

@@ -31,6 +31,7 @@ interface WorkModeProps {
   activities: Activity[]
   tasks: Task[]
   currentOwner: Owner
+  owners: string[]
 }
 
 // Pre-RDV prospecting statuses (for PROSPECTING_TARGETS)
@@ -85,6 +86,7 @@ export function WorkMode({
   activities,
   tasks,
   currentOwner,
+  owners,
 }: WorkModeProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -267,6 +269,7 @@ export function WorkMode({
         selectedOwner={selectedOwner}
         availableStatuses={availableStatuses}
         currentOwner={currentOwner}
+        owners={owners}
         isColdCallBusinessLine={isColdCallBusinessLine_}
         onFilterChange={updateFilters}
       />

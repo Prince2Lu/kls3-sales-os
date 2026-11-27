@@ -4,6 +4,7 @@ import { getRelationshipById, getContactById } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { TaskForm } from './task-form'
 import { notFound } from 'next/navigation'
+import { getActiveOwners } from '@/lib/users/owners'
 
 interface NewRelationshipTaskPageProps {
   params: Promise<{ id: string }>
@@ -31,6 +32,7 @@ export default async function NewRelationshipTaskPage({
         </div>
 
         <TaskForm
+          owners={await getActiveOwners()}
           relationshipId={id}
           contactId={contact?.id}
           currentOwner={currentOwner}

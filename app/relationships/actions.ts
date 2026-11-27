@@ -25,6 +25,7 @@ import type {
   Owner,
   Priority,
 } from '@/types/domain'
+import { assertValidOwner } from '@/lib/users/owners'
 
 // ============================================================================
 // RELATIONSHIP ACTIONS
@@ -44,6 +45,7 @@ export interface CreateRelationshipInput {
 
 export async function createRelationshipAction(input: CreateRelationshipInput) {
   try {
+    await assertValidOwner(input.owner)
     // Default owner to current user if not provided
     const owner = input.owner || (await getCurrentOwner())
 
@@ -82,6 +84,7 @@ export async function updateRelationshipAction(
   input: Partial<CreateRelationshipInput>
 ) {
   try {
+    await assertValidOwner(input.owner)
     const relationship = await updateRelationship(id, {
       name: input.name,
       companyId: input.companyId,
@@ -129,6 +132,7 @@ export interface CreateRelationshipTaskInput {
 
 export async function createRelationshipTaskAction(input: CreateRelationshipTaskInput) {
   try {
+    await assertValidOwner(input.owner)
     await createTask({
       relationshipId: input.relationshipId,
       contactId: input.contactId,
@@ -172,6 +176,7 @@ export async function createRelationshipActivityAction(
   input: CreateRelationshipActivityInput
 ) {
   try {
+    await assertValidOwner(input.owner)
     await createActivity({
       relationshipId: input.relationshipId,
       contactId: input.contactId,

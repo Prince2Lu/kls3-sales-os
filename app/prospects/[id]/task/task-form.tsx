@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { createTaskAction } from '../../actions'
+import { ownerOptions } from '@/lib/users/owner-options'
 
 const TASK_TYPES = [
   'CALL',
@@ -23,15 +24,15 @@ const TASK_TYPES = [
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const
 
-const OWNERS = ['Eric', 'Lilian'] as const
 
 interface TaskFormProps {
   opportunityId: string
   contactId?: string
-  currentOwner: 'Eric' | 'Lilian'
+  currentOwner: string
+  owners: string[]
 }
 
-export function TaskForm({ opportunityId, contactId, currentOwner }: TaskFormProps) {
+export function TaskForm({ opportunityId, contactId, currentOwner, owners }: TaskFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -121,7 +122,7 @@ export function TaskForm({ opportunityId, contactId, currentOwner }: TaskFormPro
               Owner <span className="text-red-500">*</span>
             </label>
             <Select name="owner" required defaultValue={currentOwner}>
-              {OWNERS.map((owner) => (
+              {ownerOptions(owners, currentOwner).map((owner) => (
                 <option key={owner} value={owner}>
                   {owner}
                 </option>
