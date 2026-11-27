@@ -38,7 +38,7 @@ interface ColdCallBoardProps {
   contacts: Contact[]
   activities: Activity[]
   tasks: Task[]
-  currentOwner: 'Eric' | 'Lilian'
+  currentOwner: string
 }
 
 // Active prospecting statuses only.

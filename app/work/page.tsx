@@ -11,6 +11,7 @@ import {
 } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { WorkMode } from './work-mode'
+import { getActiveOwners } from '@/lib/users/owners'
 
 export default async function WorkPage() {
   const currentOwner = await getCurrentOwner()
@@ -53,6 +54,7 @@ export default async function WorkPage() {
         activities={activities}
         tasks={tasks}
         currentOwner={currentOwner}
+        owners={await getActiveOwners()}
       />
     </div>
   )

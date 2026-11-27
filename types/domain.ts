@@ -47,7 +47,9 @@ export type Source =
   | 'Inbound'
   | 'Other'
 
-export type Owner = 'Eric' | 'Lilian'
+// Name of an active user in USERS (Airtable single selects hold this name).
+// Not hardcoded since Trello #53: see lib/users/owners.ts.
+export type Owner = string
 
 export type RelationshipType =
   | 'Réseau'

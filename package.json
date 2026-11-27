@@ -14,7 +14,8 @@
     "seed:phase4": "tsx scripts/seed-phase4-test.ts",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
     "cleanup:demo": "tsx scripts/cleanup-demo-data.ts",
-    "diagnose": "tsx scripts/diagnose-relationships.ts"
+    "diagnose": "tsx scripts/diagnose-relationships.ts",
+    "diagnose:early-opps": "tsx scripts/diagnose-early-opportunities.ts"
   },
   "repository": {
     "type": "git",

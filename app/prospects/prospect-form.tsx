@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import type { BusinessLine, Company, Contact, Opportunity } from '@/types/domain'
 import { createOpportunityAction, updateOpportunityAction } from './actions'
+import { ownerOptions } from '@/lib/users/owner-options'
 
 const STAGES = [
   'RDV',
@@ -35,7 +36,6 @@ const SOURCES = [
   'Other',
 ] as const
 
-const OWNERS = ['Eric', 'Lilian'] as const
 
 interface ProspectFormProps {
   businessLines: BusinessLine[]
@@ -45,7 +45,8 @@ interface ProspectFormProps {
   defaultContactId?: string
   opportunity?: Opportunity
   mode?: 'create' | 'edit'
-  currentOwner?: 'Eric' | 'Lilian'
+  currentOwner?: string
+  owners: string[]
 }
 
 export function ProspectForm({
@@ -57,6 +58,7 @@ export function ProspectForm({
   opportunity,
   mode = 'create',
   currentOwner,
+  owners,
 }: ProspectFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -199,7 +201,7 @@ export function ProspectForm({
               </label>
               <Select name="owner" required defaultValue={opportunity?.owner ?? currentOwner}>
                 <option value="">Sélectionner...</option>
-                {OWNERS.map((owner) => (
+                {ownerOptions(owners, opportunity?.owner, currentOwner).map((owner) => (
                   <option key={owner} value={owner}>
                     {owner}
                   </option>

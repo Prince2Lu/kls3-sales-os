@@ -4,6 +4,7 @@ import { getCompanies, getContacts } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { RelationshipForm } from '../relationship-form'
 import Link from 'next/link'
+import { getActiveOwners } from '@/lib/users/owners'
 
 interface NewRelationshipPageProps {
   searchParams: Promise<{ companyId?: string; contactId?: string }>
@@ -42,6 +43,7 @@ export default async function NewRelationshipPage({
         companies={companies}
         contacts={contacts}
         currentOwner={currentOwner}
+        owners={await getActiveOwners()}
         defaultCompanyId={params.companyId}
         defaultContactId={params.contactId}
         mode="create"

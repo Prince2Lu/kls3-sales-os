@@ -1,48 +1,41 @@
 // Current owner context for KLS3 Sales OS
-// Maps authenticated session user to Sales OS Owner type
+// Maps the authenticated session user to the Sales OS Owner (the user's name in USERS)
 
 import { auth } from '@/auth'
 import type { Owner } from '@/types/domain'
 
-const VALID_OWNERS: Owner[] = ['Eric', 'Lilian']
-
 /**
- * Get the current authenticated user's Owner mapping
- * Phase 8: Maps session.user.name to Owner type
+ * Get the current authenticated user's Owner (Trello #53: no hardcoded names).
+ * The session is only issued to an active USERS row at sign-in, so the session
+ * name is the owner. Adding a salesperson needs no code change.
  *
- * @throws Error if no authenticated session or user not mapped to valid Owner
- * @returns Owner ('Eric' | 'Lilian')
+ * @throws Error if no authenticated session or the session has no name
  */
 export async function getCurrentOwner(): Promise<Owner> {
   // TEST MODE: Allow scripts to set owner via TEST_OWNER env var
   // SECURITY: Only in non-production environments
   if (process.env.NODE_ENV !== 'production' && process.env.TEST_OWNER) {
-    const testOwner = process.env.TEST_OWNER
-    if (!VALID_OWNERS.includes(testOwner as Owner)) {
-      throw new Error(`TEST_OWNER "${testOwner}" is not a valid Sales OS owner`)
-    }
-    return testOwner as Owner
+    return process.env.TEST_OWNER
   }
 
   const session = await auth()
 
-  if (!session?.user?.name) {
+  if (!session?.user) {
     throw new Error('No authenticated user session')
   }
 
-  const userName = session.user.name
+  const userName = session.user.name?.trim()
 
-  if (!VALID_OWNERS.includes(userName as Owner)) {
-    throw new Error(`User "${userName}" is not mapped to a valid Sales OS owner`)
+  if (!userName) {
+    throw new Error('Authenticated user has no name in USERS')
   }
 
-  return userName as Owner
+  return userName
 }
 
 /**
  * Get the current owner's display name
  */
 export async function getCurrentOwnerDisplayName(): Promise<string> {
-  const owner = await getCurrentOwner()
-  return owner
+  return getCurrentOwner()
 }

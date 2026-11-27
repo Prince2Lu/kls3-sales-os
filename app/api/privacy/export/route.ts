@@ -4,12 +4,15 @@ import {
   getEmailSuppressions, getOpportunities, getRelationships, getTasks,
 } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
+import { denyUnlessRole } from '@/lib/auth/roles'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   try {
     const exportedBy = await getCurrentOwner()
+    const denied = await denyUnlessRole()
+    if (denied) return NextResponse.json({ error: denied }, { status: 403 })
     const contactId = request.nextUrl.searchParams.get('contactId')?.trim()
     if (!contactId) return NextResponse.json({ error: 'contactId obligatoire' }, { status: 400 })
 

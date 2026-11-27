@@ -16,6 +16,7 @@ import {
 } from '@/lib/airtable'
 import { revalidatePath } from 'next/cache'
 import type { Owner, Stage, Priority, Source } from '@/types/domain'
+import { assertValidOwner } from '@/lib/users/owners'
 
 // ============================================================================
 // OPPORTUNITY ACTIONS
@@ -48,6 +49,7 @@ export interface CreateOpportunityInput {
 
 export async function createOpportunityAction(input: CreateOpportunityInput) {
   try {
+    await assertValidOwner(input.owner)
     let companyId = input.companyId
     let contactId = input.contactId
 
@@ -106,6 +108,7 @@ export async function updateOpportunityAction(
   input: Partial<CreateOpportunityInput>
 ) {
   try {
+    await assertValidOwner(input.owner)
     await updateOpportunity(id, {
       name: input.name,
       businessLineId: input.businessLineId,
@@ -154,6 +157,7 @@ export interface CreateActivityInput {
 
 export async function createActivityAction(input: CreateActivityInput) {
   try {
+    await assertValidOwner(input.owner)
     await createActivity(input)
 
     revalidatePath(`/prospects/${input.opportunityId}`)
@@ -174,6 +178,7 @@ export async function updateActivityAction(
   input: Partial<CreateActivityInput>
 ) {
   try {
+    await assertValidOwner(input.owner)
     await updateActivity(id, input)
 
     revalidatePath(`/prospects/${opportunityId}`)
@@ -205,6 +210,7 @@ export interface CreateTaskInput {
 
 export async function createTaskAction(input: CreateTaskInput) {
   try {
+    await assertValidOwner(input.owner)
     await createTask({
       ...input,
       status: 'TODO',
@@ -229,6 +235,7 @@ export async function updateTaskAction(
   input: Partial<CreateTaskInput>
 ) {
   try {
+    await assertValidOwner(input.owner)
     const updateData: Partial<CreateTaskInput> & { completedAt?: string | null } = { ...input }
 
     // Handle completedAt based on status changes
