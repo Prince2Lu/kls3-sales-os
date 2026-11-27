@@ -152,6 +152,55 @@ await test('Focus booked meeting still converts the prospect at stage RDV', asyn
   assert.equal(focusState.conversions.length, 1)
   assert.equal(focusState.conversions[0].initialStage, 'RDV'); assert.equal(focusState.conversions[0].activityResult, 'MEETING_BOOKED')
 })
+const throttle = await load('lib/auth/login-throttle.ts')
+await test('login is refused after 5 failures for 15 minutes, then allowed again', async () => {
+  const t0 = Date.UTC(2026, 10, 27, 9, 0)
+  for (let i = 0; i < 5; i++) { assert.equal(throttle.isLoginBlocked('x@kls3.test', t0), false); throttle.recordLoginFailure('x@kls3.test', t0) }
+  assert.equal(throttle.isLoginBlocked('x@kls3.test', t0 + 60000), true)
+  assert.equal(throttle.isLoginBlocked('other@kls3.test', t0), false, 'other accounts are not affected')
+  assert.equal(throttle.isLoginBlocked('x@kls3.test', t0 + 15 * 60000), false)
+  throttle.recordLoginFailure('y@kls3.test', t0); throttle.clearLoginFailures('y@kls3.test')
+  assert.equal(throttle.isLoginBlocked('y@kls3.test', t0), false)
+})
+const sessionCheck = await load('lib/auth/session-check.ts')
+await test('a session ends within 15 minutes once the user is deactivated, and survives an Airtable outage', async () => {
+  const now = Date.UTC(2026, 10, 27, 9, 0)
+  const token = { email: 'lilian@kls3.test', name: 'Lilian', role: 'SALES', checkedAt: now - 60000 }
+  let reads = 0
+  const inactive = async () => { reads++; return { name: 'Lilian', role: 'SALES', active: false } }
+  assert.equal(await sessionCheck.recheckSessionUser(token, inactive, now), token, 'checked less than 15 min ago: no read')
+  assert.equal(reads, 0)
+  const stale = { ...token, checkedAt: now - 16 * 60000 }
+  assert.equal(await sessionCheck.recheckSessionUser(stale, inactive, now), null)
+  assert.equal(await sessionCheck.recheckSessionUser(stale, async () => null, now), null, 'removed user')
+  const outage = async () => { throw new Error('Airtable down') }
+  assert.equal(await sessionCheck.recheckSessionUser(stale, outage, now), stale)
+  const refreshed = await sessionCheck.recheckSessionUser(stale, async () => ({ name: 'Lilian S', role: 'SALES_DIRECTOR', active: true }), now)
+  assert.equal(refreshed.role, 'SALES_DIRECTOR'); assert.equal(refreshed.name, 'Lilian S'); assert.equal(refreshed.checkedAt, now)
+})
+const formula = await load('lib/airtable/formula.ts')
+await test('values put in Airtable formulas cannot break out of the string', async () => {
+  assert.equal(formula.formulaString('eric@kls3.test'), '"eric@kls3.test"')
+  assert.equal(formula.formulaString('x" OR "1"="1'), '"x\\" OR \\"1\\"=\\"1"')
+  assert.equal(formula.formulaString('a\\'), '"a\\\\"')
+  assert.equal(formula.formulaString(null), '""')
+})
+const rateLimit = await load('lib/auth/rate-limit.ts')
+await test('public card events are limited per visitor and card', async () => {
+  const t0 = 1_000_000
+  for (let i = 0; i < 60; i++) assert.equal(rateLimit.allowRequest('k', 60, 60000, t0), true)
+  assert.equal(rateLimit.allowRequest('k', 60, 60000, t0 + 1), false)
+  assert.equal(rateLimit.allowRequest('other', 60, 60000, t0 + 1), true)
+  assert.equal(rateLimit.allowRequest('k', 60, 60000, t0 + 60000), true)
+})
+const roleState = { session: null }
+const roles = await load('lib/auth/roles.ts', { '@/auth': `export async function auth() { return globalThis.roleState.session }` }, { globalThis: { roleState } })
+await test('sensitive actions are reserved to ADMIN and SALES_DIRECTOR roles', async () => {
+  roleState.session = { user: { name: 'Eric', role: 'ADMIN' } }; assert.equal(await roles.denyUnlessRole(), null)
+  roleState.session = { user: { name: 'Lilian', role: 'SALES_DIRECTOR' } }; assert.equal(await roles.denyUnlessRole(), null)
+  roleState.session = { user: { name: 'Camille', role: 'SALES' } }; assert.match(await roles.denyUnlessRole(), /réservée/)
+  roleState.session = null; assert.match(await roles.denyUnlessRole(), /réservée/)
+})
 const { renderToStaticMarkup } = require('react-dom/server')
 const today = await load('app/today/today-tasks-section.tsx', {
   '@/lib/airtable': `export async function getOpportunities() { return [] }

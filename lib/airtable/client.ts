@@ -5,6 +5,7 @@
 import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { getTableUrl, getHeaders, TABLE_NAMES } from './config'
+import { formulaString } from './formula'
 import type {
   AirtableRecord,
   AirtableListResponse,
@@ -344,7 +345,7 @@ async function getBusinessLineByCodeUncached(
   const records = await fetchRecords<AirtableBusinessLineFields>(
     TABLE_NAMES.BUSINESS_LINES,
     {
-      filterByFormula: `{Code} = "${code}"`,
+      filterByFormula: `{Code} = ${formulaString(code)}`,
       maxRecords: 1,
     }
   )
@@ -450,11 +451,11 @@ async function getOpportunitiesUncached(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   if (options?.stage) {
-    filters.push(`{Stage} = "${options.stage}"`)
+    filters.push(`{Stage} = ${formulaString(options.stage)}`)
   }
 
   const filterByFormula =
@@ -562,11 +563,11 @@ async function getTasksUncached(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.status) {
-    filters.push(`{Status} = "${options.status}"`)
+    filters.push(`{Status} = ${formulaString(options.status)}`)
   }
 
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   const filterByFormula =
@@ -626,7 +627,7 @@ async function getValueEventsUncached(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.status) {
-    filters.push(`{Status} = "${options.status}"`)
+    filters.push(`{Status} = ${formulaString(options.status)}`)
   }
 
   const filterByFormula =
@@ -1467,7 +1468,7 @@ async function getUserByEmailUncached(email: string): Promise<User | null> {
 
   const records = await fetchRecords<AirtableUserFields>(TABLE_NAMES.USERS, {
     // Use exact email match in formula
-    filterByFormula: `LOWER(TRIM({Email})) = "${normalizedEmail}"`,
+    filterByFormula: `LOWER(TRIM({Email})) = ${formulaString(normalizedEmail)}`,
     maxRecords: 1,
   })
 
@@ -1571,11 +1572,11 @@ async function getColdCallTargetsUncached(options?: {
 
   // Only use formula filtering for non-linked-record fields
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   if (options?.callStatus) {
-    filters.push(`{Call Status} = "${options.callStatus}"`)
+    filters.push(`{Call Status} = ${formulaString(options.callStatus)}`)
   }
 
   const filterByFormula =
@@ -1823,11 +1824,11 @@ async function getRelationshipsUncached(options?: {
   const filters: string[] = []
 
   if (options?.status) {
-    filters.push(`{Status} = "${options.status}"`)
+    filters.push(`{Status} = ${formulaString(options.status)}`)
   }
 
   if (options?.owner) {
-    filters.push(`{Owner} = "${options.owner}"`)
+    filters.push(`{Owner} = ${formulaString(options.owner)}`)
   }
 
   const filterByFormula = filters.length > 0 ? `AND(${filters.join(', ')})` : undefined
@@ -2192,7 +2193,7 @@ export const getEmailEvents = dedupeRead(getEmailEventsUncached)
 
 async function getEmailEventByKeyUncached(eventKey: string): Promise<EmailEvent | null> {
   const records = await fetchRecords<AirtableEmailEventFields>(TABLE_NAMES.EMAIL_EVENTS, {
-    filterByFormula: `{Event Key} = "${eventKey}"`,
+    filterByFormula: `{Event Key} = ${formulaString(eventKey)}`,
     maxRecords: 1,
   })
   return records[0] ? mapEmailEvent(records[0]) : null

@@ -2,6 +2,7 @@ import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:
 import { getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
 import { airtableFetch } from '@/lib/airtable/client'
 import type { Owner } from '@/types/domain'
+import { formulaString } from '@/lib/airtable/formula'
 
 export type MailSettings = {
   id: string | null
@@ -137,7 +138,7 @@ export function defaultMailSettings(owner: Owner): MailSettings {
 export async function getMailSettings(owner: Owner): Promise<MailSettings> {
   const url = new URL(getTableUrl(TABLE_NAMES.MAIL_SETTINGS))
   url.searchParams.set('maxRecords', '1')
-  url.searchParams.set('filterByFormula', `{Owner}="${owner}"`)
+  url.searchParams.set('filterByFormula', `{Owner}=${formulaString(owner)}`)
 
   const response = await airtableFetch(url.toString(), { cache: 'no-store' })
 

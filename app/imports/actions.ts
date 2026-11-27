@@ -24,6 +24,7 @@ import {
 import { getNotaryPilotCandidates, type NotaryDirectoryCandidate } from '@/lib/notaries/directory'
 import { isNotaryImportEnabled } from '@/lib/prospecting/safety'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
+import { denyUnlessRole } from '@/lib/auth/roles'
 
 function normalize(value: string | null | undefined): string {
   return (value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -55,6 +56,8 @@ export async function previewNotaryImportAction(): Promise<{
 
 export async function importNotaryPilotAction(candidates: NotaryDirectoryCandidate[]) {
   const owner = await getCurrentOwner()
+  const denied = await denyUnlessRole()
+  if (denied) return { success: false, error: denied }
   if (!isNotaryImportEnabled()) {
     return { success: false, error: "Import désactivé : l’autorisation de réutilisation commerciale de la source doit être validée." }
   }
@@ -300,6 +303,8 @@ export async function previewLastImportRollbackAction() {
 
 export async function rollbackLastImportAction(batchId: string) {
   await getCurrentOwner()
+  const denied = await denyUnlessRole()
+  if (denied) return { success: false, error: denied }
   const preview = await buildImportRollbackPreview(batchId)
   if (!preview) return { success: false, error: 'Lot d’import introuvable.' }
   if (!preview.safe) {
