@@ -320,4 +320,43 @@ await test('Airtable never runs more than 4 requests at once', async () => {
   await Promise.all(Array.from({ length: 12 }, (_, index) => airtable.airtableFetch(`https://api.airtable.test/v0/base/T${index}`)))
   assert.equal(http.calls.length, 12); assert.equal(http.maxActive, 4)
 })
+const csvLib = await load('lib/imports/csv.ts')
+const importPlanner = await load('lib/imports/sales-os-import.ts', {}, { URL })
+await test('CSV import: parses French CSV, detects duplicates in CRM and in file, never plans an Opportunity', () => {
+  const csv = '﻿Entreprise;SIREN;Site web;Code postal;Secteur;Prénom;Nom;Email;Téléphone;Mobile;Colonne X\r\n' +
+    '"Fonds ""Alpha""";123 456 789;alpha.fr;75008;;Anne;Durand;anne@alpha.fr;01 23 45 67 89;06 11 22 33 44;x\r\n' +
+    'Beta Capital;;https://www.beta.fr;69002;Fonds d\'Investissement;Paul;Martin;paul@beta.fr;;;\n' +
+    'Beta Capital SAS;;beta.fr;;;Julie;Roux;julie@gmail.com;;;\n' +
+    'Gamma;;;;;Luc;Petit;luc@gamma.io;;;\n' +
+    ';;;;;Sans;Entreprise;;;;\n' +
+    'Delta;98765432100012;;;;Zoé;Blanc;zoe@delta.fr;;;\n'
+  const table = csvLib.parseCsv(csv)
+  assert.equal(table.rows.length, 6); assert.equal(table.rows[0].Entreprise, 'Fonds "Alpha"')
+  const companies = [
+    { id: 'cA', name: 'Alpha Gestion', registryNumber: '123456789', website: null, phone: null, email: null, postalCode: null },
+    { id: 'cD', name: 'Delta', registryNumber: null, website: null, phone: null, email: null, postalCode: null },
+  ]
+  const contacts = [{ id: 'kZ', firstName: 'Zoé', lastName: 'Blanc', companyId: 'cD', email: 'zoe@delta.fr', phone: null }]
+  const targets = [{ id: 't1', companyId: 'cD', contactId: 'kZ', businessLineId: 'FI', archived: false }]
+  const plan = importPlanner.planImport({ rows: table.rows, headers: table.headers, companies, contacts, targets, businessLineId: 'FI', createTargets: true })
+  const [alpha, beta, betaSas, gamma, missing, delta] = plan.rows
+  assert.equal(alpha.company.state, 'EXISTING'); assert.equal(alpha.company.matchedBy, 'SIREN')
+  assert.equal(alpha.data.phone, '01 23 45 67 89'); assert.match(alpha.data.notes, /Mobile : 06 11 22 33 44/)
+  assert.equal(beta.company.state, 'CREATE'); assert.equal(beta.data.industry, "Fonds d'Investissement")
+  assert.equal(betaSas.company.state, 'IN_FILE'); assert.equal(betaSas.company.matchedBy, 'domaine')
+  assert.equal(betaSas.contact.state, 'CREATE', 'a personal gmail address never merges companies')
+  assert.equal(gamma.target, 'CREATE')
+  assert.equal(missing.errors.length, 1); assert.equal(missing.target, 'NONE')
+  assert.equal(delta.company.state, 'EXISTING'); assert.equal(delta.contact.state, 'EXISTING'); assert.equal(delta.target, 'EXISTING')
+  assert.equal(plan.unknownColumns.join(','), 'Colonne X')
+  assert.equal(plan.summary.rejected, 1); assert.equal(plan.summary.companiesToCreate, 2); assert.equal(plan.summary.targetsToCreate, 4)
+  assert.ok(!JSON.stringify(plan).toLowerCase().includes('opportunit'), 'the plan never mentions an Opportunity')
+})
+await test('CSV import: a contact belonging to another company gets no prospecting target', () => {
+  const table = csvLib.parseCsv('Entreprise,Email,Prénom,Nom\nNouvelle SAS,zoe@delta.fr,Zoé,Blanc\n')
+  const plan = importPlanner.planImport({ rows: table.rows, headers: table.headers, companies: [],
+    contacts: [{ id: 'kZ', firstName: 'Zoé', lastName: 'Blanc', companyId: 'cD', email: 'zoe@delta.fr' }], targets: [], businessLineId: 'FI', createTargets: true })
+  assert.equal(plan.rows[0].contact.state, 'EXISTING'); assert.equal(plan.rows[0].target, 'NONE')
+  assert.match(plan.rows[0].warnings.join(' '), /autre entreprise/)
+})
 console.log(`${tests} CRM regression tests passed`)
