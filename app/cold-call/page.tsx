@@ -28,8 +28,11 @@ async function loadCampaignSignals(): Promise<CampaignSignal[]> {
   }
 }
 
-export default async function ColdCallPage() {
+export default async function ColdCallPage(props: {
+  searchParams: Promise<{ bl?: string }>
+}) {
   const currentOwner = await getCurrentOwner()
+  const { bl } = await props.searchParams
 
   // Load all data (pagination handled automatically by fetchRecords)
   // No maxRecords limits to ensure complete call counts and task counts
@@ -75,6 +78,7 @@ export default async function ColdCallPage() {
         tasks={tasks}
         currentOwner={currentOwner}
         campaignSignals={campaignSignals}
+        initialBusinessLineCode={typeof bl === 'string' ? bl : null}
       />
     </div>
   )
