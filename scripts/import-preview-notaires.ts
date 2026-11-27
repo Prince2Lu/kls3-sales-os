@@ -4,7 +4,7 @@
 
 import { config } from 'dotenv'
 import { resolve } from 'path'
-import { writeFileSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 
 // Load .env.local from project root
 config({ path: resolve(__dirname, '../.env.local') })
@@ -54,10 +54,9 @@ async function fetchGoogleSheet(): Promise<StagingRow[]> {
 
   // Check if CSV file exists locally
   try {
-    const fs = require('fs')
-    if (fs.existsSync(csvPath)) {
+    if (existsSync(csvPath)) {
       console.log(`✅ Using local CSV file: ${csvPath}`)
-      const csvText = fs.readFileSync(csvPath, 'utf-8')
+      const csvText = readFileSync(csvPath, 'utf-8')
       return parseCSV(csvText)
     }
   } catch (err) {
@@ -663,14 +662,14 @@ async function generatePreview() {
   const previewRows: PreviewRow[] = []
   const previewJSON: any[] = []
 
-  let stats = {
+  const stats = {
     company: { create: 0, existing: 0, review: 0 },
     contact: { create: 0, existing: 0, review: 0, skip: 0 },
     opportunity: { create: 0, existing: 0, review: 0 },
     final: { ready: 0, review: 0, blocked: 0 }
   }
 
-  let contactParsingStats = {
+  const contactParsingStats = {
     interlocuteursPresents: 0,
     contactsParses: 0,
     contactsCreate: 0,
@@ -714,7 +713,7 @@ async function generatePreview() {
 
     // Determine final action
     let finalAction: 'READY' | 'REVIEW' | 'BLOCKED' = 'READY'
-    let notes: string[] = []
+    const notes: string[] = []
 
     // Check for REVIEW conditions from staging columns
     if (staging.importStatus && staging.importStatus.toUpperCase().includes('REVIEW')) {

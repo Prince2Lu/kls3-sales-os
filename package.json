@@ -7,7 +7,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "verify:airtable": "tsx scripts/verify-airtable.ts",
     "seed:test": "tsx scripts/seed-test-data.ts",
