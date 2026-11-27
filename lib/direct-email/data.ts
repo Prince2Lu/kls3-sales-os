@@ -1,4 +1,5 @@
-import { getHeaders, getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
+import { getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
+import { airtableFetch } from '@/lib/airtable/client'
 import type { Owner } from '@/types/domain'
 
 export type DirectEmailStatus = 'DRAFT' | 'SENT' | 'FAILED'
@@ -70,9 +71,8 @@ export async function createDirectEmail(input: {
   cardUrl: string
 }) {
   const now = new Date().toISOString()
-  const response = await fetch(getTableUrl(TABLE_NAMES.DIRECT_EMAILS), {
+  const response = await airtableFetch(getTableUrl(TABLE_NAMES.DIRECT_EMAILS), {
     method: 'POST',
-    headers: getHeaders(),
     body: JSON.stringify({
       records: [{
         fields: {
@@ -111,9 +111,8 @@ export async function updateDirectEmail(id: string, input: {
   if (input.messageId !== undefined) fields['Message ID'] = input.messageId
   if (input.sentAt !== undefined) fields['Sent At'] = input.sentAt
 
-  const response = await fetch(`${getTableUrl(TABLE_NAMES.DIRECT_EMAILS)}/${encodeURIComponent(id)}`, {
+  const response = await airtableFetch(`${getTableUrl(TABLE_NAMES.DIRECT_EMAILS)}/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    headers: getHeaders(),
     body: JSON.stringify({ fields }),
     cache: 'no-store',
   })
@@ -130,7 +129,7 @@ export async function listDirectEmails(): Promise<DirectEmailRecord[]> {
     url.searchParams.set('sort[0][field]', 'Created At')
     url.searchParams.set('sort[0][direction]', 'desc')
     if (offset) url.searchParams.set('offset', offset)
-    const response = await fetch(url, { headers: getHeaders(), cache: 'no-store' })
+    const response = await airtableFetch(url.toString(), { cache: 'no-store' })
     if (!response.ok) throw new Error(`Airtable direct email list failed ${response.status}: ${await response.text()}`)
     const json = await response.json() as AirtableList
     all.push(...json.records.map(mapRecord))

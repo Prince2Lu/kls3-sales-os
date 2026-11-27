@@ -4,7 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ConditionalNav } from '@/components/layout/conditional-nav'
 import { auth } from '@/auth'
-import { getUserByEmail } from '@/lib/airtable'
+import { getUserProfileByEmail } from '@/lib/airtable'
 import { ThemeController } from '@/components/theme/theme-controller'
 import { PwaRegister } from '@/components/pwa/pwa-register'
 
@@ -52,7 +52,7 @@ export default async function RootLayout({
 }>) {
   const session = await auth()
   const currentUser = session?.user?.email
-    ? await getUserByEmail(session.user.email).catch(() => null)
+    ? await getUserProfileByEmail(session.user.email).catch(() => null)
     : null
   const themePreference = currentUser?.theme ?? 'dark'
   const displayName = currentUser

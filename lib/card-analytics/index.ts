@@ -1,4 +1,5 @@
-import { getHeaders, getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
+import { getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
+import { airtableFetch } from '@/lib/airtable/client'
 
 export const CARD_EVENT_TYPES = [
   'card_view',
@@ -87,9 +88,8 @@ export async function recordCardEvent(input: {
   const now = new Date().toISOString()
   const eventId = crypto.randomUUID()
 
-  const response = await fetch(getTableUrl(TABLE_NAMES.CARD_EVENTS), {
+  const response = await airtableFetch(getTableUrl(TABLE_NAMES.CARD_EVENTS), {
     method: 'POST',
-    headers: getHeaders(),
     body: JSON.stringify({
       records: [
         {
@@ -128,10 +128,7 @@ export async function listCardEvents(): Promise<CardEvent[]> {
     url.searchParams.set('sort[0][direction]', 'desc')
     if (offset) url.searchParams.set('offset', offset)
 
-    const response = await fetch(url, {
-      headers: getHeaders(),
-      cache: 'no-store',
-    })
+    const response = await airtableFetch(url.toString(), { cache: 'no-store' })
 
     if (!response.ok) {
       const body = await response.text()
