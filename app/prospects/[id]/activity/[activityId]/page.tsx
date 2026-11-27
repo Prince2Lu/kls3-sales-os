@@ -4,6 +4,7 @@ import { getActivityById, getOpportunityById } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { ActivityEditForm } from './activity-edit-form'
 import { notFound } from 'next/navigation'
+import { getActiveOwners } from '@/lib/users/owners'
 
 interface EditActivityPageProps {
   params: Promise<{ id: string; activityId: string }>
@@ -29,6 +30,7 @@ export default async function EditActivityPage({
         </div>
 
         <ActivityEditForm
+          owners={await getActiveOwners()}
           activityId={activityId}
           opportunityId={id}
           activity={activity}

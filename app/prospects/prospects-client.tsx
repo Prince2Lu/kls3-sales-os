@@ -151,12 +151,12 @@ export function ProspectsClient({
     const filtered = applyFiltersExcept('owner')
     const availableOwners = extractUniqueValues(filtered, (opp) => opp.owner || '')
 
-    const allOwners = ['Eric', 'Lilian']
-
+    // Owners present in the data (no hardcoded names: Trello #53)
     return [
       { value: '', label: 'Tous' },
-      ...allOwners
-        .filter((owner) => availableOwners.includes(owner))
+      ...availableOwners
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'fr'))
         .map((owner) => ({ value: owner, label: owner }))
     ]
   }, [opportunities, selectedBusinessLine, selectedStage, selectedPriority])

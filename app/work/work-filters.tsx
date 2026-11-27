@@ -18,6 +18,7 @@ interface WorkFiltersProps {
     postRDV: readonly Stage[]
   }
   currentOwner: Owner
+  owners: string[]
   isColdCallBusinessLine: boolean
   onFilterChange: (
     businessLineCode: string | null,
@@ -33,6 +34,7 @@ export function WorkFilters({
   selectedOwner,
   availableStatuses,
   currentOwner,
+  owners,
   isColdCallBusinessLine,
   onFilterChange,
 }: WorkFiltersProps) {
@@ -156,26 +158,21 @@ export function WorkFilters({
           >
             Moi ({currentOwner})
           </button>
-          <button
-            onClick={() => handleOwnerSelect('Eric')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selectedOwner === 'Eric'
-                ? 'bg-accent text-white'
-                : 'bg-card-bg border border-border text-text-primary hover:border-accent'
-            }`}
-          >
-            Eric
-          </button>
-          <button
-            onClick={() => handleOwnerSelect('Lilian')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selectedOwner === 'Lilian'
-                ? 'bg-accent text-white'
-                : 'bg-card-bg border border-border text-text-primary hover:border-accent'
-            }`}
-          >
-            Lilian
-          </button>
+          {owners
+            .filter((owner) => owner !== currentOwner)
+            .map((owner) => (
+              <button
+                key={owner}
+                onClick={() => handleOwnerSelect(owner)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  selectedOwner === owner
+                    ? 'bg-accent text-white'
+                    : 'bg-card-bg border border-border text-text-primary hover:border-accent'
+                }`}
+              >
+                {owner}
+              </button>
+            ))}
           <button
             onClick={() => handleOwnerSelect('all')}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${

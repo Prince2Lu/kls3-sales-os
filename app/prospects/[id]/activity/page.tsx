@@ -4,6 +4,7 @@ import { getOpportunityById, getContactById } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { ActivityForm } from './activity-form'
 import { notFound } from 'next/navigation'
+import { getActiveOwners } from '@/lib/users/owners'
 
 interface NewActivityPageProps {
   params: Promise<{ id: string }>
@@ -41,6 +42,7 @@ export default async function NewActivityPage({
         </div>
 
         <ActivityForm
+          owners={await getActiveOwners()}
           opportunityId={id}
           contactId={contact?.id}
           currentOwner={currentOwner}

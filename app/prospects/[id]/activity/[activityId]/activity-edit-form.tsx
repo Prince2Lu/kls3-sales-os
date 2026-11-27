@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { updateActivityAction } from '../../../actions'
 import type { Activity } from '@/types/domain'
+import { ownerOptions } from '@/lib/users/owner-options'
 
 const ACTIVITY_TYPES = [
   'CALL',
@@ -31,13 +32,13 @@ const ACTIVITY_RESULTS = [
   'CALLBACK',
 ] as const
 
-const OWNERS = ['Eric', 'Lilian'] as const
 
 interface ActivityEditFormProps {
   activityId: string
   opportunityId: string
   activity: Activity
-  currentOwner: 'Eric' | 'Lilian'
+  currentOwner: string
+  owners: string[]
 }
 
 export function ActivityEditForm({
@@ -45,6 +46,7 @@ export function ActivityEditForm({
   opportunityId,
   activity,
   currentOwner,
+  owners,
 }: ActivityEditFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -148,7 +150,7 @@ export function ActivityEditForm({
               Owner <span className="text-red-500">*</span>
             </label>
             <Select name="owner" required defaultValue={activity.owner}>
-              {OWNERS.map((owner) => (
+              {ownerOptions(owners, activity.owner).map((owner) => (
                 <option key={owner} value={owner}>
                   {owner}
                 </option>

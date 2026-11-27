@@ -10,17 +10,18 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { createActivityAction, completeTaskAction } from '../../actions'
+import { ownerOptions } from '@/lib/users/owner-options'
 
 const ACTIVITY_TYPES = ['CALL', 'EMAIL', 'LINKEDIN', 'MEETING', 'DEMO', 'PROPOSAL', 'NOTE', 'OTHER'] as const
 
 const ACTIVITY_RESULTS = ['NO_ANSWER', 'CONVERSATION', 'MEETING_BOOKED', 'NOT_INTERESTED', 'CALLBACK'] as const
 
-const OWNERS = ['Eric', 'Lilian'] as const
 
 interface ActivityFormProps {
   opportunityId: string
   contactId?: string
-  currentOwner: 'Eric' | 'Lilian'
+  currentOwner: string
+  owners: string[]
   defaultType?: string
   taskId?: string
 }
@@ -29,6 +30,7 @@ export function ActivityForm({
   opportunityId,
   contactId,
   currentOwner,
+  owners,
   defaultType,
   taskId,
 }: ActivityFormProps) {
@@ -188,7 +190,7 @@ export function ActivityForm({
               Owner <span className="text-red-500">*</span>
             </label>
             <Select name="owner" required defaultValue={currentOwner}>
-              {OWNERS.map((owner) => (
+              {ownerOptions(owners, currentOwner).map((owner) => (
                 <option key={owner} value={owner}>
                   {owner}
                 </option>

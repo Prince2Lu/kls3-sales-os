@@ -4,6 +4,7 @@ import { getTaskById, getOpportunityById } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { TaskEditForm } from './task-edit-form'
 import { notFound } from 'next/navigation'
+import { getActiveOwners } from '@/lib/users/owners'
 
 interface EditTaskPageProps {
   params: Promise<{ id: string; taskId: string }>
@@ -27,6 +28,7 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
         </div>
 
         <TaskEditForm
+          owners={await getActiveOwners()}
           taskId={taskId}
           opportunityId={id}
           task={task}

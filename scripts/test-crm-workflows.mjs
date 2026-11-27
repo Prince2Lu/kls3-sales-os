@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import assert from 'node:assert/strict'
 const require = createRequire(import.meta.url)
 
-async function load(entry, mocks = {}) {
+async function load(entry, mocks = {}, globals = {}) {
   const result = await build({
     entryPoints: [entry], bundle: true, platform: 'node', format: 'cjs', write: false,
     external: ['react', 'react/jsx-runtime', 'react-dom/server'],
@@ -15,7 +15,7 @@ async function load(entry, mocks = {}) {
     } }],
   })
   const module = { exports: {} }
-  vm.runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require, console, Date, Intl, Set, Map, state })
+  vm.runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require, console, Date, Intl, Set, Map, state, ...globals })
   return module.exports
 }
 const state = { owner: 'Eric', created: [], updated: [], invalidations: [], activity: null }
@@ -151,6 +151,28 @@ await test('Focus booked meeting still converts the prospect at stage RDV', asyn
   await focus.processMeetingBooked({ taskId: 'task2', opportunityId: null, contactId: 'c1', coldCallTargetId: 't1', owner: 'Lilian', currentStage: null, meetingDate: '2026-12-01', meetingTime: '10:00' })
   assert.equal(focusState.conversions.length, 1)
   assert.equal(focusState.conversions[0].initialStage, 'RDV'); assert.equal(focusState.conversions[0].activityResult, 'MEETING_BOOKED')
+})
+const ownerOptionsLib = await load('lib/users/owner-options.ts')
+const ownerState = { users: [] }
+const ownersLib = await load('lib/users/owners.ts', { '@/lib/airtable': `export async function getUsers() { return globalThis.ownerState.users }` }, { globalThis: { ownerState } })
+await test('owners come from active USERS, a third salesperson works without code change', async () => {
+  ownerState.users = [
+    { name: 'Lilian', active: true, passwordHash: 'x' }, { name: 'Eric', active: true, passwordHash: 'x' },
+    { name: 'Camille', active: true, passwordHash: 'x' }, { name: 'Ancien', active: false, passwordHash: 'x' },
+  ]
+  assert.equal((await ownersLib.getActiveOwners()).join(','), 'Camille,Eric,Lilian')
+  assert.equal(await ownersLib.isValidOwner('Camille'), true)
+  assert.equal(await ownersLib.isValidOwner('Ancien'), false)
+  await ownersLib.assertValidOwner(undefined)
+  await assert.rejects(ownersLib.assertValidOwner('Inconnu'), /utilisateur actif/)
+  assert.equal(ownerOptionsLib.ownerOptions(['Eric', 'Lilian'], 'Ancien', 'Eric', null).join(','), 'Eric,Lilian,Ancien', 'a stored inactive owner stays selectable')
+})
+const currentOwnerLib = await load('lib/utils/current-owner.ts', { '@/auth': `export async function auth() { return globalThis.ownerState.session }` }, { globalThis: { ownerState }, process: { env: { NODE_ENV: 'production' } } })
+await test('the current owner is the signed-in user name, whatever the name', async () => {
+  ownerState.session = { user: { name: 'Camille' } }
+  assert.equal(await currentOwnerLib.getCurrentOwner(), 'Camille')
+  ownerState.session = null
+  await assert.rejects(currentOwnerLib.getCurrentOwner(), /No authenticated user session/)
 })
 const { renderToStaticMarkup } = require('react-dom/server')
 const today = await load('app/today/today-tasks-section.tsx', {

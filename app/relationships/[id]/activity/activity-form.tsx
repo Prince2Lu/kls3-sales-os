@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { createRelationshipActivityAction } from '../../actions'
+import { ownerOptions } from '@/lib/users/owner-options'
 
 const ACTIVITY_TYPES = [
   'CALL',
@@ -30,18 +31,19 @@ const ACTIVITY_RESULTS = [
   'CALLBACK',
 ] as const
 
-const OWNERS = ['Eric', 'Lilian'] as const
 
 interface ActivityFormProps {
   relationshipId: string
   contactId?: string
-  currentOwner: 'Eric' | 'Lilian'
+  currentOwner: string
+  owners: string[]
 }
 
 export function ActivityForm({
   relationshipId,
   contactId,
   currentOwner,
+  owners,
 }: ActivityFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -146,7 +148,7 @@ export function ActivityForm({
               Owner <span className="text-red-500">*</span>
             </label>
             <Select name="owner" required defaultValue={currentOwner}>
-              {OWNERS.map((owner) => (
+              {ownerOptions(owners, currentOwner).map((owner) => (
                 <option key={owner} value={owner}>
                   {owner}
                 </option>

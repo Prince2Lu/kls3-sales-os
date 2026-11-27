@@ -8,6 +8,7 @@ import {
 } from '@/lib/airtable'
 import { ProspectForm } from '../../prospect-form'
 import { notFound } from 'next/navigation'
+import { getActiveOwners } from '@/lib/users/owners'
 
 interface EditProspectPageProps {
   params: Promise<{ id: string }>
@@ -34,6 +35,7 @@ export default async function EditProspectPage({
         </div>
 
         <ProspectForm
+          owners={await getActiveOwners()}
           businessLines={businessLines}
           companies={companies}
           contacts={contacts}
