@@ -189,7 +189,7 @@ function parseCSV(csvText: string): StagingRow[] {
 
 function parseAddress(address: string, city: string): ParsedAddress {
   let addressLine1 = ''
-  let addressLine2 = ''
+  const addressLine2 = ''
   let postalCode = ''
   let parsingAmbiguous = false
 
