@@ -3,6 +3,7 @@ import { getTableUrl, TABLE_NAMES } from '@/lib/airtable/config'
 import { airtableFetch } from '@/lib/airtable/client'
 import type { Owner } from '@/types/domain'
 import { formulaString } from '@/lib/airtable/formula'
+import { getSenderIdentity, type SenderIdentity } from '@/lib/users/sender-identity'
 
 export type MailSettings = {
   id: string | null
@@ -111,9 +112,9 @@ function mapRecord(record: AirtableRecord): MailSettings {
   }
 }
 
-export function defaultMailSettings(owner: Owner): MailSettings {
-  const fromEmail = owner === 'Eric' ? 'eric@kls3-dev.com' : 'lilian@kls3-dev.com'
-  const fromName = owner === 'Eric' ? 'Eric Scarpino' : 'Lilian Scarpino'
+export function defaultMailSettings(owner: Owner, sender: SenderIdentity): MailSettings {
+  const fromEmail = sender.email
+  const fromName = sender.name
 
   return {
     id: null,
@@ -151,7 +152,7 @@ export async function getMailSettings(owner: Owner): Promise<MailSettings> {
   const data = (await response.json()) as AirtableList
   const record = data.records[0]
 
-  return record ? mapRecord(record) : defaultMailSettings(owner)
+  return record ? mapRecord(record) : defaultMailSettings(owner, await getSenderIdentity(owner))
 }
 
 export async function saveMailSettings(

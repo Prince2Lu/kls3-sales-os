@@ -320,6 +320,134 @@ await test('Airtable never runs more than 4 requests at once', async () => {
   await Promise.all(Array.from({ length: 12 }, (_, index) => airtable.airtableFetch(`https://api.airtable.test/v0/base/T${index}`)))
   assert.equal(http.calls.length, 12); assert.equal(http.maxActive, 4)
 })
+const forgotten = await load('lib/prospecting/forgotten-files.ts')
+await test('Forgotten files: engaged prospects idle 14+ days without open task, never in bulk', () => {
+  const now = new Date('2026-11-27T12:00:00Z')
+  const base = { contactId: 'c1', businessLineId: 'bl', owner: 'Lilian', archived: false, opportunityId: null, createdAt: '2026-09-01T10:00:00Z', updatedAt: '2026-10-01T10:00:00Z' }
+  const targets = [
+    { ...base, id: 't-old', companyId: 'co1', callStatus: 'Échange' },
+    { ...base, id: 't-qualified', companyId: 'co2', callStatus: 'Qualifié', updatedAt: '2026-11-05T10:00:00Z' },
+    { ...base, id: 't-recent-call', companyId: 'co3', callStatus: 'Échange' },
+    { ...base, id: 't-task', companyId: 'co4', callStatus: 'À rappeler' },
+    { ...base, id: 't-new', companyId: 'co5', callStatus: 'À appeler' },
+    { ...base, id: 't-opp', companyId: 'co6', callStatus: 'Échange', opportunityId: 'o1' },
+    { ...base, id: 't-archived', companyId: 'co7', callStatus: 'Échange', archived: true },
+    { ...base, id: 't-other', companyId: 'co8', callStatus: 'Échange', owner: 'Eric' },
+    { ...base, id: 't-done-task', companyId: 'co9', callStatus: 'À rappeler' },
+  ]
+  const tasks = [
+    { id: 'k1', coldCallTargetId: 't-task', status: 'TODO' },
+    { id: 'k2', coldCallTargetId: 't-done-task', status: 'DONE' },
+  ]
+  const activities = [
+    { id: 'a1', coldCallTargetId: 't-recent-call', date: '2026-11-20T10:00:00Z' },
+    { id: 'a2', coldCallTargetId: 't-old', date: '2026-10-10T10:00:00Z' },
+  ]
+  const files = forgotten.findForgottenFiles({ targets, tasks, activities, owner: 'Lilian', now })
+  assert.equal(files.map(file => file.targetId).join(','), 't-qualified,t-old,t-done-task')
+  assert.equal(files[1].idleDays, 48); assert.equal(files[1].lastTouchAt, '2026-10-10T10:00:00Z')
+  assert.equal(files[0].idleDays, 22)
+})
+await test('Forgotten files: proposed follow-up is the next business day at 09:30', () => {
+  const due = new Date(forgotten.proposedFollowUpAt(new Date(2026, 10, 27, 18, 0)))
+  assert.equal(due.getDay(), 1); assert.equal(due.getDate(), 30); assert.equal(due.getHours(), 9); assert.equal(due.getMinutes(), 30)
+})
+const goalProgress = await load('lib/goals/goal-progress.ts')
+await test('Goals: metric and period codes are normalised, unknown codes stay unknown', () => {
+  assert.equal(goalProgress.normalizeGoalMetric('PAID_MEETINGS'), 'PAID_MEETINGS')
+  assert.equal(goalProgress.normalizeGoalMetric('RDV rémunérés'), 'PAID_MEETINGS')
+  assert.equal(goalProgress.normalizeGoalMetric('Nouveaux clients'), 'NEW_SUBSCRIPTIONS')
+  assert.equal(goalProgress.normalizeGoalMetric('Signed projects'), 'SIGNATURES')
+  assert.equal(goalProgress.normalizeGoalMetric('Taux de closing'), null)
+  assert.equal(goalProgress.normalizeGoalPeriod('Mensuel'), 'month')
+  assert.equal(goalProgress.normalizeGoalPeriod('MONTHLY'), 'month')
+  assert.equal(goalProgress.normalizeGoalPeriod('Trimestre'), 'quarter')
+  assert.equal(goalProgress.normalizeGoalPeriod(undefined), null)
+})
+await test('Goals: actuals use confirmed Value Events and attributed Activities only', () => {
+  const goals = [
+    { id: 'g-paul', businessLineId: 'bl-paul', metric: 'PAID_MEETINGS', period: 'Monthly', target: 8, ambitiousTarget: 12, startDate: null, endDate: null },
+    { id: 'g-calls', businessLineId: 'bl-paul', metric: 'Appels', period: 'Mensuel', target: 100, ambitiousTarget: null, startDate: null, endDate: null },
+    { id: 'g-revenue', businessLineId: 'bl-kls3', metric: 'CA', period: 'Month', target: 12000, ambitiousTarget: null, startDate: '2026-11-01', endDate: '2026-11-30' },
+    { id: 'g-old', businessLineId: 'bl-paul', metric: 'CALLS', period: 'Month', target: 10, ambitiousTarget: null, startDate: '2026-09-01', endDate: '2026-09-30' },
+    { id: 'g-unknown', businessLineId: 'bl-paul', metric: 'Taux de closing', period: 'Month', target: 30, ambitiousTarget: null, startDate: null, endDate: null },
+  ]
+  const data = {
+    opportunities: [{ id: 'o1', businessLineId: 'bl-paul', createdAt: '2026-11-05T10:00:00' }],
+    coldCallTargets: [{ id: 't1', businessLineId: 'bl-paul' }, { id: 't2', businessLineId: 'bl-kls3' }],
+    activities: [
+      { id: 'a1', type: 'CALL', result: 'NO_ANSWER', date: '2026-11-03T10:00:00', opportunityId: null, coldCallTargetId: 't1' },
+      { id: 'a2', type: 'CALL', result: 'CONVERSATION', date: '2026-11-04T10:00:00', opportunityId: 'o1', coldCallTargetId: null },
+      { id: 'a3', type: 'CALL', result: 'NO_ANSWER', date: '2026-11-04T11:00:00', opportunityId: null, coldCallTargetId: 't2' },
+      { id: 'a4', type: 'CALL', result: 'NO_ANSWER', date: '2026-10-31T11:00:00', opportunityId: null, coldCallTargetId: 't1' },
+      { id: 'a5', type: 'CALL', result: 'NO_ANSWER', date: '2026-11-04T11:00:00', opportunityId: null, coldCallTargetId: null },
+    ],
+    valueEvents: [
+      { id: 'v1', businessLineId: 'bl-paul', eventType: 'PAID_MEETING', status: 'CONFIRMED', eventDate: '2026-11-10', amount: 100, revenueType: 'ONE_SHOT' },
+      { id: 'v2', businessLineId: 'bl-paul', eventType: 'PAID_MEETING', status: 'PAID', eventDate: '2026-11-12', amount: 100, revenueType: 'ONE_SHOT' },
+      { id: 'v3', businessLineId: 'bl-paul', eventType: 'PAID_MEETING', status: 'PENDING', eventDate: '2026-11-12', amount: 100, revenueType: 'ONE_SHOT' },
+      { id: 'v4', businessLineId: 'bl-paul', eventType: 'PAID_MEETING', status: 'CANCELLED', eventDate: '2026-11-13', amount: 100, revenueType: 'ONE_SHOT' },
+      { id: 'v5', businessLineId: 'bl-kls3', eventType: 'SIGNED_PROJECT', status: 'CONFIRMED', eventDate: '2026-11-20', amount: 12000, revenueType: 'PROJECT' },
+    ],
+  }
+  const period = { start: new Date(2026, 10, 1), end: new Date(2026, 10, 27, 23, 59, 59) }
+  const rows = goalProgress.buildGoalProgress(goals, period, data, new Date(2026, 10, 15, 12))
+  assert.equal(rows.map(row => row.goal.id).join(','), 'g-paul,g-calls,g-revenue,g-unknown')
+  const [paul, calls, revenue, unknown] = rows
+  assert.equal(paul.status, 'measured'); assert.equal(paul.actual, 2); assert.equal(paul.target, 8); assert.equal(paul.percent, 25)
+  assert.equal(paul.window.start.getDate(), 1); assert.equal(paul.window.end.getDate(), 30)
+  assert.ok(paul.expectedByNow > 3 && paul.expectedByNow < 4.5)
+  assert.equal(calls.actual, 2)
+  assert.equal(revenue.actual, 12000); assert.equal(revenue.unit, 'currency'); assert.equal(revenue.percent, 100)
+  assert.equal(unknown.status, 'unknown_metric')
+})
+await test('Goals: a goal without dates or a known period is flagged, not measured', () => {
+  const rows = goalProgress.buildGoalProgress(
+    [{ id: 'g1', businessLineId: 'bl', metric: 'CALLS', period: 'Sprint', target: 5, ambitiousTarget: null, startDate: null, endDate: null }],
+    { start: new Date(2026, 10, 1), end: new Date(2026, 10, 27) },
+    { opportunities: [], coldCallTargets: [], activities: [], valueEvents: [] }
+  )
+  assert.equal(rows.length, 1); assert.equal(rows[0].status, 'unknown_period')
+})
+const csvLib = await load('lib/imports/csv.ts')
+const importPlanner = await load('lib/imports/sales-os-import.ts', {}, { URL })
+await test('CSV import: parses French CSV, detects duplicates in CRM and in file, never plans an Opportunity', () => {
+  const csv = '﻿Entreprise;SIREN;Site web;Code postal;Secteur;Prénom;Nom;Email;Téléphone;Mobile;Colonne X\r\n' +
+    '"Fonds ""Alpha""";123 456 789;alpha.fr;75008;;Anne;Durand;anne@alpha.fr;01 23 45 67 89;06 11 22 33 44;x\r\n' +
+    'Beta Capital;;https://www.beta.fr;69002;Fonds d\'Investissement;Paul;Martin;paul@beta.fr;;;\n' +
+    'Beta Capital SAS;;beta.fr;;;Julie;Roux;julie@gmail.com;;;\n' +
+    'Gamma;;;;;Luc;Petit;luc@gamma.io;;;\n' +
+    ';;;;;Sans;Entreprise;;;;\n' +
+    'Delta;98765432100012;;;;Zoé;Blanc;zoe@delta.fr;;;\n'
+  const table = csvLib.parseCsv(csv)
+  assert.equal(table.rows.length, 6); assert.equal(table.rows[0].Entreprise, 'Fonds "Alpha"')
+  const companies = [
+    { id: 'cA', name: 'Alpha Gestion', registryNumber: '123456789', website: null, phone: null, email: null, postalCode: null },
+    { id: 'cD', name: 'Delta', registryNumber: null, website: null, phone: null, email: null, postalCode: null },
+  ]
+  const contacts = [{ id: 'kZ', firstName: 'Zoé', lastName: 'Blanc', companyId: 'cD', email: 'zoe@delta.fr', phone: null }]
+  const targets = [{ id: 't1', companyId: 'cD', contactId: 'kZ', businessLineId: 'FI', archived: false }]
+  const plan = importPlanner.planImport({ rows: table.rows, headers: table.headers, companies, contacts, targets, businessLineId: 'FI', createTargets: true })
+  const [alpha, beta, betaSas, gamma, missing, delta] = plan.rows
+  assert.equal(alpha.company.state, 'EXISTING'); assert.equal(alpha.company.matchedBy, 'SIREN')
+  assert.equal(alpha.data.phone, '01 23 45 67 89'); assert.match(alpha.data.notes, /Mobile : 06 11 22 33 44/)
+  assert.equal(beta.company.state, 'CREATE'); assert.equal(beta.data.industry, "Fonds d'Investissement")
+  assert.equal(betaSas.company.state, 'IN_FILE'); assert.equal(betaSas.company.matchedBy, 'domaine')
+  assert.equal(betaSas.contact.state, 'CREATE', 'a personal gmail address never merges companies')
+  assert.equal(gamma.target, 'CREATE')
+  assert.equal(missing.errors.length, 1); assert.equal(missing.target, 'NONE')
+  assert.equal(delta.company.state, 'EXISTING'); assert.equal(delta.contact.state, 'EXISTING'); assert.equal(delta.target, 'EXISTING')
+  assert.equal(plan.unknownColumns.join(','), 'Colonne X')
+  assert.equal(plan.summary.rejected, 1); assert.equal(plan.summary.companiesToCreate, 2); assert.equal(plan.summary.targetsToCreate, 4)
+  assert.ok(!JSON.stringify(plan).toLowerCase().includes('opportunit'), 'the plan never mentions an Opportunity')
+})
+await test('CSV import: a contact belonging to another company gets no prospecting target', () => {
+  const table = csvLib.parseCsv('Entreprise,Email,Prénom,Nom\nNouvelle SAS,zoe@delta.fr,Zoé,Blanc\n')
+  const plan = importPlanner.planImport({ rows: table.rows, headers: table.headers, companies: [],
+    contacts: [{ id: 'kZ', firstName: 'Zoé', lastName: 'Blanc', companyId: 'cD', email: 'zoe@delta.fr' }], targets: [], businessLineId: 'FI', createTargets: true })
+  assert.equal(plan.rows[0].contact.state, 'EXISTING'); assert.equal(plan.rows[0].target, 'NONE')
+  assert.match(plan.rows[0].warnings.join(' '), /autre entreprise/)
+})
 const callQueue = await load('lib/prospecting/call-queue.ts')
 await test('call queue: explainable fixed order, follow-ups first, clicks only raise priority', () => {
   const now = new Date('2026-11-27T10:00:00Z')
@@ -389,5 +517,22 @@ await test('Call briefing: merges target and contact history without duplicates'
 await test('Call briefing: a prospect without history is a first contact', () => {
   const result = briefing.buildCallBriefing({ targetId: 't1', contactId: null, activities: [{ id: 'x', coldCallTargetId: null, contactId: null, type: 'CALL', result: null, notes: null, date: '2026-11-01T10:00:00Z' }], tasks: [] })
   assert.equal(result.calls, 0); assert.equal(result.recent.length, 0); assert.equal(result.openTask, null); assert.equal(result.lastExchange, null)
+})
+const senderLib = await load('lib/users/sender-identity.ts', {
+  '@/lib/airtable': `export async function getUsers() { return globalThis.ownerState.users }`,
+  '@/lib/digital-cards': `export async function getDigitalCardBySlug(slug) { return globalThis.ownerState.cards[slug] ?? null }`,
+}, { globalThis: { ownerState } })
+await test('sender identity comes from the digital card, then USERS, never from a coded first name', async () => {
+  ownerState.users = [{ name: 'Camille', firstName: 'Camille', lastName: 'Martin', email: 'Camille@Example.test', active: true }]
+  ownerState.cards = { eric: { displayName: 'Eric S.', firstName: 'Eric', lastName: 'S', email: 'eric@kls3.test', title: 'Directeur de missions' } }
+  assert.deepEqual({ ...(await senderLib.getSenderIdentity('Eric')) }, { name: 'Eric S.', email: 'eric@kls3.test', title: 'Directeur de missions' })
+  assert.deepEqual({ ...(await senderLib.getSenderIdentity('Camille')) }, { name: 'Camille Martin', email: 'camille@example.test', title: '' })
+  assert.deepEqual({ ...(await senderLib.getSenderIdentity('Inconnu')) }, { name: 'Inconnu', email: '', title: '' })
+})
+const callStats = await load('lib/prospecting/call-stats.ts')
+await test('calls today are counted for every owner, busiest first', () => {
+  const calls = [{ owner: 'Lilian' }, { owner: 'Camille' }, { owner: 'Lilian' }, { owner: null }, { owner: 'Eric' }]
+  assert.equal(callStats.callsByOwner(calls), 'Lilian 2 · Camille 1 · Eric 1')
+  assert.equal(callStats.callsByOwner([]), '')
 })
 console.log(`${tests} CRM regression tests passed`)
