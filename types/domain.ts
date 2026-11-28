@@ -414,6 +414,8 @@ export interface User {
   passwordHash: string
   role: UserRole
   active: boolean
+  /** USERS."Business Lines" (optional link, Trello #4): empty = every business line. */
+  businessLineIds: string[]
   createdAt: string
   updatedAt: string
 }
