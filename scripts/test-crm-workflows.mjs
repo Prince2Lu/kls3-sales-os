@@ -359,4 +359,48 @@ await test('CSV import: a contact belonging to another company gets no prospecti
   assert.equal(plan.rows[0].contact.state, 'EXISTING'); assert.equal(plan.rows[0].target, 'NONE')
   assert.match(plan.rows[0].warnings.join(' '), /autre entreprise/)
 })
+const callQueue = await load('lib/prospecting/call-queue.ts')
+await test('call queue: explainable fixed order, follow-ups first, clicks only raise priority', () => {
+  const now = new Date('2026-11-27T10:00:00Z')
+  const t = (id, callStatus, extra = {}) => ({ id, companyId: `c-${id}`, contactId: `p-${id}`, businessLineId: 'bl', owner: 'Lilian', callStatus,
+    opportunityId: null, archived: false, createdAt: '2026-10-01T09:00:00Z', updatedAt: '2026-11-01T09:00:00Z', ...extra })
+  const targets = [
+    t('never', 'À appeler'), t('old', 'Échange'), t('late', 'À rappeler'), t('today', 'À appeler'),
+    t('later', 'À appeler'), t('click', 'À appeler'), t('callback', 'À rappeler'), t('wrong', 'Mauvais numéro'),
+    t('converted', 'Qualifié', { opportunityId: 'opp' }), t('newer', 'À appeler', { createdAt: '2026-11-20T09:00:00Z' }),
+  ]
+  const task = (target, dueAt) => ({ id: `task-${target}`, coldCallTargetId: target, opportunityId: null, contactId: null, type: 'CALL', status: 'TODO', dueAt })
+  const tasks = [task('late', '2026-11-24T09:00:00Z'), task('today', '2026-11-27T15:00:00Z'), task('later', '2026-12-02T09:00:00Z')]
+  const call = (target, date) => ({ id: `a-${target}`, coldCallTargetId: target, type: 'CALL', date })
+  const activities = [call('old', '2026-11-10T09:00:00Z'), call('callback', '2026-11-20T09:00:00Z')]
+  const signals = [{ businessLineId: 'bl', companyId: 'c-click', contactId: 'p-click', priority: 'HIGH', state: 'AVAILABLE', reason: '1 clic(s) sur le CTA', lastSignalAt: '2026-11-26T08:00:00Z' }]
+  const queue = callQueue.buildCallQueue({ targets, tasks, activities, signals, now })
+  assert.equal(queue.map((item) => item.targetId).join(','), 'late,today,click,callback,never,newer,old')
+  assert.equal(queue.map((item) => item.rule).join(','), 'OVERDUE_TASK,TASK_TODAY,CAMPAIGN_CLICK,CALLBACK_NO_DATE,NEVER_CALLED,NEVER_CALLED,OLDEST_CONTACT')
+  assert.match(queue[0].reason, /3 jours de retard/)
+  assert.match(queue[1].reason, /16:00/, 'times are shown in Paris time')
+  assert.match(queue[6].reason, /il y a 17 jours/)
+  assert.ok(queue.every((item) => item.reason), 'every prospect shows its reason')
+  assert.equal(callQueue.buildCallQueue({ targets: [...targets].reverse(), tasks, activities, signals, now }).map((item) => item.targetId).join(','),
+    queue.map((item) => item.targetId).join(','), 'order is reproducible')
+  const calledAfterClick = callQueue.buildCallQueue({ targets: [targets[5]], tasks: [], activities: [call('click', '2026-11-26T12:00:00Z')], signals, now })
+  assert.equal(calledAfterClick[0].rule, 'OLDEST_CONTACT', 'a click already followed by a call no longer jumps the queue')
+})
+const senderLib = await load('lib/users/sender-identity.ts', {
+  '@/lib/airtable': `export async function getUsers() { return globalThis.ownerState.users }`,
+  '@/lib/digital-cards': `export async function getDigitalCardBySlug(slug) { return globalThis.ownerState.cards[slug] ?? null }`,
+}, { globalThis: { ownerState } })
+await test('sender identity comes from the digital card, then USERS, never from a coded first name', async () => {
+  ownerState.users = [{ name: 'Camille', firstName: 'Camille', lastName: 'Martin', email: 'Camille@Example.test', active: true }]
+  ownerState.cards = { eric: { displayName: 'Eric S.', firstName: 'Eric', lastName: 'S', email: 'eric@kls3.test', title: 'Directeur de missions' } }
+  assert.deepEqual({ ...(await senderLib.getSenderIdentity('Eric')) }, { name: 'Eric S.', email: 'eric@kls3.test', title: 'Directeur de missions' })
+  assert.deepEqual({ ...(await senderLib.getSenderIdentity('Camille')) }, { name: 'Camille Martin', email: 'camille@example.test', title: '' })
+  assert.deepEqual({ ...(await senderLib.getSenderIdentity('Inconnu')) }, { name: 'Inconnu', email: '', title: '' })
+})
+const callStats = await load('lib/prospecting/call-stats.ts')
+await test('calls today are counted for every owner, busiest first', () => {
+  const calls = [{ owner: 'Lilian' }, { owner: 'Camille' }, { owner: 'Lilian' }, { owner: null }, { owner: 'Eric' }]
+  assert.equal(callStats.callsByOwner(calls), 'Lilian 2 · Camille 1 · Eric 1')
+  assert.equal(callStats.callsByOwner([]), '')
+})
 console.log(`${tests} CRM regression tests passed`)

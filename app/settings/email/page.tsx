@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { getMailSettings, publicMailSettings } from '@/lib/mail-settings'
 import type { Owner } from '@/types/domain'
+import { getActiveOwners } from '@/lib/users/owners'
 import { MailSettingsClient } from './mail-settings-client'
 
 export const dynamic = 'force-dynamic'
@@ -12,7 +13,7 @@ export default async function MailSettingsPage() {
 
   const currentOwner = session.user.name as Owner
   const isAdmin = session.user.role === 'ADMIN'
-  const owners: Owner[] = isAdmin ? ['Eric', 'Lilian'] : [currentOwner]
+  const owners: Owner[] = isAdmin ? await getActiveOwners() : [currentOwner]
 
   const settings = await Promise.all(
     owners.map(async (owner) => publicMailSettings(await getMailSettings(owner)))
