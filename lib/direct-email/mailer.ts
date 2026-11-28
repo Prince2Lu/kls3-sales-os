@@ -22,7 +22,7 @@ export type DirectMailSendInput = {
   attachments: DirectMailAttachment[]
 }
 
-type MailAccount = {
+export type MailAccount = {
   fromName: string
   fromEmail: string
   smtpHost: string
@@ -40,7 +40,7 @@ type MailAccount = {
 
 type AnySocket = net.Socket | tls.TLSSocket
 
-async function accountFor(owner: Owner): Promise<MailAccount> {
+export async function accountFor(owner: Owner): Promise<MailAccount> {
   const settings = await getMailSettings(owner)
 
   if (!settings.fromEmail || !settings.smtpHost || !settings.smtpPassword) {
@@ -168,7 +168,7 @@ function buildRawMessage(
   return Buffer.from(lines.join('\r\n'), 'utf8')
 }
 
-function createLineReader(socket: AnySocket) {
+export function createLineReader(socket: AnySocket) {
   let buffer = ''
   const queue: string[] = []
   let pending:
@@ -221,7 +221,7 @@ function createLineReader(socket: AnySocket) {
   }
 }
 
-function writeLine(socket: AnySocket, value: string) {
+export function writeLine(socket: AnySocket, value: string) {
   socket.write(`${value}\r\n`)
 }
 
@@ -255,7 +255,7 @@ async function connectPlain(host: string, port: number) {
   return socket
 }
 
-async function connectTls(host: string, port: number) {
+export async function connectTls(host: string, port: number) {
   const socket = tls.connect({
     host,
     port,
@@ -337,7 +337,7 @@ async function sendSmtp(account: MailAccount, recipients: string[], raw: Buffer)
   }
 }
 
-function imapQuote(value: string) {
+export function imapQuote(value: string) {
   return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
 }
 
