@@ -34,6 +34,7 @@ import { buildCallQueue, type CampaignSignal } from '@/lib/prospecting/call-queu
 import { Search, X, Phone, CalendarDays, MessageCircle, CalendarCheck } from 'lucide-react'
 import { normalizeSearchValue, combineSearchValues, normalizePhoneForSearch } from '@/lib/utils/search'
 import { callsByOwner } from '@/lib/prospecting/call-stats'
+import { businessLineLabel } from '@/lib/business-lines/display'
 
 interface ColdCallBoardProps {
   targets: ColdCallTarget[]
@@ -424,7 +425,7 @@ export function ColdCallBoard({
             <option value="">Toutes</option>
             {activeBusinessLines.map((bl) => (
               <option key={bl.id} value={bl.id}>
-                {bl.code === 'SACHA' ? 'Leverio' : bl.name}
+                {businessLineLabel(bl)}
               </option>
             ))}
           </select>

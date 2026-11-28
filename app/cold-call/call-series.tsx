@@ -25,6 +25,7 @@ import { ContactInfo } from '@/components/pipeline/contact-info'
 import { createManualTask } from '@/lib/actions/task-actions'
 import { recordCallActivity } from './actions'
 import { buildCallBriefing } from '@/lib/prospecting/call-briefing'
+import { businessLineLabel } from '@/lib/business-lines/display'
 
 const RESULTS: Array<{ value: ActivityResult; label: string; primary?: boolean }> = [
   { value: 'NO_ANSWER', label: 'Pas de réponse', primary: true },
@@ -75,11 +76,6 @@ interface CallSeriesProps {
 }
 
 type Step = { kind: 'call' } | { kind: 'follow-up'; result: ActivityResult } | { kind: 'done' }
-
-function businessLineLabel(line?: BusinessLine) {
-  if (!line) return ''
-  return line.code === 'SACHA' ? 'Leverio' : line.name
-}
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
