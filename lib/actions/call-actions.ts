@@ -6,6 +6,7 @@ import { createActivity } from '@/lib/airtable'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { revalidatePath } from 'next/cache'
 import type { ActivityResult } from '@/types/domain'
+import { assertOpportunityInScope } from '@/lib/auth/business-line-scope-server'
 
 /**
  * Record a call activity on an Opportunity
@@ -19,6 +20,7 @@ export async function recordOpportunityCallActivity(
   try {
     // Get owner server-side from session
     const owner = await getCurrentOwner()
+    await assertOpportunityInScope(opportunityId)
 
     // Create Activity
     await createActivity({

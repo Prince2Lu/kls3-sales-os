@@ -13,6 +13,7 @@ import {
 import { changeColdCallStatus } from '@/lib/cold-call/status-manager'
 import { revalidatePath } from 'next/cache'
 import type { CallStatus, Stage, ActivityResult } from '@/types/domain'
+import { assertTargetInScope } from '@/lib/auth/business-line-scope-server'
 
 /**
  * Update cold call target status
@@ -30,6 +31,7 @@ export async function updateColdCallStatus(
     const { getCurrentOwner } = await import('@/lib/utils/current-owner')
     const changedBy = await getCurrentOwner()
 
+    await assertTargetInScope(targetId)
     const target = await getColdCallTargetById(targetId)
 
     // Use centralized status change function (with automatic history tracking)
@@ -114,6 +116,7 @@ export async function updateColdCallOpportunityStage(
   const { getCurrentOwner } = await import('@/lib/utils/current-owner')
   const changedBy = await getCurrentOwner()
   try {
+    await assertTargetInScope(targetId)
     const target = await getColdCallTargetById(targetId)
 
     if (!target.opportunityId) {
@@ -188,6 +191,7 @@ export async function recordCallActivity(
     const owner = await getCurrentOwner()
     const { requiresOpportunityConversion, getInitialOpportunityStage } = await import('@/lib/prospecting/conversion-rules')
 
+    await assertTargetInScope(targetId)
     const target = await getColdCallTargetById(targetId)
 
     // Create ACTIVITY with explicit cold call target link
@@ -323,6 +327,7 @@ export async function recordEmailActivity(
     const owner = await getCurrentOwner()
     const { requiresOpportunityConversion, getInitialOpportunityStage } = await import('@/lib/prospecting/conversion-rules')
 
+    await assertTargetInScope(targetId)
     const target = await getColdCallTargetById(targetId)
 
     // Create ACTIVITY with explicit cold call target link
@@ -386,6 +391,7 @@ export async function recordLinkedInActivity(
     const owner = await getCurrentOwner()
     const { requiresOpportunityConversion, getInitialOpportunityStage } = await import('@/lib/prospecting/conversion-rules')
 
+    await assertTargetInScope(targetId)
     const target = await getColdCallTargetById(targetId)
 
     // Create ACTIVITY with explicit cold call target link

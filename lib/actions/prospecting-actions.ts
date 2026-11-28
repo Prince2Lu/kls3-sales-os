@@ -17,6 +17,7 @@ import {
 } from '@/lib/prospecting/target-manager'
 import type { Owner, ProspectingStatus } from '@/types/domain'
 import { revalidatePath } from 'next/cache'
+import { assertBusinessLineInScope } from '@/lib/auth/business-line-scope-server'
 
 export interface AddToProspectingInput {
   companyId: string
@@ -87,6 +88,7 @@ export async function addToProspecting(
     const currentUser = await getCurrentOwner()
     const owner = input.owner || currentUser
     await assertValidOwner(owner)
+    await assertBusinessLineInScope(input.businessLineId)
 
     // 2. Validate Company exists
     let company

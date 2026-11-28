@@ -383,6 +383,7 @@ export function mapUser(record: AirtableRecord<AirtableUserFields>): User {
     passwordHash: fields['Password Hash'],
     role: fields.Role as UserRole,
     active: fields.Active,
+    businessLineIds: fields['Business Lines'] ?? [],
     createdAt: fields['Created At'],
     updatedAt: fields['Updated At'],
   }

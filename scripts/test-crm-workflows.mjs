@@ -535,6 +535,19 @@ await test('calls today are counted for every owner, busiest first', () => {
   assert.equal(callStats.callsByOwner(calls), 'Lilian 2 · Camille 1 · Eric 1')
   assert.equal(callStats.callsByOwner([]), '')
 })
+const blScope = await load('lib/auth/business-line-scope.ts')
+await test('BL scope: only SALES with listed business lines is limited; empty list keeps every line (#4)', () => {
+  assert.equal(blScope.scopeFor('ADMIN', ['bl1']).all, true)
+  assert.equal(blScope.scopeFor('SALES_DIRECTOR', ['bl1']).all, true)
+  assert.equal(blScope.scopeFor('SALES', []).all, true)
+  assert.equal(blScope.scopeFor('SALES', undefined).all, true)
+  const limited = blScope.scopeFor('SALES', ['bl1'])
+  assert.equal(limited.all, false)
+  assert.equal(blScope.isBusinessLineAllowed(limited, 'bl1'), true)
+  assert.equal(blScope.isBusinessLineAllowed(limited, 'bl2'), false)
+  assert.equal(blScope.isBusinessLineAllowed(limited, null), true)
+  assert.equal(blScope.filterByScope(limited, [{ businessLineId: 'bl1' }, { businessLineId: 'bl2' }, { businessLineId: null }]).length, 2)
+})
 const blKpis = await load('lib/dashboard/business-line-kpis.ts')
 await test('Dashboard 6 KPIs per business line: activity, conversion, weighted pipeline, confirmed revenue (#62)', () => {
   const period = { start: new Date('2026-11-01T00:00:00Z'), end: new Date('2026-11-30T23:59:59Z') }
