@@ -4,6 +4,7 @@ import { buildCampaignAudience } from '@/lib/brevo/campaign-audience'
 import { CampaignsClient } from './campaigns-client'
 import { getBrevoSendMode, getBrevoTestRecipientEmail } from '@/lib/prospecting/safety'
 import Link from 'next/link'
+import { NOTARY_BUSINESS_LINE_CODE } from '@/lib/business-lines/display'
 
 export default async function EmailCampaignsPage() {
   const [campaigns, recipients, allCompanies, contacts, suppressions, businessLine, targets, activities] = await Promise.all([
@@ -12,7 +13,7 @@ export default async function EmailCampaignsPage() {
     getCompanies(),
     getContacts(),
     getEmailSuppressions(),
-    getBusinessLineByCode('KLS3_NOTAIRES'),
+    getBusinessLineByCode(NOTARY_BUSINESS_LINE_CODE),
     getColdCallTargets(), getActivities(),
   ])
 

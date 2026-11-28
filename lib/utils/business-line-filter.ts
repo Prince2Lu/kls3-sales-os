@@ -4,25 +4,23 @@
 import type { BusinessLine, Opportunity, Task, ColdCallTarget } from '@/types/domain'
 
 /**
- * Valid Business Line codes
+ * Business Line code as stored in Airtable BUSINESS_LINES.Code.
+ * Any code is accepted: the list of lines comes from Airtable, not from the code (#27).
  */
-export const BUSINESS_LINE_CODES = ['PAUL', 'SACHA', 'CALYMIA', 'KLS3_NOTAIRES'] as const
-export type BusinessLineCode = typeof BUSINESS_LINE_CODES[number]
+export type BusinessLineCode = string
+
+const BUSINESS_LINE_CODE_PATTERN = /^[A-Z0-9_]{1,40}$/
 
 /**
- * Parse and validate Business Line code from URL parameter
- * Returns null for 'Toutes' (no filter)
- * Returns validated code or null if invalid
+ * Parse a Business Line code from a URL parameter.
+ * Returns null for 'Toutes' (no filter) or a malformed value.
+ * An unknown but well-formed code also falls back to 'Toutes' later, in findBusinessLineByCode.
  */
 export function parseBusinessLineParam(param: string | undefined | null): BusinessLineCode | null {
   if (!param) return null
 
   const upperParam = param.toUpperCase()
-  if (BUSINESS_LINE_CODES.includes(upperParam as BusinessLineCode)) {
-    return upperParam as BusinessLineCode
-  }
-
-  return null // Invalid code falls back to Toutes
+  return BUSINESS_LINE_CODE_PATTERN.test(upperParam) ? upperParam : null
 }
 
 /**

@@ -2,12 +2,13 @@
 // Displays: Actions, Outcomes, Revenue, Ratios
 
 import type { EfficiencyMetrics } from '@/lib/utils/efficiency-analytics'
-import type { RevenueType } from '@/types/domain'
+import type { EventType, RevenueType } from '@/types/domain'
+import { outcomeLabel as outcomeLabelFor } from '@/lib/business-lines/display'
 
 interface EfficiencySummaryProps {
   metrics: EfficiencyMetrics
   revenueType: RevenueType | null // null for global view
-  businessLineName?: string
+  revenueTrigger?: EventType | null // Revenue Trigger of the selected business line
 }
 
 function formatCurrency(value: number): string {
@@ -27,23 +28,14 @@ function formatRatio(value: number | null): string {
 export function EfficiencySummary({
   metrics,
   revenueType,
-  businessLineName,
+  revenueTrigger,
 }: EfficiencySummaryProps) {
   // Determine labels based on Business Line type
   const isMRR = revenueType === 'MRR'
   const isGlobal = revenueType === null
 
-  // Outcome label (adapt per BL)
-  let outcomeLabel = 'Résultats économiques'
-  if (businessLineName?.includes('Calymia')) {
-    outcomeLabel = 'Abonnements démarrés'
-  } else if (businessLineName?.includes('KLS3')) {
-    outcomeLabel = 'Projets signés'
-  } else if (businessLineName?.includes('Paul')) {
-    outcomeLabel = 'RDV payés'
-  } else if (businessLineName?.includes('Leverio')) {
-    outcomeLabel = 'Deals signés'
-  }
+  // Outcome label from the business line's Revenue Trigger (#27)
+  const outcomeLabel = outcomeLabelFor(revenueTrigger)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-1 bg-white/[0.06] rounded-[20px] overflow-hidden">

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { ContactInfo } from '@/components/pipeline/contact-info'
 import { CallResultMenu } from './call-result-menu'
 import { recordCallActivity } from './actions'
+import { businessLineLabel } from '@/lib/business-lines/display'
 
 interface CallQueueListProps {
   items: CallQueueItem[]
@@ -91,7 +92,7 @@ function CallQueueRow({ position, item, target, company, contact, businessLine }
             </Link>
             <ContactInfo contact={contact} company={company} compact />
             <div className="text-xs text-text-muted">
-              {businessLine ? (businessLine.code === 'SACHA' ? 'Leverio' : businessLine.name) : ''} · {target.callStatus} · {target.owner}
+              {businessLineLabel(businessLine)} · {target.callStatus} · {target.owner}
             </div>
             {error && <p className="text-xs text-red-400" role="alert">{error}</p>}
           </div>

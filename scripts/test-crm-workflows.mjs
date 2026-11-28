@@ -573,4 +573,66 @@ await test('Dashboard 6 KPIs per business line: activity, conversion, weighted p
   const calymia = rows[1]
   assert.equal(calymia.meetingRate, null); assert.equal(calymia.weightedPipeline, 354); assert.equal(calymia.newMrr, 59); assert.equal(calymia.revenue, 0)
 })
+const replies = await load('lib/email-replies/reply-matcher.ts', {}, { atob, TextDecoder })
+await test('direct email replies: matched by In-Reply-To/References only, auto-replies and own mails ignored (#65)', () => {
+  const lines = [
+    '* 1 FETCH (UID 11 BODY[HEADER.FIELDS (MESSAGE-ID IN-REPLY-TO)] {200}',
+    'Message-ID: <R1@client.fr>',
+    'In-Reply-To: <ABC@kls3-dev.com>',
+    'From: Jeanne Martin <Jeanne@Client.fr>',
+    'Subject: =?UTF-8?B?UmU6IETDqW1v?=',
+    'Date: Fri, 27 Nov 2026 10:00:00 +0100',
+    '',
+    ')',
+    '* 2 FETCH (UID 12 BODY[HEADER.FIELDS (MESSAGE-ID)] {120}',
+    'Message-ID: <R2@client.fr>',
+    'References: <zzz@x>',
+    ' <abc@kls3-dev.com>',
+    'From: other@client.fr',
+    'Auto-Submitted: auto-replied',
+    '',
+    ')',
+    '* 3 FETCH (UID 13 BODY[HEADER.FIELDS (MESSAGE-ID)] {120}',
+    'Message-ID: <R3@kls3.fr>',
+    'In-Reply-To: <abc@kls3-dev.com>',
+    'From: eric@kls3.fr',
+    '',
+    ')',
+    '* 4 FETCH (UID 14 BODY[HEADER.FIELDS (MESSAGE-ID)] {120}',
+    'Message-ID: <R4@client.fr>',
+    'Subject: Re: Démo',
+    'From: jeanne@client.fr',
+    '',
+    ')',
+  ]
+  const messages = replies.parseImapHeaderFetch(lines)
+  assert.equal(messages.length, 4)
+  assert.equal(messages[1].headers.references, '<zzz@x> <abc@kls3-dev.com>')
+  const sentEmails = [{ id: 'd1', contactId: 'c1', owner: 'Eric', subject: 'Démo', messageId: '<ABC@kls3-dev.com>' }]
+  const found = replies.matchDirectReplies({ messages: [...messages, messages[0]], sentEmails, ownAddress: 'Eric@kls3.fr' })
+  assert.equal(found.length, 1)
+  assert.equal(found[0].sentEmail.id, 'd1'); assert.equal(found[0].from, 'jeanne@client.fr')
+  assert.equal(found[0].subject, 'Re: Démo'); assert.equal(found[0].receivedAt, '2026-11-27T09:00:00.000Z')
+  assert.equal(replies.replyMarker(found[0].replyMessageId), '[DIRECT_REPLY:<r1@client.fr>]')
+  assert.equal(replies.isAutomatedReply({ 'auto-submitted': 'no' }), false)
+  assert.equal(replies.isAutomatedReply({ precedence: 'bulk' }), true)
+  assert.equal(replies.imapSinceDate(new Date('2026-11-01T12:00:00Z')), '1-Nov-2026')
+})
+const blDisplay = await load('lib/business-lines/display.ts')
+const blFilter = await load('lib/utils/business-line-filter.ts')
+await test('business line behaviour comes from BUSINESS_LINES fields, so a new line needs no code (#27)', () => {
+  assert.equal(blDisplay.outcomeLabel('PAID_MEETING'), 'RDV rémunérés')
+  assert.equal(blDisplay.outcomeLabel('SUBSCRIPTION_STARTED'), 'Nouveaux abonnements')
+  assert.equal(blDisplay.outcomeLabel(null), 'Résultats économiques')
+  assert.equal(blDisplay.isRecurringRevenue({ revenueType: 'MRR' }), true)
+  assert.equal(blDisplay.isRecurringRevenue({ revenueType: 'PROJECT' }), false)
+  assert.equal(blDisplay.businessLineLabel({ code: 'NEW_LINE', name: 'Nouvelle ligne' }), 'Nouvelle ligne')
+  assert.equal(blDisplay.businessLineLabel(null), '')
+  assert.equal(blFilter.parseBusinessLineParam('new_line'), 'NEW_LINE')
+  assert.equal(blFilter.parseBusinessLineParam('bad code;'), null)
+  assert.equal(blFilter.parseBusinessLineParam(''), null)
+  const lines = [{ id: 'bl1', code: 'NEW_LINE' }]
+  assert.equal(blFilter.findBusinessLineByCode(lines, 'NEW_LINE').id, 'bl1')
+  assert.equal(blFilter.findBusinessLineByCode(lines, 'UNKNOWN'), null)
+})
 console.log(`${tests} CRM regression tests passed`)
