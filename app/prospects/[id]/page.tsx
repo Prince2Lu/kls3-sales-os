@@ -20,6 +20,7 @@ import { notFound } from 'next/navigation'
 import { TaskActions } from './task-actions'
 import { ActivityActions } from './activity-actions'
 import { EconomicValueSection } from './economic-value-section'
+import { OpportunityQuickActions } from './opportunity-quick-actions'
 import {
   getFrenchTaskType,
   getFrenchActivityType,
@@ -125,14 +126,7 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                 Modifier
               </Button>
             </Link>
-            <Link href={`/prospects/${id}/activity`}>
-              <Button size="sm">+ Activité</Button>
-            </Link>
-            <Link href={`/prospects/${id}/task`}>
-              <Button size="sm" variant="ghost">
-                + Tâche
-              </Button>
-            </Link>
+            <OpportunityQuickActions opportunityId={id} contactId={opportunity.primaryContactId} />
           </div>
         </div>
 

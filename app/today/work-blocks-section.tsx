@@ -1,5 +1,5 @@
 // Continuer la prospection section
-// Displays work block counters with links to /work mode
+// Displays work block counters with links to Prospection / Pipeline
 
 import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -60,11 +60,11 @@ export function WorkBlocksSection({
                 {/* Work blocks */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {blocks.map((block) => {
-                    const url = `/work?bl=${encodeURIComponent(
-                      businessLine.code
-                    )}&status=${encodeURIComponent(block.status)}&owner=${encodeURIComponent(
-                      currentOwner
-                    )}`
+                    // Prospecting blocks open Prospection on this Business Line;
+                    // opportunity stages open the Pipeline (Trello #59).
+                    const url = block.statusType === 'PRE_RDV'
+                      ? `/cold-call?bl=${encodeURIComponent(businessLine.code)}`
+                      : '/pipeline'
 
                     return (
                       <Link key={block.status} href={url}>
