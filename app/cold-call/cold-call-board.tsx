@@ -32,6 +32,7 @@ import { CallQueueList } from './call-queue-list'
 import { buildCallQueue, type CampaignSignal } from '@/lib/prospecting/call-queue'
 import { Search, X, Phone, CalendarDays, MessageCircle, CalendarCheck } from 'lucide-react'
 import { normalizeSearchValue, combineSearchValues, normalizePhoneForSearch } from '@/lib/utils/search'
+import { callsByOwner } from '@/lib/prospecting/call-stats'
 
 interface ColdCallBoardProps {
   targets: ColdCallTarget[]
@@ -334,13 +335,12 @@ export function ColdCallBoard({
       callsWeek: callsWeek.length,
       conversationsToday: scopedActivities.filter((activity) => activity.result === 'CONVERSATION' && isToday(activity.date)).length,
       meetingsToday: scopedActivities.filter((activity) => activity.result === 'MEETING_BOOKED' && isToday(activity.date)).length,
-      ericToday: callsToday.filter((activity) => activity.owner === 'Eric').length,
-      lilianToday: callsToday.filter((activity) => activity.owner === 'Lilian').length,
+      callsTodayByOwner: callsByOwner(callsToday),
     }
   }, [activities, targets, selectedBusinessLineId])
 
   const callKpiCards = [
-    { label: "Appels aujourd'hui", value: callKpis.callsToday, icon: Phone, detail: `Eric ${callKpis.ericToday} · Lilian ${callKpis.lilianToday}` },
+    { label: "Appels aujourd'hui", value: callKpis.callsToday, icon: Phone, detail: callKpis.callsTodayByOwner || undefined },
     { label: 'Appels cette semaine', value: callKpis.callsWeek, icon: CalendarDays },
     { label: "Conversations aujourd'hui", value: callKpis.conversationsToday, icon: MessageCircle },
     { label: "RDV obtenus aujourd'hui", value: callKpis.meetingsToday, icon: CalendarCheck },
@@ -479,3 +479,4 @@ export function ColdCallBoard({
     </div>
   )
 }
+

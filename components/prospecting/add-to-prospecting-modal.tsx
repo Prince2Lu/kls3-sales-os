@@ -11,10 +11,12 @@ import { useRouter } from 'next/navigation'
 import {
   addToProspecting,
   checkProspectingTarget,
+  listActiveOwnersAction,
   type AddToProspectingAction,
   type ProspectingCheckResult,
 } from '@/lib/actions/prospecting-actions'
 import type { BusinessLine, Contact, Owner } from '@/types/domain'
+import { ownerOptions } from '@/lib/users/owner-options'
 
 interface AddToProspectingModalProps {
   companyId: string
@@ -40,6 +42,7 @@ export function AddToProspectingModal({
   // Form state
   const [businessLineId, setBusinessLineId] = useState<string>('')
   const [owner, setOwner] = useState<Owner>(currentOwner)
+  const [activeOwners, setActiveOwners] = useState<string[]>([])
   const [contactId, setContactId] = useState<string | undefined>(preSelectedContactId)
 
   // UI state
@@ -54,6 +57,15 @@ export function AddToProspectingModal({
   // Pre-check state
   const [isChecking, setIsChecking] = useState(false)
   const [checkResult, setCheckResult] = useState<ProspectingCheckResult | null>(null)
+
+  // Owner choices come from active USERS (Trello #53)
+  useEffect(() => {
+    let cancelled = false
+    listActiveOwnersAction()
+      .then((names) => { if (!cancelled) setActiveOwners(names) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   // Auto-select contact if only one exists
   useEffect(() => {
@@ -252,8 +264,9 @@ export function AddToProspectingModal({
               className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20"
               disabled={isSubmitting}
             >
-              <option value="Eric">Eric</option>
-              <option value="Lilian">Lilian</option>
+              {ownerOptions(activeOwners, currentOwner).map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
             </select>
           </div>
 
