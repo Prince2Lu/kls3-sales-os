@@ -535,6 +535,44 @@ await test('calls today are counted for every owner, busiest first', () => {
   assert.equal(callStats.callsByOwner(calls), 'Lilian 2 · Camille 1 · Eric 1')
   assert.equal(callStats.callsByOwner([]), '')
 })
+const blKpis = await load('lib/dashboard/business-line-kpis.ts')
+await test('Dashboard 6 KPIs per business line: activity, conversion, weighted pipeline, confirmed revenue (#62)', () => {
+  const period = { start: new Date('2026-11-01T00:00:00Z'), end: new Date('2026-11-30T23:59:59Z') }
+  const businessLines = [
+    { id: 'p', name: 'Paul', active: true, revenueType: 'ONE_SHOT' },
+    { id: 'c', name: 'Calymia', active: true, revenueType: 'MRR' },
+    { id: 'x', name: 'Archivée', active: false, revenueType: 'PROJECT' },
+  ]
+  const data = {
+    coldCallTargets: [{ id: 't1', businessLineId: 'p' }],
+    opportunities: [
+      { id: 'o1', businessLineId: 'p', stage: 'RDV', potentialValue: 10000, probability: 60, createdAt: '2026-11-02T00:00:00Z' },
+      { id: 'o2', businessLineId: 'p', stage: 'Proposition', potentialValue: 5000, probability: null, createdAt: '2026-11-02T00:00:00Z' },
+      { id: 'o3', businessLineId: 'p', stage: 'Gagné', potentialValue: 9000, probability: 100, createdAt: '2026-11-02T00:00:00Z' },
+      { id: 'o4', businessLineId: 'c', stage: 'Opportunité', potentialValue: 708, probability: 0.5, createdAt: '2026-11-02T00:00:00Z' },
+    ],
+    activities: [
+      { id: 'a1', type: 'CALL', result: 'NO_ANSWER', coldCallTargetId: 't1', opportunityId: null, date: '2026-11-03T09:00:00Z' },
+      { id: 'a2', type: 'CALL', result: 'CONVERSATION', coldCallTargetId: 't1', opportunityId: null, date: '2026-11-03T10:00:00Z' },
+      { id: 'a3', type: 'CALL', result: 'MEETING_BOOKED', coldCallTargetId: null, opportunityId: 'o1', date: '2026-11-04T10:00:00Z' },
+      { id: 'a4', type: 'CALL', result: 'MEETING_BOOKED', coldCallTargetId: 't1', opportunityId: null, date: '2026-10-04T10:00:00Z' },
+    ],
+    valueEvents: [
+      { businessLineId: 'p', status: 'CONFIRMED', eventType: 'PAID_MEETING', revenueType: 'ONE_SHOT', amount: 100, eventDate: '2026-11-05' },
+      { businessLineId: 'p', status: 'PENDING', eventType: 'PAID_MEETING', revenueType: 'ONE_SHOT', amount: 100, eventDate: '2026-11-05' },
+      { businessLineId: 'c', status: 'PAID', eventType: 'SUBSCRIPTION_STARTED', revenueType: 'MRR', amount: 59, eventDate: '2026-11-06' },
+    ],
+  }
+  const rows = blKpis.buildBusinessLineKpis({ businessLines, period, data })
+  assert.equal(rows.length, 2)
+  const paul = rows[0]
+  assert.equal(paul.calls, 3); assert.equal(paul.conversations, 1); assert.equal(paul.meetings, 1)
+  assert.equal(Math.round(paul.meetingRate * 100), 33)
+  assert.equal(paul.weightedPipeline, 6000); assert.equal(paul.openWithoutProbability, 1)
+  assert.equal(paul.revenue, 100); assert.equal(paul.newMrr, 0)
+  const calymia = rows[1]
+  assert.equal(calymia.meetingRate, null); assert.equal(calymia.weightedPipeline, 354); assert.equal(calymia.newMrr, 59); assert.equal(calymia.revenue, 0)
+})
 const replies = await load('lib/email-replies/reply-matcher.ts', {}, { atob, TextDecoder })
 await test('direct email replies: matched by In-Reply-To/References only, auto-replies and own mails ignored (#65)', () => {
   const lines = [
