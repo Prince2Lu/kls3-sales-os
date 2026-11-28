@@ -320,4 +320,21 @@ await test('Airtable never runs more than 4 requests at once', async () => {
   await Promise.all(Array.from({ length: 12 }, (_, index) => airtable.airtableFetch(`https://api.airtable.test/v0/base/T${index}`)))
   assert.equal(http.calls.length, 12); assert.equal(http.maxActive, 4)
 })
+const senderLib = await load('lib/users/sender-identity.ts', {
+  '@/lib/airtable': `export async function getUsers() { return globalThis.ownerState.users }`,
+  '@/lib/digital-cards': `export async function getDigitalCardBySlug(slug) { return globalThis.ownerState.cards[slug] ?? null }`,
+}, { globalThis: { ownerState } })
+await test('sender identity comes from the digital card, then USERS, never from a coded first name', async () => {
+  ownerState.users = [{ name: 'Camille', firstName: 'Camille', lastName: 'Martin', email: 'Camille@Example.test', active: true }]
+  ownerState.cards = { eric: { displayName: 'Eric S.', firstName: 'Eric', lastName: 'S', email: 'eric@kls3.test', title: 'Directeur de missions' } }
+  assert.deepEqual({ ...(await senderLib.getSenderIdentity('Eric')) }, { name: 'Eric S.', email: 'eric@kls3.test', title: 'Directeur de missions' })
+  assert.deepEqual({ ...(await senderLib.getSenderIdentity('Camille')) }, { name: 'Camille Martin', email: 'camille@example.test', title: '' })
+  assert.deepEqual({ ...(await senderLib.getSenderIdentity('Inconnu')) }, { name: 'Inconnu', email: '', title: '' })
+})
+const callStats = await load('lib/prospecting/call-stats.ts')
+await test('calls today are counted for every owner, busiest first', () => {
+  const calls = [{ owner: 'Lilian' }, { owner: 'Camille' }, { owner: 'Lilian' }, { owner: null }, { owner: 'Eric' }]
+  assert.equal(callStats.callsByOwner(calls), 'Lilian 2 · Camille 1 · Eric 1')
+  assert.equal(callStats.callsByOwner([]), '')
+})
 console.log(`${tests} CRM regression tests passed`)
