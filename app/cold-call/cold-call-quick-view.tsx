@@ -14,6 +14,7 @@ import type {
   Task,
 } from '@/types/domain'
 import { EntityQuickView } from '@/components/pipeline/entity-quick-view'
+import { businessLineLabel } from '@/lib/business-lines/display'
 
 interface ColdCallQuickViewProps {
   target: ColdCallTarget
@@ -51,7 +52,7 @@ export function ColdCallQuickView({
     <>
       {businessLine && (
         <Badge variant="accent">
-          {businessLine.code === 'SACHA' ? 'Leverio' : businessLine.name}
+          {businessLineLabel(businessLine)}
         </Badge>
       )}
       <Badge variant="muted">{target.callStatus}</Badge>

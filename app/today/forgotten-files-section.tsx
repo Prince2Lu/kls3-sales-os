@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import type { BusinessLine, Company, Contact } from '@/types/domain'
 import { FORGOTTEN_THRESHOLD_DAYS, proposedFollowUpAt, type ForgottenFile } from '@/lib/prospecting/forgotten-files'
 import { createManualTask } from '@/lib/actions/task-actions'
+import { businessLineLabel } from '@/lib/business-lines/display'
 
 const VISIBLE = 10
 
@@ -101,7 +102,7 @@ function ForgottenRow({ file, businessLine, company, contact }: {
             {company?.name || 'Entreprise inconnue'}
           </Link>
           <Badge variant="default" className="text-xs">{file.status}</Badge>
-          {businessLine && <Badge variant="muted" className="text-xs">{businessLine.code === 'SACHA' ? 'Leverio' : businessLine.name}</Badge>}
+          {businessLine && <Badge variant="muted" className="text-xs">{businessLineLabel(businessLine)}</Badge>}
         </div>
         <p className="text-xs text-text-muted">
           {contactName ? `${contactName} · ` : ''}sans action depuis {file.idleDays} jours
