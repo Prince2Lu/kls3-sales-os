@@ -648,4 +648,22 @@ await test('business line behaviour comes from BUSINESS_LINES fields, so a new l
   assert.equal(blFilter.findBusinessLineByCode(lines, 'NEW_LINE').id, 'bl1')
   assert.equal(blFilter.findBusinessLineByCode(lines, 'UNKNOWN'), null)
 })
+await test('BL scope on screens: rows of other lines hidden, tasks/activities follow their opportunity or target (#4 part 2)', () => {
+  const limited = blScope.scopeFor('SALES', ['bl1'])
+  const data = {
+    businessLines: [{ id: 'bl1' }, { id: 'bl2' }],
+    opportunities: [{ id: 'o1', businessLineId: 'bl1' }, { id: 'o2', businessLineId: 'bl2' }],
+    coldCallTargets: [{ id: 't1', businessLineId: 'bl2' }],
+    valueEvents: [{ businessLineId: 'bl2' }, { businessLineId: 'bl1' }],
+    tasks: [{ opportunityId: 'o1' }, { opportunityId: 'o2' }, { coldCallTargetId: 't1' }, { opportunityId: null, coldCallTargetId: null }],
+    activities: [{ coldCallTargetId: 't1' }, { opportunityId: 'o1' }],
+    stageHistory: [{ opportunityId: 'o2' }],
+  }
+  const scoped = blScope.scopeCrmData(limited, data)
+  assert.deepEqual(scoped.businessLines.map((row) => row.id), ['bl1'])
+  assert.deepEqual(scoped.opportunities.map((row) => row.id), ['o1'])
+  assert.equal(scoped.coldCallTargets.length, 0); assert.equal(scoped.valueEvents.length, 1)
+  assert.equal(scoped.tasks.length, 2); assert.equal(scoped.activities.length, 1); assert.equal(scoped.stageHistory.length, 0)
+  assert.equal(blScope.scopeCrmData(blScope.scopeFor('ADMIN', []), data), data)
+})
 console.log(`${tests} CRM regression tests passed`)

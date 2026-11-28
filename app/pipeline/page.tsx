@@ -12,13 +12,17 @@ import {
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { PipelineBoard } from './pipeline-board'
 import { SectionLabel } from '@/components/ui/section-label'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 export default async function PipelinePage() {
   const currentOwner = await getCurrentOwner()
 
   // Load all data (pagination handled automatically by fetchRecords)
   // No maxRecords limits on activities/tasks to ensure complete counts
-  const [opportunities, businessLines, allTasks, stageHistory, companies, contacts, activities] =
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [opportunities, businessLines, allTasks, stageHistory, companies, contacts, activities] =
     await Promise.all([
       getOpportunities(),
       getBusinessLines(),
@@ -28,6 +32,7 @@ export default async function PipelinePage() {
       getContacts(),
       getActivities(), // No limit - complete call history
     ])
+  ;({ opportunities: opportunities, businessLines: businessLines, tasks: allTasks, stageHistory: stageHistory, activities: activities } = scopeCrmData(scope, { opportunities: opportunities, businessLines: businessLines, tasks: allTasks, stageHistory: stageHistory, activities: activities }))
 
   // Group opportunities by stage
   const stages = [

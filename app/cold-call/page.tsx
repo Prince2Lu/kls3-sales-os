@@ -13,6 +13,8 @@ import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { ColdCallBoard } from './cold-call-board'
 import { loadEmailFollowUp } from '@/app/email-campaigns/follow-up/data'
 import type { CampaignSignal } from '@/lib/prospecting/call-queue'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 /** Campaign clicks raise call priority. If they cannot be loaded, Prospection still works. */
 async function loadCampaignSignals(): Promise<CampaignSignal[]> {
@@ -36,7 +38,9 @@ export default async function ColdCallPage(props: {
 
   // Load all data (pagination handled automatically by fetchRecords)
   // No maxRecords limits to ensure complete call counts and task counts
-  const [targets, businessLines, companies, contacts, activities, tasks, campaignSignals] =
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [targets, businessLines, companies, contacts, activities, tasks, campaignSignals] =
     await Promise.all([
       getColdCallTargets(),
       getBusinessLines(),
@@ -46,6 +50,7 @@ export default async function ColdCallPage(props: {
       getTasks({ status: 'TODO' }), // No limit - all TODO tasks
       loadCampaignSignals(),
     ])
+  ;({ coldCallTargets: targets, businessLines: businessLines, activities: activities, tasks: tasks } = scopeCrmData(scope, { coldCallTargets: targets, businessLines: businessLines, activities: activities, tasks: tasks }))
 
   const activeProspectingStatuses = new Set([
     'À appeler',

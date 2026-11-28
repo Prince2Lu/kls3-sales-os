@@ -14,6 +14,8 @@ import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { parseBusinessLineParam, buildUrlWithBusinessLine } from '@/lib/utils/business-line-filter'
 import { buildFocusQueue } from './queue-builder'
 import { FocusSession } from './focus-session'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 export default async function FocusPage(props: {
   searchParams: Promise<{ businessLine?: string }>
@@ -27,7 +29,9 @@ export default async function FocusPage(props: {
   const selectedBusinessLineCode = parseBusinessLineParam(searchParams.businessLine)
 
   // Fetch all data needed to build the queue - NO LIMITS
-  const [allTasks, opportunities, contacts, companies, businessLines, activities] =
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [allTasks, opportunities, contacts, companies, businessLines, activities] =
     await Promise.all([
       getTasks({ owner: currentOwner }), // No limit - all tasks for current owner
       getOpportunities(), // No limit - all opportunities
@@ -36,6 +40,7 @@ export default async function FocusPage(props: {
       getBusinessLines(),
       getActivities(), // No limit - all activities for context
     ])
+  ;({ tasks: allTasks, opportunities: opportunities, businessLines: businessLines, activities: activities } = scopeCrmData(scope, { tasks: allTasks, opportunities: opportunities, businessLines: businessLines, activities: activities }))
 
   // Build the Focus queue with Business Line filter
   const queue = buildFocusQueue({

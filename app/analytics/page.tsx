@@ -26,6 +26,8 @@ import { CohortView } from './cohort-view'
 import { ViewToggle } from './view-toggle'
 import { VelocityView } from './velocity-view'
 import { EfficiencyView } from './efficiency-view'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 type AnalyticsView = 'activity' | 'cohort' | 'velocity' | 'efficiency'
 
@@ -68,7 +70,9 @@ export default async function AnalyticsPage(props: {
     : 'lastMonth'
 
   // Fetch all data (add activities and valueEvents for Phase 7D)
-  const [allStageHistory, allOpportunities, businessLines, allActivities, allValueEvents] =
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [allStageHistory, allOpportunities, businessLines, allActivities, allValueEvents] =
     await Promise.all([
       getStageHistory(),
       getOpportunities(),
@@ -76,6 +80,7 @@ export default async function AnalyticsPage(props: {
       getActivities(),
       getValueEvents(),
     ])
+  ;({ stageHistory: allStageHistory, opportunities: allOpportunities, businessLines: businessLines, activities: allActivities, valueEvents: allValueEvents } = scopeCrmData(scope, { stageHistory: allStageHistory, opportunities: allOpportunities, businessLines: businessLines, activities: allActivities, valueEvents: allValueEvents }))
 
   // Get period date range
   const periodRange = getPeriodDateRange(selectedPeriod)

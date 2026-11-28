@@ -24,11 +24,15 @@ async function loadGoals(): Promise<{ goals: Goal[]; goalsError: boolean }> {
   }
 }
 import { DashboardClient } from './dashboard-client'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 export default async function DashboardPage() {
   // Fetch all required data in parallel (TEAM VIEW - no owner filtering)
   // NO LIMITS - Airtable pagination handles large datasets automatically
-  const [businessLines, valueEvents, opportunities, activities, tasks, companies, contacts, coldCallTargets, goalsResult] =
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [businessLines, valueEvents, opportunities, activities, tasks, companies, contacts, coldCallTargets, goalsResult] =
     await Promise.all([
       getBusinessLines(),
       getValueEvents(), // No limit - all value events
@@ -40,6 +44,7 @@ export default async function DashboardPage() {
       getColdCallTargets(),
       loadGoals(),
     ])
+  ;({ businessLines: businessLines, valueEvents: valueEvents, opportunities: opportunities, activities: activities, tasks: tasks, coldCallTargets: coldCallTargets } = scopeCrmData(scope, { businessLines: businessLines, valueEvents: valueEvents, opportunities: opportunities, activities: activities, tasks: tasks, coldCallTargets: coldCallTargets }))
 
   return (
     <div className="container mx-auto px-4 py-8">
