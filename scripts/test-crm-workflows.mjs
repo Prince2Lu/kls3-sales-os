@@ -495,6 +495,29 @@ await test('Call series: session summary counts calls, conversations, meetings a
   const summary = callSeries.summarizeSeries(['NO_ANSWER', 'CONVERSATION', 'MEETING_BOOKED', 'SKIPPED'], new Date(2026, 10, 27, 10, 0), new Date(2026, 10, 27, 10, 25))
   assert.equal(summary.calls, 3); assert.equal(summary.conversations, 2); assert.equal(summary.meetings, 1); assert.equal(summary.skipped, 1); assert.equal(summary.minutes, 25)
 })
+const briefing = await load('lib/prospecting/call-briefing.ts')
+await test('Call briefing: merges target and contact history without duplicates', () => {
+  const activities = [
+    { id: 'a1', coldCallTargetId: 't1', contactId: 'c1', type: 'CALL', result: 'NO_ANSWER', notes: null, date: '2026-11-01T10:00:00Z' },
+    { id: 'a2', coldCallTargetId: 't1', contactId: 'c1', type: 'CALL', result: 'CONVERSATION', notes: 'Rappeler après le budget', date: '2026-11-10T10:00:00Z' },
+    { id: 'a3', coldCallTargetId: null, contactId: 'c1', type: 'EMAIL', result: 'EMAIL_SENT', notes: '', date: '2026-11-15T10:00:00Z' },
+    { id: 'a4', coldCallTargetId: 't2', contactId: 'c9', type: 'CALL', result: 'CONVERSATION', notes: 'autre prospect', date: '2026-11-20T10:00:00Z' },
+  ]
+  const tasks = [
+    { id: 'k1', coldCallTargetId: 't1', contactId: 'c1', status: 'TODO', dueAt: '2026-12-02T09:30:00Z', type: 'CALL', notes: 'Relance budget' },
+    { id: 'k2', coldCallTargetId: 't1', contactId: 'c1', status: 'TODO', dueAt: '2026-12-10T09:30:00Z', type: 'CALL', notes: null },
+    { id: 'k3', coldCallTargetId: 't1', contactId: 'c1', status: 'DONE', dueAt: '2026-11-01T09:30:00Z', type: 'CALL', notes: null },
+  ]
+  const result = briefing.buildCallBriefing({ targetId: 't1', contactId: 'c1', activities, tasks })
+  assert.equal(result.calls, 2); assert.equal(result.emails, 1); assert.equal(result.linkedin, 0)
+  assert.equal(result.lastExchange.id, 'a2'); assert.equal(result.lastNote.id, 'a2')
+  assert.equal(result.recent.map(activity => activity.id).join(','), 'a3,a2,a1')
+  assert.equal(result.openTask.id, 'k1')
+})
+await test('Call briefing: a prospect without history is a first contact', () => {
+  const result = briefing.buildCallBriefing({ targetId: 't1', contactId: null, activities: [{ id: 'x', coldCallTargetId: null, contactId: null, type: 'CALL', result: null, notes: null, date: '2026-11-01T10:00:00Z' }], tasks: [] })
+  assert.equal(result.calls, 0); assert.equal(result.recent.length, 0); assert.equal(result.openTask, null); assert.equal(result.lastExchange, null)
+})
 const senderLib = await load('lib/users/sender-identity.ts', {
   '@/lib/airtable': `export async function getUsers() { return globalThis.ownerState.users }`,
   '@/lib/digital-cards': `export async function getDigitalCardBySlug(slug) { return globalThis.ownerState.cards[slug] ?? null }`,
