@@ -1085,7 +1085,7 @@ Owner reste un champ contrôlé (Single Select Airtable contenant le prénom), j
 
 Depuis le 27/11/2026 (Trello #53, validé par Eric), la liste des owners possibles vient des utilisateurs actifs de la table USERS (créée pour l'authentification), plus du code : `lib/users/owners.ts`.
 
-Ajouter un commercial = créer sa ligne active dans USERS + ajouter son nom comme option des Single Select Owner / Changed By / Created By dans Airtable. Aucun changement de code.
+Ajouter un commercial = écran `/settings/users` (rôle ADMIN) : crée la ligne active dans USERS avec un mot de passe provisoire affiché une seule fois. Les écritures des tables à Owner / Changed By / Created By passent en `typecast`, donc Airtable ajoute l'option du nouveau prénom à sa première utilisation. Aucun changement de code.
 
 Ne jamais coder de logique sur un prénom : utiliser le rôle (ADMIN, SALES_DIRECTOR, SALES).
 

@@ -759,6 +759,16 @@ export const getStageHistoryById = dedupeRead(getStageHistoryByIdUncached)
 // WRITE OPERATIONS
 // ============================================================================
 
+// Tables whose Owner / Changed By / Created By single select holds a user's name.
+// Writing them with typecast lets Airtable add the option for a newly created
+// salesperson (USERS row) on first use, so nobody edits the select by hand.
+// The name itself is always checked against active USERS before writing.
+const OWNER_SELECT_TABLES: ReadonlySet<string> = new Set([
+  TABLE_NAMES.OPPORTUNITIES, TABLE_NAMES.ACTIVITIES, TABLE_NAMES.TASKS, TABLE_NAMES.STAGE_HISTORY,
+  TABLE_NAMES.COLD_CALL_TARGETS, TABLE_NAMES.CALL_STATUS_HISTORY, TABLE_NAMES.RELATIONSHIPS,
+  TABLE_NAMES.EMAIL_CAMPAIGNS,
+])
+
 // Helper to create a record
 async function createRecord<TFields>(
   tableName: string,
@@ -771,7 +781,7 @@ async function createRecord<TFields>(
     method: 'POST',
     body: JSON.stringify({
       fields,
-      ...(options?.typecast ? { typecast: true } : {}),
+      ...(options?.typecast || OWNER_SELECT_TABLES.has(tableName) ? { typecast: true } : {}),
     }),
   })
 
@@ -795,7 +805,7 @@ async function updateRecord<TFields>(
 
   const response = await airtableFetch(url, {
     method: 'PATCH',
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify({ fields, ...(OWNER_SELECT_TABLES.has(tableName) ? { typecast: true } : {}) }),
   })
 
   return handleAirtableResponse<AirtableRecord<TFields>>(response)
@@ -1540,6 +1550,32 @@ export async function updateUserPreferences(
     fields
   )
   return mapUser(record)
+}
+
+/** Admin only (checked by the caller). Business Lines is sent only when chosen. */
+export async function createUser(input: {
+  name: string
+  firstName: string
+  lastName: string
+  email: string
+  role: string
+  passwordHash: string
+  businessLineIds: string[]
+}): Promise<User> {
+  const now = new Date().toISOString()
+  const fields: Partial<AirtableUserFields> = {
+    Name: input.name,
+    'First Name': input.firstName,
+    'Last Name': input.lastName,
+    Email: input.email,
+    Role: input.role,
+    Active: true,
+    'Password Hash': input.passwordHash,
+    'Created At': now,
+    'Updated At': now,
+  }
+  if (input.businessLineIds.length) fields['Business Lines'] = input.businessLineIds
+  return mapUser(await createRecord<AirtableUserFields>(TABLE_NAMES.USERS, fields))
 }
 
 export async function updateUserPasswordHash(

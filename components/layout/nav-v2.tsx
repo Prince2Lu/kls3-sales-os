@@ -63,6 +63,7 @@ const toolGroups: Array<{ label: string; items: NavLink[] }> = [
     label: 'Paramètres & conformité',
     items: [
       { href: '/settings/email', label: 'Paramètres messagerie' },
+      { href: '/settings/users', label: 'Utilisateurs' },
       { href: '/privacy-requests', label: 'Demandes RGPD' },
     ],
   },
