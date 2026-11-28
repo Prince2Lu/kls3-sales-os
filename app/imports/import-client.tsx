@@ -48,7 +48,7 @@ export function ImportClient({ lastImport, importEnabled }: { lastImport: Import
 
     const confirmed = window.confirm(
       `Supprimer définitivement les données créées par « ${rollbackPreview.batchName} » ?\n\n` +
-      `${rollbackPreview.companiesToDelete} société(s) et ${rollbackPreview.contactsToDelete} contact(s) seront supprimés.\n` +
+      `${rollbackPreview.companiesToDelete} société(s), ${rollbackPreview.contactsToDelete} contact(s) et ${rollbackPreview.targetsToDelete} cible(s) de prospection jamais travaillée(s) seront supprimés.\n` +
       `Les sociétés seulement enrichies par l'import seront conservées.`
     )
     if (!confirmed) return

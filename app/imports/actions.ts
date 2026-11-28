@@ -8,8 +8,12 @@ import {
   createImportBatch,
   deleteCompany,
   deleteContact,
+  getActivities,
+  getBusinessLineById,
   getBusinessLineByCode,
   getColdCallTargets,
+  deleteColdCallTarget,
+  getTasks,
   getCompanies,
   getContacts,
   getEmailRecipients,
@@ -25,6 +29,10 @@ import { getNotaryPilotCandidates, type NotaryDirectoryCandidate } from '@/lib/n
 import { isNotaryImportEnabled } from '@/lib/prospecting/safety'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { denyUnlessRole } from '@/lib/auth/roles'
+import { parseCsv } from '@/lib/imports/csv'
+import { IMPORT_MAX_ROWS, planImport, type ImportPlan } from '@/lib/imports/sales-os-import'
+import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
+import type { ColdCallTarget } from '@/types/domain'
 
 function normalize(value: string | null | undefined): string {
   return (value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -199,6 +207,7 @@ export interface ImportRollbackPreview {
   batchName: string
   companiesToDelete: number
   contactsToDelete: number
+  targetsToDelete: number
   safe: boolean
   reasons: string[]
   rolledBackAt: string | null
@@ -209,7 +218,7 @@ async function buildImportRollbackPreview(batchId?: string): Promise<ImportRollb
   const batch = batchId ? batches.find((item) => item.id === batchId) : batches[0]
   if (!batch) return null
 
-  const [companies, contacts, allContacts, opportunities, targets, relationships, recipients] = await Promise.all([
+  const [companies, contacts, allContacts, opportunities, targets, relationships, recipients, activities, tasks] = await Promise.all([
     getCompanies({ importBatchId: batch.id }),
     getContacts({ importBatchId: batch.id }),
     getContacts(),
@@ -217,6 +226,8 @@ async function buildImportRollbackPreview(batchId?: string): Promise<ImportRollb
     getColdCallTargets({ includeArchived: true }),
     getRelationships(),
     getEmailRecipients(),
+    getActivities(),
+    getTasks(),
   ])
 
   const companyIds = new Set(companies.map((item) => item.id))
@@ -258,8 +269,11 @@ async function buildImportRollbackPreview(batchId?: string): Promise<ImportRollb
     reasons.push(`${usedOpportunities.length} Opportunity(s) utilisent déjà ces sociétés.`)
   }
 
+  const batchTargets = targetsCreatedByBatch(batch, targets, activities, tasks)
+  const batchTargetIds = new Set(batchTargets.map((target) => target.id))
   const usedTargets = targets.filter(
-    (target) => companyIds.has(target.companyId) || (!!target.contactId && contactIds.has(target.contactId))
+    (target) => !batchTargetIds.has(target.id) &&
+      (companyIds.has(target.companyId) || (!!target.contactId && contactIds.has(target.contactId)))
   )
   if (usedTargets.length > 0) {
     reasons.push(`${usedTargets.length} cible(s) de prospection utilisent déjà ces données.`)
@@ -288,6 +302,7 @@ async function buildImportRollbackPreview(batchId?: string): Promise<ImportRollb
     batchName: batch.name,
     companiesToDelete: companies.length,
     contactsToDelete: contacts.length,
+    targetsToDelete: batchTargets.length,
     safe: reasons.length === 0,
     reasons,
     rolledBackAt: batch.rolledBackAt,
@@ -315,11 +330,19 @@ export async function rollbackLastImportAction(batchId: string) {
     }
   }
 
-  const [contacts, companies] = await Promise.all([
+  const batch = (await getImportBatches({ maxRecords: 50 })).find((item) => item.id === batchId)
+  const [contacts, companies, targets, activities, tasks] = await Promise.all([
     getContacts({ importBatchId: batchId }),
     getCompanies({ importBatchId: batchId }),
+    getColdCallTargets({ includeArchived: true }),
+    getActivities(),
+    getTasks(),
   ])
+  const batchTargets = batch ? targetsCreatedByBatch(batch, targets, activities, tasks) : []
 
+  for (const target of batchTargets) {
+    await deleteColdCallTarget(target.id)
+  }
   for (const contact of contacts) {
     await deleteContact(contact.id)
   }
@@ -327,7 +350,7 @@ export async function rollbackLastImportAction(batchId: string) {
     await deleteCompany(company.id)
   }
 
-  const summary = `Rollback Sales OS : ${companies.length} société(s) et ${contacts.length} contact(s) supprimés.`
+  const summary = `Rollback Sales OS : ${companies.length} société(s), ${contacts.length} contact(s) et ${batchTargets.length} cible(s) de prospection supprimés.`
   await markImportBatchRolledBack(batchId, summary)
 
   revalidatePath('/imports')
@@ -336,3 +359,178 @@ export async function rollbackLastImportAction(batchId: string) {
   return { success: true, summary }
 }
 
+
+// ============================================================================
+// CSV IMPORT "SALES OS FRIENDLY" (Trello #58)
+// ============================================================================
+
+const CSV_MAX_BYTES = 1_000_000
+
+/**
+ * Prospecting targets created by a CSV batch: created by the importer during
+ * the import window, still "À appeler", never worked (no activity, no task,
+ * no Opportunity). IMPORT_BATCHES has no link to targets, and no Airtable
+ * field is added, so these four conditions identify them safely.
+ */
+function targetsCreatedByBatch(
+  batch: { createdAt: string; importedAt: string | null; importedBy: string },
+  targets: ColdCallTarget[],
+  activities: Array<{ coldCallTargetId: string | null }>,
+  tasks: Array<{ coldCallTargetId: string | null }>
+): ColdCallTarget[] {
+  if (!batch.importedAt) return []
+  const from = Date.parse(batch.createdAt)
+  const to = Date.parse(batch.importedAt) + 60_000
+  const worked = new Set([...activities, ...tasks].map((item) => item.coldCallTargetId).filter(Boolean))
+  return targets.filter((target) => {
+    const created = Date.parse(target.createdAt)
+    return created >= from && created <= to && target.owner === batch.importedBy &&
+      target.callStatus === 'À appeler' && !target.opportunityId && !worked.has(target.id)
+  })
+}
+
+export interface CsvImportInput {
+  csv: string
+  fileName: string
+  businessLineId: string
+  createTargets: boolean
+  defaultIndustry?: string
+}
+
+async function planCsv(input: CsvImportInput): Promise<{ plan?: ImportPlan; businessLineName?: string; error?: string }> {
+  if (typeof input.csv !== 'string' || !input.csv.trim()) return { error: 'Fichier vide.' }
+  if (input.csv.length > CSV_MAX_BYTES) return { error: 'Fichier trop volumineux (1 Mo maximum).' }
+  if (!input.businessLineId) return { error: 'Choisissez la Business Line du lot.' }
+  const businessLine = await getBusinessLineById(input.businessLineId).catch(() => null)
+  if (!businessLine) return { error: 'Business Line introuvable.' }
+
+  const table = parseCsv(input.csv)
+  if (!table.rows.length) return { error: 'Aucune ligne à importer.' }
+  const defaultIndustry = input.defaultIndustry?.trim().slice(0, 80) ?? ''
+
+  const [companies, contacts, targets] = await Promise.all([
+    getCompanies(), getContacts(), getColdCallTargets(),
+  ])
+  const plan = planImport({ rows: table.rows, headers: table.headers, companies, contacts, targets,
+    businessLineId: businessLine.id, createTargets: !!input.createTargets })
+  if (defaultIndustry) {
+    for (const row of plan.rows) if (!row.data.industry) row.data.industry = defaultIndustry
+  }
+  if (plan.missingColumns.length) return { error: `Colonne obligatoire manquante : ${plan.missingColumns.join(', ')}.` }
+  return { plan, businessLineName: businessLine.name }
+}
+
+export async function previewCsvImportAction(input: CsvImportInput) {
+  await getCurrentOwner()
+  try {
+    const result = await planCsv(input)
+    if (result.error || !result.plan) return { success: false as const, error: result.error ?? 'Aperçu impossible.' }
+    return { success: true as const, plan: result.plan, businessLineName: result.businessLineName, maxRows: IMPORT_MAX_ROWS }
+  } catch (error) {
+    console.error('CSV import preview failed:', error instanceof Error ? error.message : error)
+    return { success: false as const, error: 'Aperçu impossible. Réessayez dans quelques instants.' }
+  }
+}
+
+export async function importCsvAction(input: CsvImportInput) {
+  const owner = await getCurrentOwner()
+  const denied = await denyUnlessRole()
+  if (denied) return { success: false as const, error: denied }
+
+  // The plan is recomputed here: the browser preview is never trusted.
+  const planned = await planCsv(input)
+  if (planned.error || !planned.plan) return { success: false as const, error: planned.error ?? 'Import impossible.' }
+  const { plan } = planned
+  const rows = plan.rows.filter((row) => !row.errors.length)
+  if (!rows.length) return { success: false as const, error: 'Aucune ligne valide à importer.' }
+
+  const batch = await createImportBatch({
+    name: `CSV — ${String(input.fileName || 'fichier').slice(0, 80)} — ${new Date().toLocaleDateString('fr-FR')}`,
+    source: 'Import CSV Sales OS',
+    criteria: `BL ${planned.businessLineName} · ${rows.length} ligne(s) valide(s) · cibles de prospection : ${input.createTargets ? 'oui' : 'non'}`,
+    requestedCount: plan.rows.length,
+    importedBy: owner,
+  })
+
+  const stats = { companiesCreated: 0, companiesUpdated: 0, contactsCreated: 0, duplicatesSkipped: 0,
+    excluded: plan.summary.rejected, errors: 0 }
+  let targetsCreated = 0
+  const companyIds = new Map<string, string>()
+  const contactIds = new Map<string, string>()
+  const failedLines: number[] = []
+
+  for (const row of rows) {
+    try {
+      const data = row.data
+      let companyId = row.company.id ?? companyIds.get(row.company.key) ?? null
+      if (row.company.state === 'CREATE') {
+        const company = await createCompany({
+          name: data.companyName,
+          primaryBusinessLineId: input.businessLineId,
+          registryNumber: data.registryNumber || undefined,
+          website: data.website || undefined,
+          phone: data.companyPhone || undefined,
+          email: data.companyEmail || undefined,
+          addressLine1: data.address || undefined,
+          postalCode: data.postalCode || undefined,
+          city: data.city || undefined,
+          country: data.country || 'France',
+          industry: data.industry || undefined,
+          companySize: data.companySize || undefined,
+          importBatchId: batch.id,
+        })
+        companyId = company.id
+        companyIds.set(row.company.key, company.id)
+        stats.companiesCreated += 1
+      } else {
+        stats.duplicatesSkipped += 1
+      }
+      if (!companyId) throw new Error('Entreprise de la ligne précédente non créée')
+
+      let contactId = row.contact.id ?? contactIds.get(row.contact.key) ?? null
+      if (row.contact.state === 'CREATE') {
+        const contact = await createContact({
+          firstName: data.firstName || '—',
+          lastName: data.lastName || data.firstName,
+          companyId,
+          businessLineIds: [input.businessLineId],
+          jobTitle: data.jobTitle || undefined,
+          email: data.email || undefined,
+          phone: data.phone || undefined,
+          linkedin: data.linkedin || undefined,
+          notes: data.notes || undefined,
+          importBatchId: batch.id,
+        })
+        contactId = contact.id
+        contactIds.set(row.contact.key, contact.id)
+        stats.contactsCreated += 1
+      } else if (row.contact.state !== 'NONE') {
+        stats.duplicatesSkipped += 1
+      }
+
+      if (row.target === 'CREATE') {
+        const result = await findOrCreateProspectingTarget({
+          companyId, businessLineId: input.businessLineId, contactId, owner, status: 'À appeler',
+        })
+        if (result.action === 'CREATE_NEW') targetsCreated += 1
+      }
+    } catch (error) {
+      stats.errors += 1
+      failedLines.push(row.line)
+      console.error(`CSV import failed on line ${row.line}:`, error instanceof Error ? error.message : error)
+    }
+  }
+
+  await completeImportBatch(batch.id, stats)
+  revalidatePath('/imports')
+  revalidatePath('/companies')
+  revalidatePath('/contacts')
+  revalidatePath('/cold-call')
+
+  return {
+    success: stats.errors === 0,
+    batchId: batch.id,
+    stats: { ...stats, targetsCreated },
+    error: failedLines.length ? `Lignes non importées : ${failedLines.slice(0, 20).join(', ')}${failedLines.length > 20 ? '…' : ''}.` : undefined,
+  }
+}

@@ -5,9 +5,10 @@ import { revalidatePath } from 'next/cache'
 import { getMailSettings, saveMailSettings } from '@/lib/mail-settings'
 import { testDirectMailConnection } from '@/lib/direct-email/mailer'
 import type { Owner } from '@/types/domain'
+import { isValidOwner } from '@/lib/users/owners'
 
-function asOwner(value: FormDataEntryValue | null): Owner | null {
-  return value === 'Eric' || value === 'Lilian' ? value : null
+async function asOwner(value: FormDataEntryValue | null): Promise<Owner | null> {
+  return (await isValidOwner(value)) ? (value as Owner) : null
 }
 
 async function authorize(owner: Owner) {
@@ -30,7 +31,7 @@ function integer(formData: FormData, key: string, fallback: number) {
 }
 
 export async function saveMailSettingsAction(formData: FormData) {
-  const owner = asOwner(formData.get('owner'))
+  const owner = await asOwner(formData.get('owner'))
   if (!owner) return { success: false, error: 'Propriétaire invalide.' }
 
   await authorize(owner)

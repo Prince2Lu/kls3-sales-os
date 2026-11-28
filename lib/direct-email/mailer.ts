@@ -2,6 +2,7 @@ import * as net from 'node:net'
 import * as tls from 'node:tls'
 import type { Owner } from '@/types/domain'
 import { getMailSettings } from '@/lib/mail-settings'
+import { getSenderIdentity, type SenderIdentity } from '@/lib/users/sender-identity'
 
 export type DirectMailAttachment = {
   filename: string
@@ -71,18 +72,19 @@ async function accountFor(owner: Owner): Promise<MailAccount> {
   }
 }
 
-function identity(owner: Owner) {
-  return owner === 'Eric'
-    ? { name: 'Eric Scarpino', title: 'Directeur de missions' }
-    : { name: 'Lilian Scarpino', title: 'Directeur commercial' }
+function signatureRole(sender: SenderIdentity) {
+  return sender.title ? `${sender.title} - KLS3` : 'KLS3'
 }
 
-function signatureHtml(owner: Owner, cardUrl: string) {
-  const sender = identity(owner)
+function escapeSignature(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function signatureHtml(sender: SenderIdentity, cardUrl: string) {
   return [
     '<div style="margin-top:24px;font-family:Arial,sans-serif;line-height:1.45;color:#111">',
-    `<div><strong>${sender.name}</strong></div>`,
-    `<div>${sender.title} - KLS3</div>`,
+    `<div><strong>${escapeSignature(sender.name)}</strong></div>`,
+    `<div>${escapeSignature(signatureRole(sender))}</div>`,
     '<div style="margin-top:10px">',
     `<a href="${cardUrl}" style="color:#4B7BF5;text-decoration:none">Ma carte de contact digitale →</a>`,
     '</div>',
@@ -90,11 +92,10 @@ function signatureHtml(owner: Owner, cardUrl: string) {
   ].join('')
 }
 
-function signatureText(owner: Owner, cardUrl: string) {
-  const sender = identity(owner)
+function signatureText(sender: SenderIdentity, cardUrl: string) {
   return [
     sender.name,
-    `${sender.title} - KLS3`,
+    signatureRole(sender),
     '',
     `Ma carte de contact digitale → ${cardUrl}`,
   ].join('\n')
@@ -116,12 +117,13 @@ function safeHeaderValue(value: string) {
 function buildRawMessage(
   account: MailAccount,
   input: DirectMailSendInput,
-  messageId: string
+  messageId: string,
+  sender: SenderIdentity
 ) {
   const outer = `kls3-mixed-${crypto.randomUUID()}`
   const alternative = `kls3-alt-${crypto.randomUUID()}`
-  const text = `${input.text.trim()}\n\n${signatureText(input.owner, input.cardUrl)}`
-  const html = `${input.html}${signatureHtml(input.owner, input.cardUrl)}`
+  const text = `${input.text.trim()}\n\n${signatureText(sender, input.cardUrl)}`
+  const html = `${input.html}${signatureHtml(sender, input.cardUrl)}`
 
   const lines = [
     `Message-ID: ${messageId}`,
@@ -389,9 +391,9 @@ async function appendToSent(account: MailAccount, raw: Buffer) {
 }
 
 export async function sendDirectMail(input: DirectMailSendInput) {
-  const account = await accountFor(input.owner)
+  const [account, sender] = await Promise.all([accountFor(input.owner), getSenderIdentity(input.owner)])
   const messageId = `<${crypto.randomUUID()}@kls3-dev.com>`
-  const raw = buildRawMessage(account, input, messageId)
+  const raw = buildRawMessage(account, input, messageId, sender)
 
   const recipients = Array.from(new Set([input.toEmail, ...(input.ccEmails || []), ...(input.bccEmails || [])]))
   await sendSmtp(account, recipients, raw)
