@@ -17,6 +17,7 @@ import {
 import { revalidatePath } from 'next/cache'
 import type { Owner, Stage, Priority, Source } from '@/types/domain'
 import { assertValidOwner } from '@/lib/users/owners'
+import { assertBusinessLineInScope, assertOpportunityInScope } from '@/lib/auth/business-line-scope-server'
 
 // ============================================================================
 // OPPORTUNITY ACTIONS
@@ -50,6 +51,7 @@ export interface CreateOpportunityInput {
 export async function createOpportunityAction(input: CreateOpportunityInput) {
   try {
     await assertValidOwner(input.owner)
+    await assertBusinessLineInScope(input.businessLineId)
     let companyId = input.companyId
     let contactId = input.contactId
 
@@ -109,6 +111,8 @@ export async function updateOpportunityAction(
 ) {
   try {
     await assertValidOwner(input.owner)
+    await assertOpportunityInScope(id)
+    await assertBusinessLineInScope(input.businessLineId)
     await updateOpportunity(id, {
       name: input.name,
       businessLineId: input.businessLineId,

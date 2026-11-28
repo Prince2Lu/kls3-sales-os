@@ -7,9 +7,13 @@ import {
   getColdCallTargets,
 } from '@/lib/airtable'
 import { PlanningClient } from './planning-client'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 export default async function PlanningPage() {
-  const [tasks, opportunities, companies, contacts, businessLines, targets] =
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [tasks, opportunities, companies, contacts, businessLines, targets] =
     await Promise.all([
       getTasks({ status: 'TODO' }),
       getOpportunities(),
@@ -18,6 +22,7 @@ export default async function PlanningPage() {
       getBusinessLines(),
       getColdCallTargets({ includeArchived: true }),
     ])
+  ;({ tasks: tasks, opportunities: opportunities, businessLines: businessLines, coldCallTargets: targets } = scopeCrmData(scope, { tasks: tasks, opportunities: opportunities, businessLines: businessLines, coldCallTargets: targets }))
 
   const opportunityMap = new Map(opportunities.map((item) => [item.id, item]))
   const companyMap = new Map(companies.map((item) => [item.id, item]))

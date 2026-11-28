@@ -22,6 +22,8 @@ import { ContactWorkActions } from '@/components/crm/contact-work-actions'
 import { EditActivityButton } from '@/components/crm/edit-activity-button'
 import { getContactHistory } from '@/lib/utils/contact-history'
 import { getFrenchActivityType, getFrenchTaskType } from '@/lib/utils/french-labels'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 interface ContactPageProps {
   params: Promise<{ id: string }>
@@ -33,7 +35,9 @@ export default async function ContactPage({ params }: ContactPageProps) {
   try {
     const contact = await getContactById(id)
 
-    const [company, opportunities, allActivities, allTasks, businessLines, currentOwner, relationshipsResult, prospectingTargets] = await Promise.all([
+    // Business Line scope of the signed-in user (Trello #4 part 2)
+    const scope = await currentBusinessLineScope()
+    let [company, opportunities, allActivities, allTasks, businessLines, currentOwner, relationshipsResult, prospectingTargets] = await Promise.all([
       contact.companyId
         ? getCompanyById(contact.companyId).catch(() => null)
         : Promise.resolve(null),
@@ -45,6 +49,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
       loadContactRelationships(id),
       getColdCallTargets({ includeArchived: true }),
     ])
+    ;({ opportunities: opportunities, activities: allActivities, tasks: allTasks, businessLines: businessLines, coldCallTargets: prospectingTargets } = scopeCrmData(scope, { opportunities: opportunities, activities: allActivities, tasks: allTasks, businessLines: businessLines, coldCallTargets: prospectingTargets }))
 
     const activities = getContactHistory(allActivities, id, prospectingTargets, opportunities)
     const tasks = getContactHistory(allTasks, id, prospectingTargets, opportunities)

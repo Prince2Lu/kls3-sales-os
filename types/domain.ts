@@ -5,7 +5,8 @@
 // ENUMS AND CONTROLLED VALUES
 // ============================================================================
 
-export type BusinessLineCode = 'PAUL' | 'SACHA' | 'CALYMIA' | 'KLS3_NOTAIRES'
+// Value of BUSINESS_LINES.Code in Airtable. Not a closed list: new lines are added in Airtable (#27).
+export type BusinessLineCode = string
 
 export type Category = 'PARTNER' | 'OWNED'
 
@@ -414,6 +415,8 @@ export interface User {
   passwordHash: string
   role: UserRole
   active: boolean
+  /** USERS."Business Lines" (optional link, Trello #4): empty = every business line. */
+  businessLineIds: string[]
   createdAt: string
   updatedAt: string
 }

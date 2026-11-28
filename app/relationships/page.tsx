@@ -6,10 +6,14 @@ import { enrichWithPriority } from '@/lib/relationships/scoring'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { RelationshipsClient } from './relationships-client'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 export default async function RelationshipsPage() {
   // Load relationships with related data
-  const [relationships, activities, tasks, opportunities, contacts, companies] = await Promise.all([
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [relationships, activities, tasks, opportunities, contacts, companies] = await Promise.all([
     getRelationships(),
     getActivities(),
     getTasks(),
@@ -17,6 +21,7 @@ export default async function RelationshipsPage() {
     getContacts(),
     getCompanies(),
   ])
+  ;({ activities: activities, tasks: tasks, opportunities: opportunities } = scopeCrmData(scope, { activities: activities, tasks: tasks, opportunities: opportunities }))
 
   // Enrich with last interaction and next action
   const enriched = enrichRelationshipsWithInteractions(

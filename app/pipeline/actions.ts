@@ -9,6 +9,7 @@ import {
 } from '@/lib/airtable'
 import { revalidatePath } from 'next/cache'
 import type { Stage } from '@/types/domain'
+import { assertOpportunityInScope } from '@/lib/auth/business-line-scope-server'
 
 export async function updateOpportunityStage(
   opportunityId: string,
@@ -20,6 +21,7 @@ export async function updateOpportunityStage(
     const changedBy = await getCurrentOwner()
 
     // Get current opportunity to track previous stage
+    await assertOpportunityInScope(opportunityId)
     const currentOpportunity = await getOpportunityById(opportunityId)
     const previousStage = currentOpportunity.stage
 

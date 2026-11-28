@@ -160,6 +160,8 @@ export interface AirtableUserFields {
   'Password Hash': string
   Role: string
   Active: boolean
+  /** Optional link to BUSINESS_LINES (Trello #4). Absent until created in Airtable. */
+  'Business Lines'?: string[]
   'Created At': string
   'Updated At': string
 }

@@ -31,7 +31,13 @@ import { WorkBlocksSection } from './work-blocks-section'
 import { RelationshipsSection } from './relationships-section'
 import type { CallStatus, Stage, Owner } from '@/types/domain'
 import { enrichRelationshipsWithInteractions } from '@/lib/relationships/helpers'
+import { findForgottenFiles } from '@/lib/prospecting/forgotten-files'
+import { ForgottenFilesSection } from './forgotten-files-section'
+import { EmailRepliesCheck } from './email-replies-check'
+import { directMailConfigured } from '@/lib/direct-email/mailer'
 import { enrichWithPriority, getActionableToday } from '@/lib/relationships/scoring'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 export default async function TodayPage(props: {
   searchParams: Promise<{ businessLine?: string }>
@@ -45,7 +51,9 @@ export default async function TodayPage(props: {
   const selectedBusinessLineCode = parseBusinessLineParam(searchParams.businessLine)
 
   // Fetch all data in parallel - NO LIMITS (personal view, should be manageable)
-  const [
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [
     allTasks,
     allOpportunities,
     businessLines,
@@ -64,6 +72,7 @@ export default async function TodayPage(props: {
     getContacts(), // No limit - all contacts for display
     getRelationships(), // All relationships for current owner
   ])
+  ;({ tasks: allTasks, opportunities: allOpportunities, businessLines: businessLines, activities: allActivities, coldCallTargets: allTargets } = scopeCrmData(scope, { tasks: allTasks, opportunities: allOpportunities, businessLines: businessLines, activities: allActivities, coldCallTargets: allTargets }))
 
   // Filter by Business Line
   const filteredOpportunities = filterOpportunitiesByBusinessLine(
@@ -282,6 +291,21 @@ export default async function TodayPage(props: {
   const businessLineMap = Object.fromEntries(
     businessLines.map((bl) => [bl.id, bl])
   )
+  // Dossiers oubliés (Trello #63): engaged prospects of the current owner,
+  // on the selected Business Line, with no open task and no recent action.
+  const selectedBusinessLineId = selectedBusinessLineCode
+    ? businessLines.find((bl) => bl.code === selectedBusinessLineCode)?.id ?? null
+    : null
+  const forgottenFiles = findForgottenFiles({
+    targets: selectedBusinessLineId
+      ? allTargets.filter((target) => target.businessLineId === selectedBusinessLineId)
+      : allTargets,
+    tasks: allTasks,
+    activities: allActivities,
+    owner: currentOwner,
+    now: today,
+  })
+
   const companyMap = Object.fromEntries(companies.map((c) => [c.id, c]))
   const contactMap = Object.fromEntries(contacts.map((c) => [c.id, c]))
 
@@ -298,6 +322,9 @@ export default async function TodayPage(props: {
         businessLines={businessLines}
         selectedBusinessLineCode={selectedBusinessLineCode}
       />
+
+      {/* Réponses aux emails directs (Trello #65) */}
+      {(await directMailConfigured(currentOwner).catch(() => false)) && <EmailRepliesCheck />}
 
       <div className="space-y-6">
         {/* 1. En retard */}
@@ -342,6 +369,14 @@ export default async function TodayPage(props: {
           currentOwner={currentOwner}
         />
 
+        {/* 7. Dossiers oubliés (Trello #63) */}
+        <ForgottenFilesSection
+          files={forgottenFiles}
+          businessLineMap={businessLineMap}
+          companyMap={companyMap}
+          contactMap={contactMap}
+        />
+
         {/* Legacy: Opportunities without next action (replaced by Watchlist logic but kept for other stages) */}
         {opportunitiesWithoutNextAction.filter(
           (opp) => !WATCHLIST_STAGES.includes(opp.stage)
@@ -361,6 +396,7 @@ export default async function TodayPage(props: {
           actionableRelationships.length === 0 &&
           watchlistOpportunities.length === 0 &&
           workBlocks.length === 0 &&
+          forgottenFiles.length === 0 &&
           opportunitiesWithoutNextAction.filter(
             (opp) => !WATCHLIST_STAGES.includes(opp.stage)
           ).length === 0 && (

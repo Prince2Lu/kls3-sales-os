@@ -17,9 +17,12 @@ import { Badge } from '@/components/ui/badge'
 import { SectionLabel } from '@/components/ui/section-label'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { isBusinessLineAllowed } from '@/lib/auth/business-line-scope'
 import { TaskActions } from './task-actions'
 import { ActivityActions } from './activity-actions'
 import { EconomicValueSection } from './economic-value-section'
+import { OpportunityQuickActions } from './opportunity-quick-actions'
 import {
   getFrenchTaskType,
   getFrenchActivityType,
@@ -35,6 +38,8 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
 
   try {
     const opportunity = await getOpportunityById(id)
+    // Outside the user's Business Line scope: answer as if it did not exist (Trello #4 part 2)
+    if (!isBusinessLineAllowed(await currentBusinessLineScope(), opportunity.businessLineId)) notFound()
 
     const [
       businessLine,
@@ -125,14 +130,7 @@ export default async function ProspectPage({ params }: ProspectPageProps) {
                 Modifier
               </Button>
             </Link>
-            <Link href={`/prospects/${id}/activity`}>
-              <Button size="sm">+ Activité</Button>
-            </Link>
-            <Link href={`/prospects/${id}/task`}>
-              <Button size="sm" variant="ghost">
-                + Tâche
-              </Button>
-            </Link>
+            <OpportunityQuickActions opportunityId={id} contactId={opportunity.primaryContactId} />
           </div>
         </div>
 

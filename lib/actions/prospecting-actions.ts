@@ -5,6 +5,7 @@
 // IMPORTANT: Uses central anti-duplicate logic from target-manager.ts
 
 import { getCurrentOwner } from '@/lib/utils/current-owner'
+import { assertValidOwner, getActiveOwners } from '@/lib/users/owners'
 import {
   getCompanyById,
   getContactById,
@@ -16,6 +17,7 @@ import {
 } from '@/lib/prospecting/target-manager'
 import type { Owner, ProspectingStatus } from '@/types/domain'
 import { revalidatePath } from 'next/cache'
+import { assertBusinessLineInScope } from '@/lib/auth/business-line-scope-server'
 
 export interface AddToProspectingInput {
   companyId: string
@@ -85,6 +87,8 @@ export async function addToProspecting(
     // 1. Get current owner (validates session)
     const currentUser = await getCurrentOwner()
     const owner = input.owner || currentUser
+    await assertValidOwner(owner)
+    await assertBusinessLineInScope(input.businessLineId)
 
     // 2. Validate Company exists
     let company
@@ -266,7 +270,7 @@ export async function checkProspectingTarget(
       companyId: input.companyId,
       businessLineId: input.businessLineId,
       contactId: input.contactId || null,
-      owner: 'Lilian', // Dummy owner (not used for read-only check)
+      owner: await getCurrentOwner(), // Not used by the read-only check
       status: 'À appeler', // Dummy status (not used for read-only check)
     })
 
@@ -390,4 +394,10 @@ export async function removeFromProspecting(
       message: error.message || 'Une erreur est survenue',
     }
   }
+}
+
+/** Active Sales OS users, for owner pickers in client components (Trello #53). */
+export async function listActiveOwnersAction(): Promise<string[]> {
+  await getCurrentOwner()
+  return getActiveOwners()
 }

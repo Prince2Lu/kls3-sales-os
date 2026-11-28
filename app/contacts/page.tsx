@@ -4,14 +4,19 @@ import { getContacts, getCompanies, getOpportunities, getBusinessLines } from '@
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ContactsClient } from './contacts-client'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 export default async function ContactsPage() {
-  const [contacts, companies, opportunities, businessLines] = await Promise.all([
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [contacts, companies, opportunities, businessLines] = await Promise.all([
     getContacts(),
     getCompanies(),
     getOpportunities(),
     getBusinessLines(),
   ])
+  ;({ opportunities: opportunities, businessLines: businessLines } = scopeCrmData(scope, { opportunities: opportunities, businessLines: businessLines }))
 
   return (
     <div className="space-y-8">
