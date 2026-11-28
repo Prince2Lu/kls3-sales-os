@@ -36,6 +36,8 @@ import { ForgottenFilesSection } from './forgotten-files-section'
 import { EmailRepliesCheck } from './email-replies-check'
 import { directMailConfigured } from '@/lib/direct-email/mailer'
 import { enrichWithPriority, getActionableToday } from '@/lib/relationships/scoring'
+import { currentBusinessLineScope } from '@/lib/auth/business-line-scope-server'
+import { scopeCrmData } from '@/lib/auth/business-line-scope'
 
 export default async function TodayPage(props: {
   searchParams: Promise<{ businessLine?: string }>
@@ -49,7 +51,9 @@ export default async function TodayPage(props: {
   const selectedBusinessLineCode = parseBusinessLineParam(searchParams.businessLine)
 
   // Fetch all data in parallel - NO LIMITS (personal view, should be manageable)
-  const [
+  // Business Line scope of the signed-in user (Trello #4 part 2)
+  const scope = await currentBusinessLineScope()
+  let [
     allTasks,
     allOpportunities,
     businessLines,
@@ -68,6 +72,7 @@ export default async function TodayPage(props: {
     getContacts(), // No limit - all contacts for display
     getRelationships(), // All relationships for current owner
   ])
+  ;({ tasks: allTasks, opportunities: allOpportunities, businessLines: businessLines, activities: allActivities, coldCallTargets: allTargets } = scopeCrmData(scope, { tasks: allTasks, opportunities: allOpportunities, businessLines: businessLines, activities: allActivities, coldCallTargets: allTargets }))
 
   // Filter by Business Line
   const filteredOpportunities = filterOpportunitiesByBusinessLine(
