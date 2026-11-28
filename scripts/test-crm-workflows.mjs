@@ -346,6 +346,7 @@ await test('call queue: explainable fixed order, follow-ups first, clicks only r
     queue.map((item) => item.targetId).join(','), 'order is reproducible')
   const calledAfterClick = callQueue.buildCallQueue({ targets: [targets[5]], tasks: [], activities: [call('click', '2026-11-26T12:00:00Z')], signals, now })
   assert.equal(calledAfterClick[0].rule, 'OLDEST_CONTACT', 'a click already followed by a call no longer jumps the queue')
+})
 const senderLib = await load('lib/users/sender-identity.ts', {
   '@/lib/airtable': `export async function getUsers() { return globalThis.ownerState.users }`,
   '@/lib/digital-cards': `export async function getDigitalCardBySlug(slug) { return globalThis.ownerState.cards[slug] ?? null }`,
