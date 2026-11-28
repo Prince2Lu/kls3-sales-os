@@ -3,7 +3,7 @@
 // Prospecting Kanban Board with drag-and-drop
 // Multi-channel: cold call, email, LinkedIn, referrals, etc.
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -28,8 +28,11 @@ import type {
 import { updateColdCallStatus } from './actions'
 import { useRouter } from 'next/navigation'
 import { ColdCallColumn } from './cold-call-column'
+import { CallQueueList } from './call-queue-list'
+import { buildCallQueue, type CampaignSignal } from '@/lib/prospecting/call-queue'
 import { Search, X, Phone, CalendarDays, MessageCircle, CalendarCheck } from 'lucide-react'
 import { normalizeSearchValue, combineSearchValues, normalizePhoneForSearch } from '@/lib/utils/search'
+import { callsByOwner } from '@/lib/prospecting/call-stats'
 
 interface ColdCallBoardProps {
   targets: ColdCallTarget[]
@@ -39,7 +42,11 @@ interface ColdCallBoardProps {
   activities: Activity[]
   tasks: Task[]
   currentOwner: string
+  campaignSignals?: CampaignSignal[]
 }
+
+type BoardView = 'board' | 'queue'
+const VIEW_STORAGE_KEY = 'kls3.prospecting.view'
 
 // Active prospecting statuses only.
 // RDV booké and Converti are exit states kept in history/Airtable but hidden from Cold Call.
@@ -61,6 +68,7 @@ export function ColdCallBoard({
   activities,
   tasks,
   currentOwner,
+  campaignSignals = [],
 }: ColdCallBoardProps) {
   const router = useRouter()
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -69,6 +77,20 @@ export function ColdCallBoard({
     string | null
   >(null)
   const [search, setSearch] = useState('')
+  const [view, setView] = useState<BoardView>('board')
+
+  // Remember the chosen view on this device only.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(VIEW_STORAGE_KEY)
+      if (saved === 'queue' || saved === 'board') setView(saved)
+    } catch {}
+  }, [])
+
+  function changeView(next: BoardView) {
+    setView(next)
+    try { window.localStorage.setItem(VIEW_STORAGE_KEY, next) } catch {}
+  }
 
   // Create lookup maps
   const blMap = useMemo(
@@ -202,6 +224,16 @@ export function ColdCallBoard({
     return result
   }, [targets, selectedBusinessLineId, search, companiesMap, contactsMap])
 
+  // Explainable call order, on the same BL filter and search as the board
+  const callQueue = useMemo(
+    () => buildCallQueue({ targets: filteredTargets, tasks, activities, signals: campaignSignals }),
+    [filteredTargets, tasks, activities, campaignSignals]
+  )
+  const targetsById = useMemo(
+    () => Object.fromEntries(targets.map((target) => [target.id, target])),
+    [targets]
+  )
+
   // Group targets by call status (pre-opportunity)
   const targetsByStatus = useMemo(() => {
     const grouped: Record<string, ColdCallTarget[]> = {}
@@ -303,13 +335,12 @@ export function ColdCallBoard({
       callsWeek: callsWeek.length,
       conversationsToday: scopedActivities.filter((activity) => activity.result === 'CONVERSATION' && isToday(activity.date)).length,
       meetingsToday: scopedActivities.filter((activity) => activity.result === 'MEETING_BOOKED' && isToday(activity.date)).length,
-      ericToday: callsToday.filter((activity) => activity.owner === 'Eric').length,
-      lilianToday: callsToday.filter((activity) => activity.owner === 'Lilian').length,
+      callsTodayByOwner: callsByOwner(callsToday),
     }
   }, [activities, targets, selectedBusinessLineId])
 
   const callKpiCards = [
-    { label: "Appels aujourd'hui", value: callKpis.callsToday, icon: Phone, detail: `Eric ${callKpis.ericToday} · Lilian ${callKpis.lilianToday}` },
+    { label: "Appels aujourd'hui", value: callKpis.callsToday, icon: Phone, detail: callKpis.callsTodayByOwner || undefined },
     { label: 'Appels cette semaine', value: callKpis.callsWeek, icon: CalendarDays },
     { label: "Conversations aujourd'hui", value: callKpis.conversationsToday, icon: MessageCircle },
     { label: "RDV obtenus aujourd'hui", value: callKpis.meetingsToday, icon: CalendarCheck },
@@ -357,6 +388,25 @@ export function ColdCallBoard({
 
       {/* Filters and Controls */}
       <div className="flex items-center gap-4 flex-wrap">
+        <div className="inline-flex rounded-full border border-border p-0.5 text-sm" role="group" aria-label="Affichage">
+          <button
+            type="button"
+            onClick={() => changeView('queue')}
+            aria-pressed={view === 'queue'}
+            className={`rounded-full px-3 py-1 ${view === 'queue' ? 'bg-accent text-white' : 'text-text-muted'}`}
+          >
+            À appeler maintenant ({callQueue.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => changeView('board')}
+            aria-pressed={view === 'board'}
+            className={`rounded-full px-3 py-1 ${view === 'board' ? 'bg-accent text-white' : 'text-text-muted'}`}
+          >
+            Tableau
+          </button>
+        </div>
+
         {/* Business Line Filter */}
         <div className="flex items-center gap-2">
           <label className="text-sm text-text-muted">Business Line:</label>
@@ -388,6 +438,15 @@ export function ColdCallBoard({
         </div>
       )}
 
+      {view === 'queue' ? (
+        <CallQueueList
+          items={callQueue}
+          targetsById={targetsById}
+          companiesMap={companiesMap}
+          contactsMap={contactsMap}
+          blMap={blMap}
+        />
+      ) : (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -415,7 +474,9 @@ export function ColdCallBoard({
 
         <DragOverlay>{activeTarget && <div>Déplacement...</div>}</DragOverlay>
       </DndContext>
+      )}
 
     </div>
   )
 }
+
