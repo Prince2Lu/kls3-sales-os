@@ -152,7 +152,7 @@ export function ValueEventForm({
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Calymia: Plan Selector - Only show in create mode */}
-        {!isEditMode && businessLine.code === 'CALYMIA' && (
+        {!isEditMode && businessLine.revenueType === 'MRR' && (
           <div>
             <label className="block text-sm font-medium text-text-primary mb-2">
               Plan d'abonnement

@@ -33,6 +33,8 @@ import type { CallStatus, Stage, Owner } from '@/types/domain'
 import { enrichRelationshipsWithInteractions } from '@/lib/relationships/helpers'
 import { findForgottenFiles } from '@/lib/prospecting/forgotten-files'
 import { ForgottenFilesSection } from './forgotten-files-section'
+import { EmailRepliesCheck } from './email-replies-check'
+import { directMailConfigured } from '@/lib/direct-email/mailer'
 import { enrichWithPriority, getActionableToday } from '@/lib/relationships/scoring'
 
 export default async function TodayPage(props: {
@@ -315,6 +317,9 @@ export default async function TodayPage(props: {
         businessLines={businessLines}
         selectedBusinessLineCode={selectedBusinessLineCode}
       />
+
+      {/* Réponses aux emails directs (Trello #65) */}
+      {(await directMailConfigured(currentOwner).catch(() => false)) && <EmailRepliesCheck />}
 
       <div className="space-y-6">
         {/* 1. En retard */}

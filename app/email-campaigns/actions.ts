@@ -12,6 +12,7 @@ import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
 import { emailReplyFollowUpDueParis } from '@/lib/utils/business-day'
 import { getCurrentOwner } from '@/lib/utils/current-owner'
 import { denyUnlessRole } from '@/lib/auth/roles'
+import { NOTARY_BUSINESS_LINE_CODE } from '@/lib/business-lines/display'
 
 async function inBatches<T>(items: T[], size: number, operation: (item: T) => Promise<unknown>): Promise<void> {
   for (let index = 0; index < items.length; index += size) {
@@ -124,8 +125,8 @@ export async function createCampaignDraftAction(input: { name: string; subject: 
     return { success: false, error: error instanceof Error ? error.message : 'Modèle Brevo invalide.' }
   }
 
-  const businessLine = await getBusinessLineByCode('KLS3_NOTAIRES')
-  if (!businessLine) return { success: false, error: 'Business line KLS3_NOTAIRES introuvable.' }
+  const businessLine = await getBusinessLineByCode(NOTARY_BUSINESS_LINE_CODE)
+  if (!businessLine) return { success: false, error: `Business line ${NOTARY_BUSINESS_LINE_CODE} introuvable.` }
 
   const [companies, contacts, suppressions, targets, activities, recipients, campaigns] = await Promise.all([
     getCompanies(), getContacts(), getEmailSuppressions(),

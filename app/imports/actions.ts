@@ -33,6 +33,7 @@ import { parseCsv } from '@/lib/imports/csv'
 import { IMPORT_MAX_ROWS, planImport, type ImportPlan } from '@/lib/imports/sales-os-import'
 import { findOrCreateProspectingTarget } from '@/lib/prospecting/target-manager'
 import type { ColdCallTarget } from '@/types/domain'
+import { NOTARY_BUSINESS_LINE_CODE } from '@/lib/business-lines/display'
 
 function normalize(value: string | null | undefined): string {
   return (value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -79,8 +80,8 @@ export async function importNotaryPilotAction(candidates: NotaryDirectoryCandida
   )
   if (safeCandidates.length !== candidates.length) return { success: false, error: 'Le lot contient des données invalides.' }
 
-  const businessLine = await getBusinessLineByCode('KLS3_NOTAIRES')
-  if (!businessLine) return { success: false, error: "La business line KLS3_NOTAIRES n'existe pas." }
+  const businessLine = await getBusinessLineByCode(NOTARY_BUSINESS_LINE_CODE)
+  if (!businessLine) return { success: false, error: `La business line ${NOTARY_BUSINESS_LINE_CODE} n'existe pas.` }
 
   const batch = await createImportBatch({
     name: `Pilote notaires — ${new Date().toLocaleDateString('fr-FR')}`,

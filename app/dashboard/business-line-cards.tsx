@@ -3,6 +3,7 @@
 
 import type { BusinessLine, ValueEvent, Opportunity, Activity, Task } from '@/types/domain'
 import { calculatePipeline } from '@/lib/utils/dashboard-kpis'
+import { businessLineLabel, isRecurringRevenue, outcomeLabel } from '@/lib/business-lines/display'
 
 interface BusinessLineCardsProps {
   businessLines: BusinessLine[]
@@ -56,65 +57,22 @@ export function BusinessLineCards({
           (ve) => ve.status === 'CONFIRMED' || ve.status === 'PAID'
         )
 
-        let specificKPI = ''
-        let specificValue = ''
+        // Driven by the BUSINESS_LINES fields Revenue Trigger and Revenue Type (#27)
+        const trigger = bl.revenueTrigger
+        const outcomes = confirmedPeriodEvents.filter((ve) => ve.eventType === trigger).length
+        const specificKPI = trigger ? outcomeLabel(trigger) : ''
+        let specificValue = `${outcomes}`
 
-        if (bl.code === 'PAUL') {
-          // PERIOD FLOW: Paid Meetings in selected period
-          const paidMeetings = confirmedPeriodEvents.filter(
-            (ve) => ve.eventType === 'PAID_MEETING'
-          ).length
-          specificKPI = 'RDV rémunérés'
-          specificValue = `${paidMeetings}`
-
-          // PERIOD FLOW: Revenue from period
-          const revenue = confirmedPeriodEvents.reduce((sum, ve) => sum + (ve.amount || 0), 0)
-          if (revenue > 0) {
-            specificValue += ` · ${formatCurrency(revenue)}`
-          }
-        } else if (bl.code === 'SACHA') {
-          // PERIOD FLOW: Signed Deals in selected period
-          const signedDeals = confirmedPeriodEvents.filter(
-            (ve) => ve.eventType === 'SIGNED_DEAL'
-          ).length
-          specificKPI = 'Signatures'
-          specificValue = `${signedDeals}`
-
-          // PERIOD FLOW: Revenue from period
-          const revenue = confirmedPeriodEvents.reduce((sum, ve) => sum + (ve.amount || 0), 0)
-          if (revenue > 0) {
-            specificValue += ` · ${formatCurrency(revenue)}`
-          }
-        } else if (bl.code === 'CALYMIA') {
-          // PERIOD FLOW: Subscriptions started in selected period
-          const subscriptionsStarted = confirmedPeriodEvents.filter(
-            (ve) => ve.eventType === 'SUBSCRIPTION_STARTED'
-          ).length
-
+        if (isRecurringRevenue(bl)) {
           // CURRENT STATE: MRR (NOT period-filtered)
           const mrr = confirmedAllEvents
             .filter((ve) => ve.revenueType === 'MRR')
             .reduce((sum, ve) => sum + (ve.amount || 0), 0)
-
-          specificKPI = 'Nouveaux abonnements'
-          specificValue = `${subscriptionsStarted}`
-          if (mrr > 0) {
-            specificValue += ` · MRR ${formatMRR(mrr)}`
-          }
-        } else if (bl.code === 'KLS3_NOTAIRES') {
-          // PERIOD FLOW: Signed Projects in selected period
-          const signedProjects = confirmedPeriodEvents.filter(
-            (ve) => ve.eventType === 'SIGNED_PROJECT'
-          ).length
-
+          if (mrr > 0) specificValue += ` · MRR ${formatMRR(mrr)}`
+        } else {
           // PERIOD FLOW: Revenue from period
           const revenue = confirmedPeriodEvents.reduce((sum, ve) => sum + (ve.amount || 0), 0)
-
-          specificKPI = 'Projets signés'
-          specificValue = `${signedProjects}`
-          if (revenue > 0) {
-            specificValue += ` · ${formatCurrency(revenue)}`
-          }
+          if (revenue > 0) specificValue += ` · ${formatCurrency(revenue)}`
         }
 
         return (
@@ -126,7 +84,7 @@ export function BusinessLineCards({
             <div className="space-y-4">
               {/* Business Line Name */}
               <div>
-                <h3 className="font-semibold font-syne text-lg">{bl.name}</h3>
+                <h3 className="font-semibold font-syne text-lg">{businessLineLabel(bl)}</h3>
               </div>
 
               {/* CURRENT STATE: Open Opportunities & Pipeline */}

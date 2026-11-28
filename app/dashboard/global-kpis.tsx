@@ -8,6 +8,7 @@ import {
   calculateMRR,
   calculatePipeline,
 } from '@/lib/utils/dashboard-kpis'
+import { isRecurringRevenue } from '@/lib/business-lines/display'
 
 interface GlobalKPIsProps {
   valueEvents: ValueEvent[] // ALL Value Events (for CURRENT STATE metrics like MRR)
@@ -72,7 +73,7 @@ export function GlobalKPIs({
 
   const showPartnerRevenue = !selectedBL || selectedBL.category === 'PARTNER'
   const showOwnedRevenue = !selectedBL || selectedBL.category === 'OWNED'
-  const showMRR = !selectedBL || selectedBL.code === 'CALYMIA'
+  const showMRR = !selectedBL || isRecurringRevenue(selectedBL)
 
   return (
     <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-4 bg-[rgba(255,255,255,0.06)] rounded-[20px] overflow-hidden p-1">

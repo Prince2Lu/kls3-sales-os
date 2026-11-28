@@ -74,7 +74,7 @@ export function EfficiencyView({
       <EfficiencySummary
         metrics={metrics}
         revenueType={selectedBusinessLine?.revenueType || null}
-        businessLineName={selectedBusinessLine?.name}
+        revenueTrigger={selectedBusinessLine?.revenueTrigger ?? null}
       />
 
       {/* Business Line Comparison (only in "Toutes" mode) */}

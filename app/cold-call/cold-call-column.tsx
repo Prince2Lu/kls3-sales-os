@@ -29,6 +29,7 @@ import { CallCounter } from '@/components/pipeline/call-counter'
 import { TaskSummary } from '@/components/pipeline/task-summary'
 import { CreateTaskModal } from '@/components/pipeline/create-task-modal'
 import { createManualTask } from '@/lib/actions/task-actions'
+import { businessLineLabel } from '@/lib/business-lines/display'
 
 interface ColdCallColumnProps {
   id: string
@@ -365,7 +366,7 @@ function TargetCard({ target, company, contact, businessLine, activities, tasks,
         {businessLine && (
           <div>
             <Badge variant="accent" className="text-xs">
-              {businessLine.code === 'SACHA' ? 'Leverio' : businessLine.name}
+              {businessLineLabel(businessLine)}
             </Badge>
           </div>
         )}

@@ -55,7 +55,7 @@ export function calculateMRR(valueEvents: ValueEvent[]): number {
 }
 
 /**
- * Calculate Partner Revenue (Paul + Leverio)
+ * Calculate Partner Revenue (business lines with Category = PARTNER)
  */
 export function calculatePartnerRevenue(
   valueEvents: ValueEvent[],
