@@ -4,6 +4,7 @@
 
 import { Button } from '@/components/ui/button'
 import type { Company, Contact, BusinessLine, CallStatus } from '@/types/domain'
+import { businessLineLabel } from '@/lib/business-lines/display'
 
 interface RemoveFromProspectingModalProps {
   company: Company | null
@@ -59,7 +60,7 @@ export function RemoveFromProspectingModal({
           <div>
             <span className="text-text-muted">Business Line :</span>{' '}
             <span className="text-text-primary">
-              {businessLine?.code === 'SACHA' ? 'Leverio' : businessLine?.name || 'Inconnue'}
+              {businessLineLabel(businessLine) || 'Inconnue'}
             </span>
           </div>
           <div>
