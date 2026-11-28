@@ -328,10 +328,11 @@ export function mapGoal(record: AirtableRecord<AirtableGoalFields>): Goal {
   const fields = record.fields
   return {
     id: record.id,
-    businessLineId: fields['Business Line'][0],
+    // A GOALS row typed by hand may miss its link or period: never crash the Dashboard.
+    businessLineId: fields['Business Line']?.[0] ?? '',
     metric: fields.Metric,
-    period: fields.Period,
-    target: fields.Target,
+    period: fields.Period ?? '',
+    target: fields.Target ?? 0,
     ambitiousTarget: fields['Ambitious Target'] ?? null,
     startDate: fields['Start Date'] ?? null,
     endDate: fields['End Date'] ?? null,

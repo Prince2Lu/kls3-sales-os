@@ -320,6 +320,63 @@ await test('Airtable never runs more than 4 requests at once', async () => {
   await Promise.all(Array.from({ length: 12 }, (_, index) => airtable.airtableFetch(`https://api.airtable.test/v0/base/T${index}`)))
   assert.equal(http.calls.length, 12); assert.equal(http.maxActive, 4)
 })
+const goalProgress = await load('lib/goals/goal-progress.ts')
+await test('Goals: metric and period codes are normalised, unknown codes stay unknown', () => {
+  assert.equal(goalProgress.normalizeGoalMetric('PAID_MEETINGS'), 'PAID_MEETINGS')
+  assert.equal(goalProgress.normalizeGoalMetric('RDV rémunérés'), 'PAID_MEETINGS')
+  assert.equal(goalProgress.normalizeGoalMetric('Nouveaux clients'), 'NEW_SUBSCRIPTIONS')
+  assert.equal(goalProgress.normalizeGoalMetric('Signed projects'), 'SIGNATURES')
+  assert.equal(goalProgress.normalizeGoalMetric('Taux de closing'), null)
+  assert.equal(goalProgress.normalizeGoalPeriod('Mensuel'), 'month')
+  assert.equal(goalProgress.normalizeGoalPeriod('MONTHLY'), 'month')
+  assert.equal(goalProgress.normalizeGoalPeriod('Trimestre'), 'quarter')
+  assert.equal(goalProgress.normalizeGoalPeriod(undefined), null)
+})
+await test('Goals: actuals use confirmed Value Events and attributed Activities only', () => {
+  const goals = [
+    { id: 'g-paul', businessLineId: 'bl-paul', metric: 'PAID_MEETINGS', period: 'Monthly', target: 8, ambitiousTarget: 12, startDate: null, endDate: null },
+    { id: 'g-calls', businessLineId: 'bl-paul', metric: 'Appels', period: 'Mensuel', target: 100, ambitiousTarget: null, startDate: null, endDate: null },
+    { id: 'g-revenue', businessLineId: 'bl-kls3', metric: 'CA', period: 'Month', target: 12000, ambitiousTarget: null, startDate: '2026-11-01', endDate: '2026-11-30' },
+    { id: 'g-old', businessLineId: 'bl-paul', metric: 'CALLS', period: 'Month', target: 10, ambitiousTarget: null, startDate: '2026-09-01', endDate: '2026-09-30' },
+    { id: 'g-unknown', businessLineId: 'bl-paul', metric: 'Taux de closing', period: 'Month', target: 30, ambitiousTarget: null, startDate: null, endDate: null },
+  ]
+  const data = {
+    opportunities: [{ id: 'o1', businessLineId: 'bl-paul', createdAt: '2026-11-05T10:00:00' }],
+    coldCallTargets: [{ id: 't1', businessLineId: 'bl-paul' }, { id: 't2', businessLineId: 'bl-kls3' }],
+    activities: [
+      { id: 'a1', type: 'CALL', result: 'NO_ANSWER', date: '2026-11-03T10:00:00', opportunityId: null, coldCallTargetId: 't1' },
+      { id: 'a2', type: 'CALL', result: 'CONVERSATION', date: '2026-11-04T10:00:00', opportunityId: 'o1', coldCallTargetId: null },
+      { id: 'a3', type: 'CALL', result: 'NO_ANSWER', date: '2026-11-04T11:00:00', opportunityId: null, coldCallTargetId: 't2' },
+      { id: 'a4', type: 'CALL', result: 'NO_ANSWER', date: '2026-10-31T11:00:00', opportunityId: null, coldCallTargetId: 't1' },
+      { id: 'a5', type: 'CALL', result: 'NO_ANSWER', date: '2026-11-04T11:00:00', opportunityId: null, coldCallTargetId: null },
+    ],
+    valueEvents: [
+      { id: 'v1', businessLineId: 'bl-paul', eventType: 'PAID_MEETING', status: 'CONFIRMED', eventDate: '2026-11-10', amount: 100, revenueType: 'ONE_SHOT' },
+      { id: 'v2', businessLineId: 'bl-paul', eventType: 'PAID_MEETING', status: 'PAID', eventDate: '2026-11-12', amount: 100, revenueType: 'ONE_SHOT' },
+      { id: 'v3', businessLineId: 'bl-paul', eventType: 'PAID_MEETING', status: 'PENDING', eventDate: '2026-11-12', amount: 100, revenueType: 'ONE_SHOT' },
+      { id: 'v4', businessLineId: 'bl-paul', eventType: 'PAID_MEETING', status: 'CANCELLED', eventDate: '2026-11-13', amount: 100, revenueType: 'ONE_SHOT' },
+      { id: 'v5', businessLineId: 'bl-kls3', eventType: 'SIGNED_PROJECT', status: 'CONFIRMED', eventDate: '2026-11-20', amount: 12000, revenueType: 'PROJECT' },
+    ],
+  }
+  const period = { start: new Date(2026, 10, 1), end: new Date(2026, 10, 27, 23, 59, 59) }
+  const rows = goalProgress.buildGoalProgress(goals, period, data, new Date(2026, 10, 15, 12))
+  assert.equal(rows.map(row => row.goal.id).join(','), 'g-paul,g-calls,g-revenue,g-unknown')
+  const [paul, calls, revenue, unknown] = rows
+  assert.equal(paul.status, 'measured'); assert.equal(paul.actual, 2); assert.equal(paul.target, 8); assert.equal(paul.percent, 25)
+  assert.equal(paul.window.start.getDate(), 1); assert.equal(paul.window.end.getDate(), 30)
+  assert.ok(paul.expectedByNow > 3 && paul.expectedByNow < 4.5)
+  assert.equal(calls.actual, 2)
+  assert.equal(revenue.actual, 12000); assert.equal(revenue.unit, 'currency'); assert.equal(revenue.percent, 100)
+  assert.equal(unknown.status, 'unknown_metric')
+})
+await test('Goals: a goal without dates or a known period is flagged, not measured', () => {
+  const rows = goalProgress.buildGoalProgress(
+    [{ id: 'g1', businessLineId: 'bl', metric: 'CALLS', period: 'Sprint', target: 5, ambitiousTarget: null, startDate: null, endDate: null }],
+    { start: new Date(2026, 10, 1), end: new Date(2026, 10, 27) },
+    { opportunities: [], coldCallTargets: [], activities: [], valueEvents: [] }
+  )
+  assert.equal(rows.length, 1); assert.equal(rows[0].status, 'unknown_period')
+})
 const csvLib = await load('lib/imports/csv.ts')
 const importPlanner = await load('lib/imports/sales-os-import.ts', {}, { URL })
 await test('CSV import: parses French CSV, detects duplicates in CRM and in file, never plans an Opportunity', () => {
