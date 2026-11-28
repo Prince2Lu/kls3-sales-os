@@ -320,6 +320,38 @@ await test('Airtable never runs more than 4 requests at once', async () => {
   await Promise.all(Array.from({ length: 12 }, (_, index) => airtable.airtableFetch(`https://api.airtable.test/v0/base/T${index}`)))
   assert.equal(http.calls.length, 12); assert.equal(http.maxActive, 4)
 })
+const forgotten = await load('lib/prospecting/forgotten-files.ts')
+await test('Forgotten files: engaged prospects idle 14+ days without open task, never in bulk', () => {
+  const now = new Date('2026-11-27T12:00:00Z')
+  const base = { contactId: 'c1', businessLineId: 'bl', owner: 'Lilian', archived: false, opportunityId: null, createdAt: '2026-09-01T10:00:00Z', updatedAt: '2026-10-01T10:00:00Z' }
+  const targets = [
+    { ...base, id: 't-old', companyId: 'co1', callStatus: 'Échange' },
+    { ...base, id: 't-qualified', companyId: 'co2', callStatus: 'Qualifié', updatedAt: '2026-11-05T10:00:00Z' },
+    { ...base, id: 't-recent-call', companyId: 'co3', callStatus: 'Échange' },
+    { ...base, id: 't-task', companyId: 'co4', callStatus: 'À rappeler' },
+    { ...base, id: 't-new', companyId: 'co5', callStatus: 'À appeler' },
+    { ...base, id: 't-opp', companyId: 'co6', callStatus: 'Échange', opportunityId: 'o1' },
+    { ...base, id: 't-archived', companyId: 'co7', callStatus: 'Échange', archived: true },
+    { ...base, id: 't-other', companyId: 'co8', callStatus: 'Échange', owner: 'Eric' },
+    { ...base, id: 't-done-task', companyId: 'co9', callStatus: 'À rappeler' },
+  ]
+  const tasks = [
+    { id: 'k1', coldCallTargetId: 't-task', status: 'TODO' },
+    { id: 'k2', coldCallTargetId: 't-done-task', status: 'DONE' },
+  ]
+  const activities = [
+    { id: 'a1', coldCallTargetId: 't-recent-call', date: '2026-11-20T10:00:00Z' },
+    { id: 'a2', coldCallTargetId: 't-old', date: '2026-10-10T10:00:00Z' },
+  ]
+  const files = forgotten.findForgottenFiles({ targets, tasks, activities, owner: 'Lilian', now })
+  assert.equal(files.map(file => file.targetId).join(','), 't-qualified,t-old,t-done-task')
+  assert.equal(files[1].idleDays, 48); assert.equal(files[1].lastTouchAt, '2026-10-10T10:00:00Z')
+  assert.equal(files[0].idleDays, 22)
+})
+await test('Forgotten files: proposed follow-up is the next business day at 09:30', () => {
+  const due = new Date(forgotten.proposedFollowUpAt(new Date(2026, 10, 27, 18, 0)))
+  assert.equal(due.getDay(), 1); assert.equal(due.getDate(), 30); assert.equal(due.getHours(), 9); assert.equal(due.getMinutes(), 30)
+})
 const goalProgress = await load('lib/goals/goal-progress.ts')
 await test('Goals: metric and period codes are normalised, unknown codes stay unknown', () => {
   assert.equal(goalProgress.normalizeGoalMetric('PAID_MEETINGS'), 'PAID_MEETINGS')
