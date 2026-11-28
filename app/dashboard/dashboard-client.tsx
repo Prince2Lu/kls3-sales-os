@@ -4,7 +4,7 @@
 // Commercial piloting cockpit for KLS3 Sales OS
 
 import { useState, useMemo, useEffect } from 'react'
-import type { BusinessLine, ValueEvent, Opportunity, Activity, Task, Company, Contact, ColdCallTarget } from '@/types/domain'
+import type { BusinessLine, ValueEvent, Opportunity, Activity, Task, Company, Contact, ColdCallTarget, Goal } from '@/types/domain'
 import type { PeriodType } from '@/lib/utils/period'
 import { getPeriodDateRange } from '@/lib/utils/period'
 import { BusinessLineSelector } from './business-line-selector'
@@ -15,6 +15,7 @@ import { CommercialActivity } from './commercial-activity'
 import { PipelineByStage } from './pipeline-by-stage'
 import { Attention } from './attention'
 import { TopOpportunities } from './top-opportunities'
+import { GoalsProgress } from './goals-progress'
 
 interface DashboardClientProps {
   businessLines: BusinessLine[]
@@ -25,6 +26,8 @@ interface DashboardClientProps {
   companies: Company[]
   contacts: Contact[]
   coldCallTargets: ColdCallTarget[]
+  goals: Goal[]
+  goalsError: boolean
 }
 
 export function DashboardClient({
@@ -36,6 +39,8 @@ export function DashboardClient({
   companies,
   contacts,
   coldCallTargets,
+  goals,
+  goalsError,
 }: DashboardClientProps) {
   // State
   const [selectedBusinessLineId, setSelectedBusinessLineId] = useState<string | null>(null)
@@ -150,6 +155,16 @@ export function DashboardClient({
           />
         </div>
       )}
+
+      {/* Objectifs vs Réalisé (Trello #61) */}
+      <GoalsProgress
+        goals={goals}
+        goalsError={goalsError}
+        businessLines={businessLines}
+        selectedBusinessLineId={selectedBusinessLineId}
+        period={periodRange}
+        data={{ activities, opportunities, coldCallTargets, valueEvents }}
+      />
 
       {/* Commercial Activity */}
       <CommercialActivity
