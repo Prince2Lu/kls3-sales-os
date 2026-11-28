@@ -10,6 +10,8 @@ const eslintConfig = defineConfig([
     // Existing debt, visible as warnings instead of blocking CI.
     // Turn each one back to 'error' once its warnings are fixed (Trello #55).
     rules: {
+      // Pages destructure Promise.all into let, then reassign only the scoped rows (scopeCrmData).
+      'prefer-const': ['error', { destructuring: 'all' }],
       'react-hooks/error-boundaries': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/static-components': 'warn',
