@@ -29,6 +29,7 @@ import { updateColdCallStatus } from './actions'
 import { useRouter } from 'next/navigation'
 import { ColdCallColumn } from './cold-call-column'
 import { CallQueueList } from './call-queue-list'
+import { CallSeries } from './call-series'
 import { buildCallQueue, type CampaignSignal } from '@/lib/prospecting/call-queue'
 import { Search, X, Phone, CalendarDays, MessageCircle, CalendarCheck } from 'lucide-react'
 import { normalizeSearchValue, combineSearchValues, normalizePhoneForSearch } from '@/lib/utils/search'
@@ -43,6 +44,8 @@ interface ColdCallBoardProps {
   tasks: Task[]
   currentOwner: string
   campaignSignals?: CampaignSignal[]
+  /** Business Line code from the URL (?bl=CODE), e.g. links from Aujourd'hui. */
+  initialBusinessLineCode?: string | null
 }
 
 type BoardView = 'board' | 'queue'
@@ -69,13 +72,15 @@ export function ColdCallBoard({
   tasks,
   currentOwner,
   campaignSignals = [],
+  initialBusinessLineCode = null,
 }: ColdCallBoardProps) {
   const router = useRouter()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [selectedBusinessLineId, setSelectedBusinessLineId] = useState<
     string | null
-  >(null)
+  >(() => businessLines.find((bl) => bl.code === initialBusinessLineCode)?.id ?? null)
+  const [seriesRunning, setSeriesRunning] = useState(false)
   const [search, setSearch] = useState('')
   const [view, setView] = useState<BoardView>('board')
 
@@ -88,6 +93,7 @@ export function ColdCallBoard({
   }, [])
 
   function changeView(next: BoardView) {
+    setSeriesRunning(false)
     setView(next)
     try { window.localStorage.setItem(VIEW_STORAGE_KEY, next) } catch {}
   }
@@ -438,14 +444,35 @@ export function ColdCallBoard({
         </div>
       )}
 
-      {view === 'queue' ? (
-        <CallQueueList
+      {seriesRunning ? (
+        <CallSeries
           items={callQueue}
           targetsById={targetsById}
           companiesMap={companiesMap}
           contactsMap={contactsMap}
           blMap={blMap}
+          activitiesByTargetId={activitiesByTargetId}
+          onExit={() => setSeriesRunning(false)}
         />
+      ) : view === 'queue' ? (
+        <div className="space-y-3">
+          {callQueue.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSeriesRunning(true)}
+              className="rounded-full bg-accent text-white text-sm px-5 py-2"
+            >
+              Appeler en série ({callQueue.length})
+            </button>
+          )}
+          <CallQueueList
+            items={callQueue}
+            targetsById={targetsById}
+            companiesMap={companiesMap}
+            contactsMap={contactsMap}
+            blMap={blMap}
+          />
+        </div>
       ) : (
       <DndContext
         sensors={sensors}
