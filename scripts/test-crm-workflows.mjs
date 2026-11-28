@@ -666,4 +666,18 @@ await test('BL scope on screens: rows of other lines hidden, tasks/activities fo
   assert.equal(scoped.tasks.length, 2); assert.equal(scoped.activities.length, 1); assert.equal(scoped.stageHistory.length, 0)
   assert.equal(blScope.scopeCrmData(blScope.scopeFor('ADMIN', []), data), data)
 })
+const newUser = await load('lib/users/new-user.ts')
+await test('admin "Ajouter un commercial": checks input, unique email and name, known business lines only', () => {
+  const existing = [{ name: 'Eric', email: 'eric@kls3-dev.com' }, { name: 'Lilian', email: 'lilian@kls3-dev.com' }]
+  const ok = newUser.validateNewUser({ firstName: ' Paul ', lastName: 'Martin', email: ' Paul@KLS3-dev.com ', role: 'SALES', businessLineIds: ['bl1', 'bl1', 'ghost'] }, existing, ['bl1', 'bl2'])
+  assert.equal(ok.ok, true)
+  assert.equal(ok.user.name, 'Paul'); assert.equal(ok.user.email, 'paul@kls3-dev.com')
+  assert.deepEqual([...ok.user.businessLineIds], ['bl1'])
+  assert.equal(newUser.validateNewUser({ firstName: 'X', lastName: '', email: 'ERIC@kls3-dev.com', role: 'SALES', businessLineIds: [] }, existing, []).ok, false)
+  assert.match(newUser.validateNewUser({ firstName: 'lilian', lastName: 'Durand', email: 'l2@kls3-dev.com', role: 'SALES', businessLineIds: [] }, existing, []).error, /lilian D\./i)
+  assert.equal(newUser.validateNewUser({ firstName: 'Zoé', lastName: '', email: 'z@kls3-dev.com', role: 'ADMIN', businessLineIds: [] }, existing, []).ok, false)
+  assert.equal(newUser.validateNewUser({ firstName: '', lastName: '', email: 'z@kls3-dev.com', role: 'SALES', businessLineIds: [] }, existing, []).ok, false)
+  const pwd = newUser.temporaryPassword(new Uint8Array(12).map((_, i) => i * 37))
+  assert.equal(pwd.length, 12); assert.doesNotMatch(pwd, /[0O1l]/)
+})
 console.log(`${tests} CRM regression tests passed`)
